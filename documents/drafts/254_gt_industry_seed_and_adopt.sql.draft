@@ -1,0 +1,249 @@
+-- ⚠️ DRAFT — NOT A MIGRATION, AND DELIBERATELY NOT IN backend/migrations/.
+--
+-- `npm run db:migrate` applies EVERY .sql in that folder, so a draft left
+-- there is a draft that runs on the next deploy. It lives here instead, with
+-- a `.draft` suffix, until it is wanted.
+--
+-- SCOPE, per Charan 2026-09-22: **the industry migration belongs to the NOVA
+-- project migration, not to the GTM UI port.** It is not a prerequisite for
+-- any GTM slice. GTM ships on the existing free-text slug and carries the
+-- duplicate-research cost until Nova lands (see
+-- vikunawebsite/vani-app/docs/gtm-migration-poa.md §6).
+--
+-- Kept because the reasoning below was measured, not guessed, and re-deriving
+-- it costs a session. Renumber before use — 254 may be taken by then.
+--
+-- ============================================================
+
+-- ============================================================
+-- Migration: 254_gt_industry_seed_and_adopt.sql
+-- Purpose:   Give migration 194's industry taxonomy the one thing it has
+--            never had — ROWS — and adopt every industry already in use so
+--            nothing that works today stops working.
+--
+-- NO STRUCTURAL CHANGE. No table, column, enum or index is created here.
+-- Everything below is seed data and adoption of existing values, which is
+-- why it could be written without a schema-change approval. The structures
+-- were all created by 194.
+--
+-- ── WHY ───────────────────────────────────────────────────────────────
+--
+-- 194 built gt_industries + gt_industry_aliases + gt_tenant_target_industries
+-- and explained exactly why, measured on real files: FTCCI shipped 2,170
+-- distinct industry strings of which 2,071 were singletons ("Manufacturers"
+-- x213 vs "Manufacturer" x71), Apollo shipped 35. Its own rule:
+--
+--   "gt_tenant_profile.icp_industry STAYS as the agent's drafted prose. The
+--    ratified selection lives in gt_tenant_target_industries. One is what
+--    VaNi guessed; the other is what the human confirmed, and only the
+--    second is joinable."
+--
+-- Then nothing seeded it, and nothing read it. gt_industries has zero rows;
+-- gt_industry_aliases and gt_tenant_target_industries are touched by zero
+-- TypeScript files.
+--
+-- Meanwhile the domain-pack spine — the thing that decides which tenants
+-- share an industry's research — keys on slugifyIndustry(
+-- vn_tenant_profiles.industry), i.e. on the prose 194 says is not joinable.
+-- Nineteen call sites do it.
+--
+-- The consequence is not theoretical. Tenant A types "Technology & SaaS"
+-- and gets domain 'technology-saas'. Tenant B types "SaaS/Tech" and gets
+-- 'saas-tech'. The claim that an industry is already studied never fires,
+-- both pay for a 20-minute enrichment run, and two packs exist for one
+-- industry with neither tenant able to see the other half. That is the exact
+-- stranding the self-publishing ruling was written to prevent, arriving
+-- through the KEY instead of through visibility.
+--
+-- ── WHY ADOPTION RATHER THAN MIGRATION ────────────────────────────────
+--
+-- Every domain already in vani_domain_pack becomes a canonical code if it is
+-- not one already. The taxonomy adopts production; production is not
+-- migrated onto the taxonomy. A pack researched under 'technology-saas'
+-- keeps answering to 'technology-saas' and no tenant loses a catalogue.
+-- Same move migration 253 made when it adopted stranded gt_events rows.
+--
+-- ── WHY THE SEED IS SMALL ─────────────────────────────────────────────
+--
+-- A canonical industry list is a judgement, and inventing two hundred rows
+-- would be fabricating a taxonomy nobody ratified (rule 9d). What is seeded
+-- is only what this codebase already treats as real:
+--
+--   * industries that appear as DATA in the repo today
+--   * the manufacturing cluster and its eight sub-clusters from
+--     src/etl/industry-normalizer.ts, which were derived from the actual
+--     FTCCI import rather than imagined
+--
+-- Everything else is added by a human, one row at a time, as tenants arrive.
+-- An unmapped industry is never blocked and never silently merged — the
+-- resolver falls back to the slug and REPORTS that it did (rule 12).
+-- ============================================================
+
+DO $$
+DECLARE missing TEXT;
+BEGIN
+    SELECT string_agg(t, ', ') INTO missing
+    FROM   unnest(ARRAY['gt_industries', 'gt_industry_aliases']) AS t
+    WHERE  to_regclass('public.' || t) IS NULL;
+
+    IF missing IS NOT NULL THEN
+        RAISE EXCEPTION 'Migration 194 has not been applied here — missing: %', missing;
+    END IF;
+END $$;
+
+
+-- ────────────────────────────────────────────────────────────────────────
+-- 1. The canonical list. Parents first, then children.
+-- ────────────────────────────────────────────────────────────────────────
+
+INSERT INTO gt_industries (code, name, sort_order) VALUES
+    ('technology_saas',      'Technology & SaaS',        10),
+    ('it_services',          'IT services & consulting', 20),
+    ('logistics_freight',    'Logistics & Freight',      30),
+    ('manufacturing',        'Manufacturing',            40),
+    ('hotels_restaurants',   'Hotels & Restaurants',     50),
+    ('healthcare',           'Healthcare & hospitals',   60),
+    ('financial_services',   'Financial services',       70),
+    ('professional_services','Professional services',    80)
+ON CONFLICT (code) DO NOTHING;
+
+-- The manufacturing sub-clusters, copied from industry-normalizer.ts. These
+-- exist because a real 2,149-row import needed them, which is the only
+-- justification a taxonomy row should ever have.
+INSERT INTO gt_industries (code, name, parent_id, sort_order)
+SELECT v.code, v.name, p.id, v.sort_order
+  FROM (VALUES
+        ('mfg_pharma',       'Pharma & life sciences',              41),
+        ('mfg_food',         'Food, agri and beverages',            42),
+        ('mfg_plastics',     'Plastics, polymers and packaging',    43),
+        ('mfg_electrical',   'Electrical and electronics',          44),
+        ('mfg_engineering',  'Engineering, metals and machinery',   45),
+        ('mfg_chemicals',    'Chemicals, dyes and fertilisers',     46),
+        ('mfg_textiles',     'Textiles, apparel and leather',       47),
+        ('mfg_construction', 'Construction and building materials', 48)
+       ) AS v(code, name, sort_order)
+  CROSS JOIN LATERAL (SELECT id FROM gt_industries WHERE code = 'manufacturing') p
+ON CONFLICT (code) DO NOTHING;
+
+
+-- ────────────────────────────────────────────────────────────────────────
+-- 2. ADOPT every industry already in use.
+--
+-- Any domain that already carries a published pack becomes a code, so no
+-- existing catalogue is orphaned by this migration. The display name is
+-- derived from the slug and is MEANT to be corrected by a human — it is a
+-- label, never a key, so a rough initcap is honest rather than a guess with
+-- consequences.
+-- ────────────────────────────────────────────────────────────────────────
+
+DO $$
+BEGIN
+    IF to_regclass('public.vani_domain_pack') IS NULL THEN
+        RAISE NOTICE '254: vani_domain_pack absent — nothing to adopt.';
+        RETURN;
+    END IF;
+
+    INSERT INTO gt_industries (code, name, sort_order)
+    SELECT DISTINCT
+           p.domain,
+           initcap(replace(p.domain, '-', ' ')),
+           900
+      FROM vani_domain_pack p
+     WHERE p.domain IS NOT NULL
+       AND btrim(p.domain) <> ''
+       AND NOT EXISTS (SELECT 1 FROM gt_industries i WHERE i.code = p.domain)
+    ON CONFLICT (code) DO NOTHING;
+END $$;
+
+
+-- ────────────────────────────────────────────────────────────────────────
+-- 3. Aliases — what a human might actually type.
+--
+-- `raw_key` is GENERATED: lower(punctuation -> spaces, trimmed). So
+-- "Technology & SaaS", "technology-saas" and "Technology  SaaS" all collapse
+-- to the same key for free, and only WORD-ORDER or SYNONYM variants need a
+-- row of their own. source_id NULL = applies to any source, which is what
+-- makes this table usable for a tenant's typed declaration and not only for
+-- an imported file.
+--
+-- ON CONFLICT DO NOTHING throughout: the unique index is on
+-- (COALESCE(source_id,0), raw_key), so a variant that normalises onto one
+-- already present is a no-op rather than an error.
+-- ────────────────────────────────────────────────────────────────────────
+
+INSERT INTO gt_industry_aliases (source_id, raw_value, industry_id, confidence, mapped_by)
+SELECT NULL, v.raw, i.id, 1.000, 'human'
+  FROM (VALUES
+        -- technology_saas
+        ('Technology & SaaS',        'technology_saas'),
+        ('technology-saas',          'technology_saas'),
+        ('SaaS',                     'technology_saas'),
+        ('SaaS / Tech',              'technology_saas'),
+        ('Tech / SaaS',              'technology_saas'),
+        ('Software',                 'technology_saas'),
+        ('Software product',         'technology_saas'),
+        -- it_services
+        ('IT services',              'it_services'),
+        ('IT consulting',            'it_services'),
+        ('Software services',        'it_services'),
+        -- logistics_freight
+        ('Logistics & Freight',      'logistics_freight'),
+        ('logistics-freight',        'logistics_freight'),
+        ('Logistics',                'logistics_freight'),
+        ('Freight',                  'logistics_freight'),
+        ('Transport & logistics',    'logistics_freight'),
+        -- manufacturing — the two FTCCI singleton pairs 194 measured
+        ('Manufacturing',            'manufacturing'),
+        ('Manufacturer',             'manufacturing'),
+        ('Manufacturers',            'manufacturing'),
+        ('Manufacturing & Trading',  'manufacturing'),
+        ('Manufacturer & Exporter',  'manufacturing'),
+        -- hotels_restaurants
+        ('Hotels & Restaurants',     'hotels_restaurants'),
+        ('Hospitality',              'hotels_restaurants'),
+        -- healthcare
+        ('Healthcare',               'healthcare'),
+        ('Hospitals',                'healthcare'),
+        ('Hospital',                 'healthcare'),
+        -- financial_services
+        ('Financial services',       'financial_services'),
+        ('Finance',                  'financial_services'),
+        ('BFSI',                     'financial_services'),
+        -- professional_services
+        ('Professional services',    'professional_services'),
+        ('Chartered Accountant',     'professional_services'),
+        ('Chartered Accountants',    'professional_services'),
+        ('Consulting',               'professional_services')
+       ) AS v(raw, code)
+  JOIN gt_industries i ON i.code = v.code
+ON CONFLICT DO NOTHING;
+
+-- Every code is an alias of itself, and so is its display name. Without this
+-- a tenant who types exactly the canonical name would be reported unmapped.
+INSERT INTO gt_industry_aliases (source_id, raw_value, industry_id, confidence, mapped_by)
+SELECT NULL, i.code, i.id, 1.000, 'human' FROM gt_industries i
+ON CONFLICT DO NOTHING;
+
+INSERT INTO gt_industry_aliases (source_id, raw_value, industry_id, confidence, mapped_by)
+SELECT NULL, i.name, i.id, 1.000, 'human' FROM gt_industries i
+ON CONFLICT DO NOTHING;
+
+
+-- ────────────────────────────────────────────────────────────────────────
+-- 4. What this migration deliberately does NOT do
+--
+-- It does not map any EXISTING vn_tenant_profiles.industry value that is not
+-- covered above, and it does not touch gt_tenant_target_industries. Guessing
+-- which canonical industry a tenant meant, and writing that guess in as
+-- though a human had ratified it, is precisely what 194 forbids and what
+-- rule 9d forbids. Unmapped values are surfaced by the resolver and mapped
+-- by a person.
+-- ────────────────────────────────────────────────────────────────────────
+
+-- Verification (read-only, run by hand after applying):
+--   SELECT count(*) FROM gt_industries;          -- expect >= 16
+--   SELECT count(*) FROM gt_industry_aliases;    -- expect >= 48
+--   SELECT DISTINCT p.domain
+--     FROM vani_domain_pack p
+--    WHERE NOT EXISTS (SELECT 1 FROM gt_industries i WHERE i.code = p.domain);
+--                                                -- expect 0 rows
