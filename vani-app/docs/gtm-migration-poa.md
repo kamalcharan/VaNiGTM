@@ -166,7 +166,7 @@ not translated.
 
 | Decision | Gates | Status |
 |---|---|---|
-| `/agents/vani` — GTM's landing or removed? | Slice 0 | **open** |
+| `/agents/vani` — GTM's landing or removed? | Slice 0 | **settled 2026-09-22: neither — it stays.** Orchestration is already handled internally (`AGENT_REGISTRY`), so the entry is accurate; its summary now says the function is live and only the page is missing. GTM lands at `/agents/gtm` beside it |
 | Industry taxonomy | nothing here — **moved to Nova** (2026-09-22) | settled |
 | Consent + suppression schema | Slices 5, 6 (any send) | **open, needs approval** |
 | Is Import worth porting at all? | Deferred slice | open, revisit after Slice 3 |

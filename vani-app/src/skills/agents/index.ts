@@ -10,8 +10,16 @@ const agents: SkillModule = {
   name: 'Agents',
   routes: [
     { id: 'agents-all', label: 'All Agents', href: '/agents', group: 'agents', icon: '◉', status: 'live', badge: '2' },
+    // Charan, 2026-09-22: orchestration is already handled internally, so this
+    // entry stays. But `planned` renders "Not built yet" above the summary,
+    // and that was false of the FUNCTION — routing, intake and policy are
+    // live in AGENT_REGISTRY; it is only the PAGE that does not exist. The
+    // copy now says which. Three things carry the VaNi name (this entry, the
+    // vani-skill profile agent, and AGENT_REGISTRY) and that collision has
+    // already cost one investigation.
     { id: 'agent-vani', label: 'VaNi · Orchestrator', href: '/agents/vani', group: 'agents', icon: '◉', status: 'planned',
-      summary: 'The head. Intake, resolve, route, policy, close — it owns no domain reasoning of its own.' },
+      summary: 'The head — intake, resolve, route, policy, close. It already runs: every agent is dispatched through it. '
+        + 'What is not built is a page for it; until there is one, Runs & Traces is where its work is visible.' },
     { id: 'agent-vara', label: 'Vara · Talent', href: '/agents/vara', group: 'agents', icon: '▲', status: 'live',
       summary: 'The first agent. Landing and activation are live; install and the working surfaces arrive slice by slice.' },
     { id: 'agents-market', label: 'Add agent', href: '/agents/market', group: 'agents', icon: '＋', status: 'planned',
