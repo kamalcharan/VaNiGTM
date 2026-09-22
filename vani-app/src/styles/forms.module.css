@@ -284,7 +284,7 @@
   composes: filterPill;
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-primary-fg);
 }
 
 /* ── Action Button (small, glass — table row ops) ────── */
@@ -323,7 +323,7 @@
   background: var(--color-primary);
   border: none;
   border-radius: var(--btn-radius, 8px);
-  color: #fff;
+  color: var(--color-primary-fg);
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;

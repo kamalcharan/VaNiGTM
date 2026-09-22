@@ -56,7 +56,7 @@
   height: 840px;
   border: 1px solid var(--glass-border);
   border-radius: 14px;
-  background: #0b0b10; /* the demo document's own ground, so no white flash */
+  background: var(--bg); /* the demo document's own ground, so no white flash */
 }
 
 .demoCaption {
@@ -124,7 +124,7 @@
   border: none;
   cursor: pointer;
   background: var(--gold);
-  color: #141414;
+  color: var(--color-primary-fg);
   font-size: var(--btn-font-size);
   font-weight: var(--btn-font-weight);
   letter-spacing: var(--btn-letter-spacing);

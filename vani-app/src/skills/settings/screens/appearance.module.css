@@ -1,0 +1,72 @@
+.wrap { display: flex; flex-direction: column; gap: 28px; }
+
+.section { display: flex; flex-direction: column; gap: 10px; }
+.sectionH {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--tx3);
+}
+.note { font-size: 12px; color: var(--tx2); line-height: 1.6; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0;
+  background: var(--surf);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  overflow: hidden;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.card:hover { border-color: var(--color-primary); }
+.cardOn { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
+.card:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+
+/* The swatch paints the theme's OWN colours, not the active theme's — that is
+   the whole point of a preview, so it sets them inline from the resolved
+   tokens rather than inheriting. */
+.swatch { display: flex; height: 62px; }
+.swatchMain { flex: 1; display: flex; align-items: center; padding: 0 12px; gap: 6px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; }
+.bar { height: 6px; border-radius: 3px; flex: 1; }
+
+.cardBody { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 3px; }
+.cardName { font-weight: 600; font-size: 13px; }
+.cardBlurb { font-size: 11px; color: var(--tx2); }
+.cardCurrent {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.modes { display: flex; gap: 8px; }
+.mode {
+  border: 1px solid var(--line);
+  background: var(--surf);
+  color: var(--tx2);
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mode:hover { border-color: var(--color-primary); }
+.modeOn {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  color: var(--tx);
+  font-weight: 600;
+}
+
+.saving { font-size: 11px; color: var(--tx3); font-family: var(--font-mono); }

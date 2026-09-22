@@ -193,3 +193,23 @@ here is read off the two repos at `580bf21` (VaNiGTM) and `3f65535` (vani-app).
 Nothing about what is actually running is asserted. Per the repo's own lesson:
 an environmental finding is true of a moment, not of the system — re-check
 before planning on one.
+
+---
+
+## Appendix — themes (added 2026-09-22)
+
+The console now carries **three themes, each with a light and a dark variant**,
+stored **per user on the server**. Relevant to the migration above because every
+ported screen must use tokens, never hex:
+
+- `src/config/theme/` — types, the three theme files, registry, `tokens.ts`
+  (the one place a colour is produced), `ThemeScript` (pre-paint).
+- `src/context/theme-provider.tsx` — runtime, persistence, `useTheme()`.
+- `/appearance` — the picker.
+- `globals.css` now holds **no colour at all**, only control metrics.
+
+Theme files use the SAME `ThemeConfig` shape as VaNiGTM's, so a theme copies
+between the repos unchanged.
+
+**Porting rule:** if a screen needs a colour that is not in `tokens.ts`, add it
+there. A hex value in a stylesheet applies to one theme out of six.

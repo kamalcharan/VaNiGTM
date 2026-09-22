@@ -54,7 +54,7 @@
 .btnPrimary {
   border-color: var(--ac-line);
   background: var(--ac);
-  color: #fff;
+  color: var(--color-primary-fg);
   font-weight: 600;
 }
 .btnPrimary:hover:not(:disabled) { background: var(--ac-light); border-color: var(--ac-light); color: var(--bg); }

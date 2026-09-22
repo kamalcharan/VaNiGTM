@@ -254,7 +254,7 @@ function DropZone({ onFile }: { onFile: (f: File) => void }) {
         padding: '8px 16px',
         borderRadius: 8,
         background: 'var(--gold)',
-        color: '#141414',
+        color: 'var(--color-primary-fg)',
         fontWeight: 600,
         fontSize: 13,
       }}>

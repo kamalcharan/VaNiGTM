@@ -44,7 +44,7 @@
 .brandLogo {
   width: 56px; height: 56px; border-radius: 14px;
   display: inline-flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 22px; color: #141414;
+  font-weight: 700; font-size: 22px; color: var(--color-primary-fg);
 }
 .brandName { font-weight: 600; font-size: 15px; }
 .brandMeta { font-size: 12px; color: var(--color-muted); margin-top: 3px; }
@@ -105,7 +105,7 @@
 .primary {
   height: var(--btn-height); padding: var(--btn-padding);
   border-radius: var(--btn-radius); border: none; cursor: pointer;
-  background: var(--gold); color: #141414;
+  background: var(--gold); color: var(--color-primary-fg);
   font-size: var(--btn-font-size); font-weight: var(--btn-font-weight);
   letter-spacing: var(--btn-letter-spacing); text-decoration: none;
   display: inline-flex; align-items: center; gap: 6px;
@@ -140,7 +140,7 @@
 }
 .chatAvatar {
   width: 30px; height: 30px; border-radius: 50%;
-  background: var(--gold); color: #141414;
+  background: var(--gold); color: var(--color-primary-fg);
   display: inline-flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 13px;
 }
@@ -155,7 +155,7 @@
 }
 .msgV { background: var(--color-bg); border: 1px solid var(--glass-border); }
 .msgU {
-  background: var(--gold); color: #141414;
+  background: var(--gold); color: var(--color-primary-fg);
   margin-left: auto; text-align: right;
 }
 .chatFoot { padding: 10px 12px; border-top: 1px solid var(--glass-border); }
@@ -623,9 +623,9 @@
   white-space: nowrap;
   border: 1px solid var(--color-border);
 }
-.provRes  { color: var(--color-info, #6f9fd8); border-color: var(--color-info, #6f9fd8); }
+.provRes  { color: var(--color-info); border-color: var(--color-info); }
 .provGen  { color: var(--color-text-dim); }
-.provMine { color: var(--color-success, #6faa84); border-color: var(--color-success, #6faa84); }
+.provMine { color: var(--color-success); border-color: var(--color-success); }
 
 .viewBtn {
   background: transparent;
@@ -759,7 +759,7 @@
   padding: 0 4px;
   cursor: pointer;
 }
-.dropBtn:hover:not(:disabled) { color: var(--color-warning, #d9a441); }
+.dropBtn:hover:not(:disabled) { color: var(--color-warning); }
 .dropBtn:disabled { opacity: .3; cursor: not-allowed; }
 .thrRow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .thrRow input[type='range'] { accent-color: var(--color-primary); flex: 1; min-width: 180px; }

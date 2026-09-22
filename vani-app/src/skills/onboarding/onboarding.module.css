@@ -115,7 +115,7 @@
 
 .primary {
   background: var(--ac);
-  color: #fff;
+  color: var(--color-primary-fg);
   border: none;
   border-radius: 7px;
   padding: 11px 20px;

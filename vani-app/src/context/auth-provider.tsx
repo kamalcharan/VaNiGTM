@@ -37,6 +37,17 @@ export interface VaniUser {
   id: string;
   email: string;
   name?: string | null;
+  /**
+   * `vn_users.preferences`, returned by /auth/me and written by
+   * PATCH /auth/preferences. The theme choice lives here so it follows the
+   * person to another machine; the browser only keeps a mirror of it to paint
+   * before this response lands.
+   */
+  preferences?: {
+    theme_override?: string | null;
+    color_mode?: string | null;
+    [key: string]: unknown;
+  } | null;
 }
 
 export interface VaniTenant {

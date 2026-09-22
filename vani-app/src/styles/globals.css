@@ -10,104 +10,30 @@
  * long sessions, so it stays on the ink surfaces the site already uses for its
  * own hero and /vani page. Same brand, appropriate substrate.
  */
+/*
+ * STRUCTURE ONLY. No colour lives here any more.
+ *
+ * Every palette token — --bg, --surf, --tx, --gold, --ac, --teal, the whole
+ * --color-* family, glass and the primary alphas — is produced by
+ * `src/config/theme/tokens.ts` from the active theme, and emitted by
+ * `ThemeScript` as one rule per theme x mode keyed on
+ * html[data-theme][data-mode]. There are three themes, each with light and
+ * dark, and the choice is stored per USER on the server.
+ *
+ * This block holds the measurements that are the same whatever the colours
+ * are: control sizes, radii, form spacing. They are copied verbatim from
+ * VaNiGTM's ThemeScript, because a ported input that is 44px there must be
+ * 44px here or the forms it sits in stop lining up.
+ *
+ * If a screen needs a colour that is not in tokens.ts, ADD IT THERE. Writing
+ * a hex value into a stylesheet is how a theme ends up applying to most of
+ * the console and not the rest.
+ */
 :root {
-  /* ── Surfaces, built up from the site's INK ── */
-  --bg: #070b16;        /* INK_DEEP — the site's hero base */
-  --bg2: #0a0f1e;       /* INK */
-  --surf: #121829;
-  --surf2: #171e31;
-  --surf3: #1e2639;
-  --line: #232c42;
-  --line2: #2f3a52;
-
-  /* ── Text ── */
-  --tx: #f2f0ea;        /* warm off-white, matching PAPER's temperature */
-  --tx2: #9aa3ba;
-  --tx3: #6b7590;
-
-  /* ── Brand ── */
-  --ac: #e8420a;        /* ACCENT — primary action */
-  --ac-light: #ff8a3d;  /* ACCENT_LIGHT — on dark, for text and icons */
-  --ac-dim: #2a1208;
-  --ac-line: #7a2c10;
-  --gold: #c9973a;      /* GOLD — VaNi itself */
-  --gold-light: #e0b65c;
-  --teal: #12a090;      /* TEAL — secondary, section labels, positive */
-  --teal-light: #2cc3ae;
-
-  /* ── Status ── */
-  --ok: #12a090;
-  --warn: #c9973a;
-  --bad: #e05252;
-
-  /* ── Type, straight from the site ── */
-  --display: 'Fraunces', Georgia, serif;
-  --sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-
   --r: 10px;
-
-  /* ────────────────────────────────────────────────────────────────────────
-   * VaNiGTM token compatibility.
-   *
-   * Screens ported from VaNiGTM — the mission wizard and everything under
-   * platform/vdf/ — are written against VaNiGTM's `--color-*` / `--font-*`
-   * names, which its ThemeScript injects at runtime from the active theme.
-   * vani-app has no such script, so every one of those 18 vars resolved to
-   * nothing and the browser DISCARDED the whole declaration.
-   *
-   * That is not a cosmetic problem, and it shipped: the live-progress spinner
-   * is `border: 2px solid var(--color-primary-dim)` with
-   * `border-top-color: var(--color-primary)`. Both undefined means no border
-   * at all — an invisible spinner. Research ran for four minutes looking
-   * frozen, because the one element saying "still working" never painted.
-   *
-   * These are ALIASES, not a second palette. The structure and alpha ratios
-   * are VaNiGTM's; the hue is VaNi's, so a ported screen matches the console
-   * around it instead of importing another product's brand.
-   * ──────────────────────────────────────────────────────────────────────── */
-  --color-bg: var(--bg);
-  --color-surface: var(--surf);
-  --color-border: var(--line);
-  --color-fg: var(--tx);
-  --color-muted: var(--tx2);
-
-  /* GOLD, not the marketing site's orange. `--gold` is annotated above as
-   * "GOLD — VaNi itself", and VaNiGTM's own vikuna-black theme runs a gold
-   * primary (#C9A84C dark). The orange `--ac` is www.vikuna.io's action
-   * colour; using it here dressed the console in the wrong product's brand. */
-  --color-primary: var(--gold);
-  /* VaNiGTM appends `dd` to primary for hover; --gold-light is the same move. */
-  --color-primary-hover: var(--gold-light);
-  /* VaNiGTM's dark alpha steps, exactly: .38 / .16 / .07 */
-  --color-primary-dim: rgba(201, 151, 58, 0.38);
-  --color-primary-glow: rgba(201, 151, 58, 0.16);
-  --color-primary-subtle: rgba(201, 151, 58, 0.07);
-  /* Dark text on gold, as VaNiGTM does it — gold carries dark text well, which
-   * is why the earlier white-on-orange deviation is no longer needed. */
-  --color-primary-fg: var(--bg);
-
-  --color-success: var(--ok);
-  --color-warning: var(--warn);
-  --color-danger: var(--bad);
-
-  --font-display: var(--display);
-  --font-body: var(--sans);
-  --font-mono: var(--mono);
-
   --space-lg: 24px;
-  /* dark-mode semantic info, from VaNiGTM's vikunaBlack theme */
-  --color-info: #5eaaf0;
 
-  /* Glass surfaces — VaNiGTM's alphas (.07 / .12 / .24), on the gold primary. */
-  --glass: rgba(201, 151, 58, 0.07);
-  --glass-strong: rgba(201, 151, 58, 0.12);
-  --glass-border: rgba(201, 151, 58, 0.24);
-
-  /* Control metrics, verbatim from VaNiGTM's ThemeScript. These are fixed
-   * measurements rather than palette, so they are copied, not remapped —
-   * a ported input that is 44px there must be 44px here or the forms it sits
-   * in stop lining up. */
+  /* Control metrics, verbatim from VaNiGTM's ThemeScript. */
   --input-height: 44px;
   --input-padding: 13px 16px;
   --input-radius: 8px;
@@ -130,6 +56,7 @@
   --form-row-gap: 12px;
 }
 
+
 *,
 *::before,
 *::after {
@@ -138,9 +65,8 @@
   padding: 0;
 }
 
-html {
-  color-scheme: dark;
-}
+/* color-scheme is set per mode by ThemeScript's boot and the provider, so the
+   browser's own controls and scrollbars follow the chosen mode. */
 
 body {
   background: var(--bg);

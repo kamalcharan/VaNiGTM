@@ -10,7 +10,7 @@
 .logo { display: flex; align-items: center; gap: 9px; padding: 2px 8px 14px; font-family: var(--display); font-size: 17px; font-weight: 800; letter-spacing: -0.5px; }
 .logomark {
   width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
-  background: var(--gold); color: #0a0f1e;
+  background: var(--gold); color: var(--color-primary-fg);
   display: grid; place-items: center; font-size: 14px; font-weight: 800;
 }
 .logoDim { color: var(--tx3); font-weight: 500; font-size: 12px; }

@@ -37,7 +37,7 @@
 .tag { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
 .tagOk { color: var(--teal-light); background: rgba(18, 160, 144, 0.14); border: 1px solid rgba(18, 160, 144, 0.35); }
 .tagWarn { color: var(--gold-light); background: rgba(201, 151, 58, 0.14); border: 1px solid rgba(201, 151, 58, 0.35); }
-.tagBad { color: #f08a8a; background: rgba(224, 82, 82, 0.14); border: 1px solid rgba(224, 82, 82, 0.35); }
+.tagBad { color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 14%, transparent); border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent); }
 .tagDim { color: var(--tx3); background: var(--surf3); border: 1px solid var(--line2); }
 
 .tableWrap { overflow-x: auto; }

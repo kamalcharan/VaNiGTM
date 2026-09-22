@@ -171,10 +171,10 @@
 .missingVars {
   margin-top: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--color-warning, #b48a30);
+  border: 1px solid var(--color-warning);
   border-radius: 8px;
   background: rgba(201, 138, 48, 0.08);
-  color: var(--color-warning, #b48a30);
+  color: var(--color-warning);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -197,7 +197,7 @@
   border: none;
   cursor: pointer;
   background: var(--gold);
-  color: #141414;
+  color: var(--color-primary-fg);
   font-size: var(--btn-font-size);
   font-weight: var(--btn-font-weight);
   letter-spacing: var(--btn-letter-spacing);
