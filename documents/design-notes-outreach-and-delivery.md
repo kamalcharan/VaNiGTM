@@ -251,6 +251,103 @@ parallel; they feed it rather than depend on it.
 
 ---
 
+## 9. Touches and signals are two different spines
+
+*(Charan, 2026-09-22: "touches are important — because we will ultimately try
+to touch the customer-journey — we will connect with google analytics,
+ad-analytics etc in future.")*
+
+Right, and that makes `gt_touch_log` the spine of the journey rather than an
+outreach log. It also means the obvious move — pour analytics events into it —
+is the wrong one, for a reason that is functional and not aesthetic.
+
+### The cadence inversion — the reason this is written down
+
+`cadence.service.ts::claimedTouches` counts **every** `gt_touch_log` row for a
+contact inside the window, and says so deliberately:
+
+> *"Deliberately NOT filtered by opportunity or channel — the fatigue is the
+> person's, and an opportunity must not be able to skip the queue by being a
+> different opportunity."*
+
+That is correct for outbound. Put a Google Analytics pageview in the same
+table and **every page view consumes a cadence slot**. A prospect who reads the
+pricing page three times in a week registers as three touches, and the governor
+refuses to let anyone write to them.
+
+**The most engaged prospect would be the one we go silent on.** Exactly
+inverted, and it would look like the governor working.
+
+### The distinction that holds
+
+| | `gt_touch_log` — what WE did | signals — what THEY did / was observed |
+|---|---|---|
+| Direction | outbound, deliberate | inbound or third-party |
+| Identity | a known person. `prospect_id NOT NULL` is RIGHT here | arrives unresolved — a GA `client_id`, a cookie, a UTM, a click id |
+| Fatigue | **consumes** a cadence slot | **never** consumes one |
+| Re-delivery | a send happens once | connectors re-sync; must be idempotent |
+| Role | the act | the trigger and the evidence |
+
+So: **signals inform touches; touches consume budget; both belong to the
+journey.** A sequencer that fires on a timer is what every GTM tool does. One
+governed by fatigue AND triggered by observed intent is the thing being built —
+and it needs both tables to be that.
+
+### Three grains, and conflating them is the trap
+
+Assume everything is person-grain and the model breaks at connect time:
+
+1. **Person-grain** — touches, replies, form fills, clicks on a link *we*
+   minted. Attributable to a contact.
+2. **Pseudonymous-grain** — GA4 events keyed to a pseudonymous id. The Data API
+   returns AGGREGATED reports; event-level rows come via the BigQuery export
+   and are pseudonymous by design. Google's own policy prohibits sending PII
+   into Analytics, so a GA event does not arrive carrying a name.
+3. **Aggregate-grain** — ad platform performance, by campaign or segment. Not
+   per person, and increasingly not obtainable per person. It informs the
+   STORY and the segment, never the individual's journey.
+
+*(These are the platforms' terms as understood in 2026-09; re-verify before
+building against them, not after.)*
+
+**The reliable bridge is the link we minted ourselves.** A unique click id in
+our own email makes click → visit → form-fill resolvable without touching
+Google's identity model at all. Instrument the touch, not the visitor. GA then
+adds shape and volume; it is not the identity source, and a design that assumes
+it is will connect and return nothing useful.
+
+### Shape, when it is built
+
+Copy the pattern the universe already proved (§3–§6 of
+`design-notes-prospect-universe.md`) rather than inventing one:
+
+- **Immutable source rows**, keyed by the source and the source's OWN event id
+  — *"sources without a stable id get a hash of the normalised row. This is
+  what makes re-ingest idempotent."* Connectors re-deliver; without this every
+  re-sync double-counts the journey.
+- **Resolution is a SEPARATE, revisable link**, carrying method and confidence.
+  Resolving at write time and overwriting the raw row is the merge-on-write
+  mistake §3 already rejects: the losing value is gone and the only recovery is
+  re-ingesting everything. Identity improves as you learn more — the link must
+  be allowed to change while the event does not.
+- **Tenant-scoped, never the pool.** It is the tenant's site, the tenant's GA
+  property, the tenant's visitors. Same rule as a BYOK data pull (§2), and the
+  pool is companies-only for the same DPDP/GDPR reason.
+- **The governor reads touches only.** Signals feed the PLANNER — what to send
+  and when — never the budget.
+
+### What this implies for `gt_touch_log` before any of that
+
+`contact_id` is nullable because *"every existing row predates the question and
+backfilling a guess would be worse than admitting the gap"* — which is right,
+and it means fatigue is only countable for rows that have it. Worth knowing
+before anyone reads a cadence number as complete.
+
+Nothing needs changing in `gt_touch_log` today. What needs NOT to happen is a
+connector writing into it.
+
+---
+
 ## 8. Still open
 
 - **Story quality is a fabrication risk.** Rule 9d ("never fabricate brand or

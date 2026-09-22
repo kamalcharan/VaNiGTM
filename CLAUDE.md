@@ -961,6 +961,18 @@ Three rulings from the same conversation, so nobody re-derives them:
   Assisted touches must still consume cadence slots, or the governor is blind
   to half the outreach.
 
+**Touches and signals are two different spines, and mixing them inverts the
+product.** `cadence.service.ts` counts EVERY `gt_touch_log` row for a contact
+as a consumed touch — deliberately, because fatigue is the person's. So an
+analytics event written into that table consumes a cadence slot, and a prospect
+who reads the pricing page three times becomes someone the governor refuses to
+let you contact. The most engaged prospect is the one you go silent on. When
+Google Analytics and ad analytics arrive they land in their OWN spine —
+immutable source rows keyed by the source's own event id, resolution to a
+person as a separate revisable link, tenant-scoped, never the pool, and never
+counted by the governor. Signals inform touches; touches consume budget. Design
+note §9.
+
 **And before designing any of it: four pieces are already built with no console
 at all** — `gt_channels` (161), the cadence governor `gt_cadence_policy` +
 `gt_touch_reservations` (223), the story library `gt_journey_stories` +
