@@ -33,6 +33,9 @@ const varaWorkspace: SkillModule = {
       summary: 'HM card queue: Interview or Pass with reason.' },
     { id: 'vara-calibration',  label: 'Calibration',       href: '/agents/vara/calibration',    group: 'workspace',    icon: '⚖', status: 'planned',
       summary: 'Loop health, proposals, human-gated approvals.' },
+    // Leaves the Vara shell for the console's Settings. Without it a tenant
+    // inside Vara had no route to appearance or model provider at all.
+    { id: 'vara-settings',     label: 'Settings',          href: '/settings',                   group: 'system',       icon: '⚙', status: 'live' },
   ],
 };
 

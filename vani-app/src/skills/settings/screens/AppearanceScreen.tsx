@@ -17,6 +17,7 @@ import { useTheme } from '@/context/theme-provider';
 import { resolveTokens } from '@/config/theme/tokens';
 import u from '@/platform/shell/ui.module.css';
 import s from './appearance.module.css';
+import f from './settings.module.css';
 import type { ColorMode, ThemeConfig } from '@/config/theme/types';
 
 function Swatch({ theme, mode }: { theme: ThemeConfig; mode: ColorMode }) {
@@ -87,8 +88,7 @@ export default function AppearanceScreen() {
 export function AppearancePage() {
   return (
     <div>
-      <div className={u.eyebrow}>// SYSTEM</div>
-      <h1 className={u.h1}>Appearance</h1>
+      <h2 className={f.h2}>Appearance</h2>
       <p className={u.lede}>
         Four themes, each with a light and a dark variant. The choice is stored
         against your account, so it follows you to another machine rather than

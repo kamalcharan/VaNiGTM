@@ -1,17 +1,20 @@
 import type { SkillModule } from '@/platform/registry';
 
+/**
+ * Settings is ONE place (Charan, 2026-09-22: "models, appearance, BYO — be
+ * inside settings"). Appearance and Model Provider used to be two top-level
+ * SYSTEM entries beside a planned /settings; they are tabs here now, and the
+ * old routes redirect (next.config.ts).
+ *
+ * The tabs are declared in ./tabs.ts, not here: the nav shows one entry, the
+ * frame shows the tabs, and a new tab is a line in tabs.ts plus a page file.
+ */
 const settings: SkillModule = {
   id: 'settings',
   name: 'Settings',
   routes: [
-    // Appearance is live now; the rest of Settings is still P2. Shipping it as
-    // its own route rather than waiting for the settings page it will
-    // eventually be a tab of — a theme picker nobody can reach is not a theme
-    // picker.
-    { id: 'appearance', label: 'Appearance', href: '/appearance', group: 'system', icon: '◐', status: 'live',
-      summary: 'Theme and colour mode, stored against your account.' },
-    { id: 'settings', label: 'Settings', href: '/settings', group: 'system', icon: '⚙', status: 'planned',
-      summary: 'Org profile, domains, users and role families, per-agent grants, model provider. Built in P2 as the VaNi tenant lane.' },
+    { id: 'settings', label: 'Settings', href: '/settings', group: 'system', icon: '⚙', status: 'live',
+      summary: 'Appearance, model provider, your own data provider, channels — everything that is yours to configure.' },
   ],
 };
 export default settings;

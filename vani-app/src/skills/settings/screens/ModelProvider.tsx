@@ -32,7 +32,8 @@ import { useSkillQuery } from '@/lib/useSkill';
 import { useSkillMutation } from '@/lib/useSkillMutation';
 import { DataBoundary, SkeletonRows, InlineLoader, useToast } from '@/platform/feedback';
 import u from '@/platform/shell/ui.module.css';
-import s from '../model-provider.module.css';
+import s from './model-provider.module.css';
+import f from './settings.module.css';
 
 const SKILL = 'llm-provider-skill';
 
@@ -189,8 +190,7 @@ export default function ModelProvider() {
 
   return (
     <div>
-      <div className={u.eyebrow}>// SYSTEM</div>
-      <h1 className={u.h1}>Model Provider</h1>
+      <h2 className={f.h2}>Model</h2>
       <p className={u.lede}>
         Which model answers when an agent needs one. Declared once — every agent
         in this workspace picks it up.

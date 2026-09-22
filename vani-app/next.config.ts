@@ -15,6 +15,15 @@ import type { NextConfig } from 'next';
  */
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Appearance and Model Provider were top-level SYSTEM routes until
+  // 2026-09-22; they are tabs of /settings now. Bookmarks and any link that
+  // still says the old path land on the tab, not on a 404.
+  async redirects() {
+    return [
+      { source: '/appearance', destination: '/settings/appearance', permanent: true },
+      { source: '/model-provider', destination: '/settings/model', permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;
