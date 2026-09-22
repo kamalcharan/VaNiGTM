@@ -930,11 +930,43 @@ Do not start any of these. Push back if asked without an explicit decision:
 
 agent marketplace · per-agent pricing UI · marketing asset gallery or template
 library · knowledge graph as a product surface · unified namespace / resolver ·
-email sending · Storytelling / Campaigns / Follow-ups agents · any new agent
-framework (Hermes and similar — evaluated 2026-08, parked)
+any new agent framework (Hermes and similar — evaluated 2026-08, parked)
 
-**Sending is gated.** It happens when the brain is good enough: ICP confirmed,
-brand captured, at least one offer defined. Not before.
+~~email sending · Storytelling / Campaigns / Follow-ups agents~~ —
+**SUPERSEDED 2026-09-22 (Charan).** A storytelling agent that composes per
+offer and per segment and sends across email, SMS, WhatsApp, LinkedIn and X is
+the product's differentiator and is being built. Read
+`documents/design-notes-outreach-and-delivery.md` before starting any of it.
+
+**Sending is still gated, and the gate is now harder.** It used to be quality
+— ICP confirmed, brand captured, one offer defined. It is now ALSO consent:
+**there is no suppression or opt-out model anywhere in this repo**, so no
+channel may send until one exists. Vara has `vara_consent`; GTM, which is the
+side that contacts strangers, has nothing. That gap is the blocker, not a
+nice-to-have (design note §5).
+
+Three rulings from the same conversation, so nobody re-derives them:
+
+- **The platform owns orchestration, story, cadence, consent and evidence; the
+  tenant owns identity and delivery.** First-party tenants (Vikuna's own
+  products, which are tenants like any other) may send under the platform's
+  identity. Every other tenant: always their own. One flag on the tenant, not a
+  per-channel judgement.
+- **A tenant's own data provider (their Apollo / Clay key) is a third posture**
+  alongside upload and platform connector — and its results are tenant-scoped
+  only, NEVER the common pool. Rule 13 and most providers' terms say the same
+  thing. Copy `vani_llm_provider`'s platform/byok shape rather than inventing one.
+- **LinkedIn and X are ASSISTED, not automated** — no legitimate 1:1 bulk API
+  exists, and browser automation puts the ban on the tenant's own account.
+  Assisted touches must still consume cadence slots, or the governor is blind
+  to half the outreach.
+
+**And before designing any of it: four pieces are already built with no console
+at all** — `gt_channels` (161), the cadence governor `gt_cadence_policy` +
+`gt_touch_reservations` (223), the story library `gt_journey_stories` +
+`gt_content_kinds` (225), and `gt_touch_log` (221). The governor in particular
+is the best-reasoned thing in the repo. Read migration 223's header before
+writing a sequencer.
 
 ## Current phase
 
