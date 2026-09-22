@@ -7,6 +7,7 @@
  * Nothing here is from a real crawl or a real run.
  */
 import type { JourneyProgress } from '@/platform/registry';
+import { AUDIENCE_MOCK_READS, AUDIENCE_MOCK_WRITES } from '@/skills/gtm-audience/mock';
 
 /* ── readiness: what GTM read from the Smart Profile ─────────────────── */
 
@@ -100,9 +101,12 @@ export function mockVaraJourney(): JourneyProgress {
 }
 
 export const GTM_MOCK_READS: Record<string, (p: Record<string, unknown>) => unknown> = {
+  ...AUDIENCE_MOCK_READS,
   'gtm.readiness': () => mockReadiness(),
   'gtm.journey': () => mockGtmJourney(),
   'vara.journey': () => mockVaraJourney(),
 };
 
-export const GTM_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {};
+export const GTM_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {
+  ...AUDIENCE_MOCK_WRITES,
+};
