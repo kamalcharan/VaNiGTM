@@ -9,6 +9,8 @@
 import type { JourneyProgress } from '@/platform/registry';
 import { AUDIENCE_MOCK_READS, AUDIENCE_MOCK_WRITES } from '@/skills/gtm-audience/mock';
 import { PEOPLE_MOCK_READS } from '@/skills/gtm-people/mock';
+import { MOTION_MOCK_READS, MOTION_MOCK_WRITES } from '@/skills/gtm-motion/mock';
+import { TODAY_MOCK_READS, TODAY_MOCK_WRITES } from '@/skills/gtm-today/mock';
 
 /* ── readiness: what GTM read from the Smart Profile ─────────────────── */
 
@@ -27,6 +29,8 @@ export interface ReadinessObject {
 }
 
 export interface Readiness {
+  /** Who messages go out as. First-party tenants (Vikuna's own products) may send as the platform; everyone else as themselves. One flag on the tenant. */
+  identity: 'tenant' | 'first_party';
   score: number;
   ready: boolean;
   /** The single thing that most blocks GTM, if any. */
@@ -37,6 +41,8 @@ export interface Readiness {
 
 /** Flip to false to see the other lane (no offer) in mock mode. */
 export const MOCK_HAS_OFFER = true;
+/** Flip to 'first_party' to see the platform-identity Send step. */
+export const MOCK_IDENTITY: 'tenant' | 'first_party' = 'tenant';
 
 export function mockReadiness(): Readiness {
   const objects: ReadinessObject[] = [
@@ -61,6 +67,7 @@ export function mockReadiness(): Readiness {
   ];
   const missing = objects.filter((o) => o.state === 'missing');
   return {
+    identity: MOCK_IDENTITY,
     score: MOCK_HAS_OFFER ? 64 : 48,
     ready: missing.length === 0,
     weakest: missing[0]?.key ?? null,
@@ -104,6 +111,8 @@ export function mockVaraJourney(): JourneyProgress {
 export const GTM_MOCK_READS: Record<string, (p: Record<string, unknown>) => unknown> = {
   ...AUDIENCE_MOCK_READS,
   ...PEOPLE_MOCK_READS,
+  ...MOTION_MOCK_READS,
+  ...TODAY_MOCK_READS,
   'gtm.readiness': () => mockReadiness(),
   'gtm.journey': () => mockGtmJourney(),
   'vara.journey': () => mockVaraJourney(),
@@ -111,4 +120,6 @@ export const GTM_MOCK_READS: Record<string, (p: Record<string, unknown>) => unkn
 
 export const GTM_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {
   ...AUDIENCE_MOCK_WRITES,
+  ...MOTION_MOCK_WRITES,
+  ...TODAY_MOCK_WRITES,
 };

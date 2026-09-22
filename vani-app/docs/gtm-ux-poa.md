@@ -343,6 +343,11 @@ src/skills/gtm-motion/      G2 — the pathway: segment · story · cadence · a
 src/skills/gtm-channels/    the invisible four, READ-ONLY: channels · governor · story library · touch log
 ```
 
+**Status 2026-09-22:** rows 7–12 **built** on the branch (preview data on the
+live transport, walked end to end): Today, Motion to the lock, Journeys, and
+Channels & cadence as one nav entry with four read-only tabs. Row 13 (runs
+strip) not built — the landing's "what changed" carries it for now.
+
 **Screens, in build order:**
 
 | # | Screen | Built to scene | Note |
