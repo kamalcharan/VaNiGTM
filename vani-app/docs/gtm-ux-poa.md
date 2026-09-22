@@ -288,6 +288,14 @@ src/skills/gtm-people/      the reference surface: list · person
 src/app/(gtm)/agents/gtm/   layout.tsx wraps the group in GtmShell; one page per route
 ```
 
+**Status 2026-09-22:** rows 1, 1a, 2–6 **built** on the branch, mock
+transport, walked end to end in headless Chromium (screens 1–6 below). Not
+done from this sprint's list: the 11 VDF components were NOT ported as a
+library — each screen used skill-local module CSS, and the shapes that
+recurred (row card, chip, segmented verdict, waterfall, feed) are the
+candidates to lift into `platform/vdf/` once a second consumer appears.
+Deviation recorded, not hidden.
+
 **Screens, in build order:**
 
 | # | Screen | Built to scene | Posture-aware |
