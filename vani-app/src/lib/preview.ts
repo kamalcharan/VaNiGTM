@@ -16,6 +16,7 @@
  * the screen exists before the backend does, and say so in INTEGRATION.md.
  */
 import { GTM_MOCK_READS, GTM_MOCK_WRITES } from '@/skills/gtm-shell/mock';
+import { CONSOLE_PREVIEW_READS } from './mock-transport';
 
 type Handler = (p: Record<string, unknown>) => unknown;
 
@@ -27,7 +28,7 @@ type Handler = (p: Record<string, unknown>) => unknown;
 const REAL = new Set(['contact-skill.get_contacts', 'contact-skill.get_contact']);
 
 export const PREVIEW_FUNCTIONS: Record<string, Handler> = Object.fromEntries(
-  Object.entries({ ...GTM_MOCK_READS, ...GTM_MOCK_WRITES }).filter(([k]) => !REAL.has(k)),
+  Object.entries({ ...CONSOLE_PREVIEW_READS, ...GTM_MOCK_READS, ...GTM_MOCK_WRITES }).filter(([k]) => !REAL.has(k)),
 );
 
 export const isPreviewFunction = (skill: string, fn: string): boolean => `${skill}.${fn}` in PREVIEW_FUNCTIONS;

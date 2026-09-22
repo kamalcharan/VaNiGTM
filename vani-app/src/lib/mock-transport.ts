@@ -260,9 +260,13 @@ const MOCK_MINE_SHAPE = new Map<string, { musthaves: unknown[]; knockouts: unkno
  * to reach the params would have lied about what it does. Handlers that do not
  * need them ignore the argument.
  */
-const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
-  ...GTM_MOCK_READS,
-  ...OFFERS_MOCK_READS,
+/**
+ * Console P0 reads that never got a backend: the dashboard's counters and
+ * activity, the agents list, the runs list. On the live transport they are
+ * answered from here through lib/preview.ts — labelled — until the API grows
+ * them. Exported so the preview list can name them without a second copy.
+ */
+export const CONSOLE_PREVIEW_READS: Record<string, (p: Record<string, unknown>) => unknown> = {
   'agents.list': () => ({ agents: AGENTS }),
   'dashboard.activity': () => ({ activity: ACTIVITY }),
   'dashboard.counters': () => ({
@@ -272,6 +276,12 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
     handovers: 1,
   }),
   'runs.list': () => ({ runs: RUNS }),
+};
+
+const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
+  ...GTM_MOCK_READS,
+  ...OFFERS_MOCK_READS,
+  ...CONSOLE_PREVIEW_READS,
   'onboarding.status': () => onboardingStatus(),
   'llm-provider-skill.get_provider': () => ({
     provider: MOCK_PROVIDER,
