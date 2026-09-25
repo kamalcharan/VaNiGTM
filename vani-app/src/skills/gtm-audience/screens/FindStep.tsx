@@ -48,7 +48,7 @@ export function FindStep() {
           </div>
           <div className={s.actions}>
             <button type="button" className={s.primary} disabled={!n || w.busy}
-              onClick={async () => { const ids = [...(picked ?? [])]; const r = await w.research(ids); if (r) await w.advance('qualify'); }}>
+              onClick={async () => { const ids = [...(picked ?? [])]; const meta = d.rows.filter((r) => ids.includes(r.id)).map((r) => ({ id: r.id, name: r.name, ref: r.ref, city: r.city, size: r.size, size_label: r.size_label ?? '', source_label: r.source_label })); const r = await w.research(ids, meta); if (r) await w.advance('qualify'); }}>
               {n ? `Research ${n} · budget ${cost} of ${BUDGET_TOTAL} today` : 'Pick at least one'}
             </button>
             <span className={s.hint}>One model call at a time on the platform — {n ? `about ${n * 2} minutes` : 'nothing queued'}</span>

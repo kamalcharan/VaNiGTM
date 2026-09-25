@@ -12,6 +12,7 @@
 import type { SkillResult, SkillTransport } from './useSkill';
 import { GTM_MOCK_READS, GTM_MOCK_WRITES } from '@/skills/gtm-shell/mock';
 import { OFFERS_MOCK_READS, OFFERS_MOCK_WRITES } from '@/skills/smart-profile/offers-mock';
+import { KNOWLEDGE_MOCK_READS, KNOWLEDGE_MOCK_WRITES } from '@/skills/smart-profile/knowledge-mock';
 
 export interface AgentSummary {
   id: string;
@@ -281,6 +282,7 @@ export const CONSOLE_PREVIEW_READS: Record<string, (p: Record<string, unknown>) 
 const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   ...GTM_MOCK_READS,
   ...OFFERS_MOCK_READS,
+  ...KNOWLEDGE_MOCK_READS,
   ...CONSOLE_PREVIEW_READS,
   'onboarding.status': () => onboardingStatus(),
   'llm-provider-skill.get_provider': () => ({
@@ -393,6 +395,7 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
 const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   ...GTM_MOCK_WRITES,
   ...OFFERS_MOCK_WRITES,
+  ...KNOWLEDGE_MOCK_WRITES,
   'onboarding.complete_step': (p) => {
     const stepId = String(p.step_id ?? '');
     if (!ONBOARDING_CATALOG.some((s) => s.step_id === stepId)) {

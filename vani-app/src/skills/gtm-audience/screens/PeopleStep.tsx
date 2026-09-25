@@ -8,10 +8,9 @@
  */
 import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import { useAudienceWrites, useBriefContacts } from '../useAudience';
-import { HOT_ROWS, UPLOAD_ROWS, type HotRow, type Person } from '../mock-data';
+import type { Person } from '../mock-data';
 import s from '../audience.module.css';
 
-const nameOf = (id: string) => (HOT_ROWS as HotRow[]).concat(UPLOAD_ROWS as HotRow[]).find((r) => r.id === id)?.name ?? id;
 
 export function Waterfall({ p }: { p: Person }) {
   if (!p.waterfall.length) return null;
@@ -45,7 +44,7 @@ export function PeopleStep() {
             <p className={s.sub}>Found from the briefs. Each person shows every source tried, hit or miss — and an honest &ldquo;no email found&rdquo; where there is none. Nobody is invented. Add the ones who matter.</p>
             {groups.map((pid) => (
               <div key={pid}>
-                <div className={s.subh}>{nameOf(pid)}</div>
+                <div className={s.subh}>{d.people.find((p) => p.prospect_id === pid)?.company_name ?? pid}</div>
                 <div className={s.list} style={{ marginTop: 6 }}>
                   {d.people.filter((p) => p.prospect_id === pid).map((p) => (
                     <div key={p.id} className={`${s.row} ${p.contact_ref ? s.rowOn : ''}`}>

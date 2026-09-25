@@ -24,6 +24,18 @@ const smartProfile: SkillModule = {
       summary:
         'Everything VaNi knows about your business — company, market vocabulary, competitors, ideal customer and brand. Edit any part.',
     },
+    // Offers are a BRAIN object with human intervention on every draft
+    // (Charan, 2026-09-22), so they get their own entrance rather than living
+    // only as a section of the profile page.
+    {
+      id: 'offers',
+      label: 'Offers',
+      href: '/smart-profile/offers',
+      group: 'organization',
+      icon: '◇',
+      status: 'live',
+      summary: 'What you sell, in the shape agents score against. VaNi drafts; you confirm.',
+    },
   ],
 };
 

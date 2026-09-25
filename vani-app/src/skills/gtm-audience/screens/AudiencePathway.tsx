@@ -60,7 +60,7 @@ export default function AudiencePathway() {
             </ArtefactSection>),
           done.has('qualify') && (
             <ArtefactSection key="qualify" label="Worth a message" count={worth.length} onReopen={() => router.push('?step=qualify')} reopenLabel="Reopen">
-              <ArtefactRows rows={worth.map((b) => ({ label: rows.find((r) => r.id === b.prospect_id)?.name ?? b.prospect_id, meta: `${Math.max(...Object.values(b.fit))}%` }))} />
+              <ArtefactRows rows={worth.map((b) => ({ label: b.name, meta: Object.keys(b.fit).length ? `${Math.max(...Object.values(b.fit))}%` : undefined }))} />
             </ArtefactSection>),
           st.finished && (
             <ArtefactSection key="people" label="Your audience" count={promoted.length}>

@@ -8,18 +8,17 @@
  * (Charan, 2026-09-22). This is that: `gt_kb_sources` listed as sources, not
  * as a graph — a graph viewer is deliberately not built.
  *
- * Reads go to `GET /ingest/sources` (raw_text omitted — it can be large).
- * Writes go through useSkillMutation via the transport's `ingest.*` entries:
- * a URL → URL_SUBMITTED, pasted text → FILE_UPLOADED, and the worker's
- * ingestion agent does the rest, then KNOWLEDGE_UPDATED recalculates the
- * profile. While any source is still being read the list polls, so the row
+ * Everything goes through ingestion-skill's functions on the generic runner
+ * (list_sources / submit_url / submit_text / delete_source) — the /ingest
+ * REST router is not on the surface nginx exposes to the console, and the
+ * skill runner is. A URL → URL_SUBMITTED, pasted text → FILE_UPLOADED, the
+ * worker's ingestion agent does the rest, then KNOWLEDGE_UPDATED recalculates
+ * the profile. While any source is still being read the list polls, so the row
  * moves from "reading" to "read · N entries" without a reload.
  */
 import { useCallback } from 'react';
-import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api-client';
-import { API } from '@/lib/serviceURLs';
-import type { SkillResult } from '@/lib/useSkill';
+import { useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { useSkillQuery, type SkillResult } from '@/lib/useSkill';
 import { useSkillMutation } from '@/lib/useSkillMutation';
 
 export type SourceStatus = 'pending' | 'processing' | 'complete' | 'error';
@@ -37,40 +36,32 @@ export interface KbSource {
   updated_at: string;
 }
 
-const KEY = ['smart-profile', 'sources'] as const;
-
 export const isReading = (s: KbSource) => s.status === 'pending' || s.status === 'processing';
 
 export function useSourcesRead(): UseQueryResult<SkillResult<KbSource[]>, Error> {
-  return useQuery<SkillResult<KbSource[]>, Error>({
-    queryKey: KEY,
-    queryFn: async () => {
-      const raw = await apiFetch<{ sources?: KbSource[] }>(API.ingest.listSources, {
-        queryParams: { limit: '100' },
-      });
-      return { success: true, skill: 'smart-profile', function: 'sources', data: raw?.sources ?? [] };
-    },
+  return useSkillQuery<{ sources: KbSource[] }>('ingestion-skill', 'list_sources', { limit: 100 }, {
     // The ingestion agent takes seconds to minutes per source. Poll only while
     // something is in flight; a finished list asks nothing.
-    refetchInterval: (q) => (q.state.data?.data?.some(isReading) ? 4000 : false),
-  });
+    refetchInterval: (q) => (q.state.data?.data?.sources?.some(isReading) ? 4000 : false),
+    select: (r) => ({ ...r, data: r.data?.sources ?? [] }) as unknown as SkillResult<{ sources: KbSource[] }>,
+  }) as unknown as UseQueryResult<SkillResult<KbSource[]>, Error>;
 }
 
 export function useTeach() {
   const qc = useQueryClient();
-  const refresh = () => qc.invalidateQueries({ queryKey: KEY });
+  const refresh = () => qc.invalidateQueries({ queryKey: ['skill', 'ingestion-skill'] });
 
-  const url = useSkillMutation<{ source_id: string }>('ingest', 'submit_url', {
+  const url = useSkillMutation<{ source_id: string }>('ingestion-skill', 'submit_url', {
     successMessage: 'Reading it now. The row updates as VaNi gets through it.',
     errorMessage: 'Could not submit that URL.',
     onSuccess: refresh,
   });
-  const text = useSkillMutation<{ source_id: string }>('ingest', 'submit_text', {
+  const text = useSkillMutation<{ source_id: string }>('ingestion-skill', 'submit_text', {
     successMessage: 'Reading it now. The row updates as VaNi gets through it.',
     errorMessage: 'Could not submit that text.',
     onSuccess: refresh,
   });
-  const del = useSkillMutation<{ deleted: boolean }>('ingest', 'delete_source', {
+  const del = useSkillMutation<{ deleted: boolean }>('ingestion-skill', 'delete_source', {
     // The server deletes the source row only — gt_kg_nodes survives on
     // purpose, because the tenant may have confirmed or edited what was
     // learned. The toast says so, or "remove" reads as "unlearn".
@@ -84,7 +75,7 @@ export function useTeach() {
     (value: string, title: string) => text.mutate({ text: value, title }),
     [text],
   );
-  const remove = useCallback((id: string) => del.mutate({ id }), [del]);
+  const remove = useCallback((id: string) => del.mutate({ source_id: id }), [del]);
 
   return { submitUrl, submitText, remove, isBusy: url.isPending || text.isPending || del.isPending };
 }

@@ -370,6 +370,24 @@ modes. Approve, then integration begins.
 
 ---
 
+## 4b. Integration log
+
+- **2026-09-25** — People (`contact-skill`), Offers (`research-skill` +
+  `profile-skill.generate_offers/confirm_offer`), "What VaNi has read"
+  (`ingestion-skill.list_sources/submit_url/submit_text/delete_source`) and
+  the hot list + import (`prospect-skill.get_records`, `/api/v1/etl`) are on
+  real backends. `lib/preview.ts` is the live inventory of what is still
+  fixtures: the console's four P0 reads, pathway position, research, brief
+  contacts, segments/stories/cadence plan, channels' identity flag, attention
+  and journeys' per-row identity.
+- **Finding, 2026-09-25:** the console reaches the API on `/api/v1/skills/`
+  and `/api/v1/auth/` only (deploy/vani-main-vps/api.vikuna.io.conf exposes
+  nothing else; the VPS copy may differ). REST routers — `/ingest`,
+  `/profile/offers`, `/etl` — are "backend only" until either nginx exposes
+  them or they are wrapped as skill functions. Ingestion and offers were
+  wrapped; the ETL upload cannot be (multipart), so `/api/v1/etl/` needs a
+  location block.
+
 ## 5. After Sprint 3 — integration, in one paragraph
 
 Each skill folder's `INTEGRATION.md` lists, per screen: the fixture shape, the

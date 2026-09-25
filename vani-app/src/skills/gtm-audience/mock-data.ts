@@ -10,6 +10,88 @@
 
 export type RowSource = 'pool' | 'mine';
 
+/**
+ * One row of `prospect-skill.get_records` (scope 'mine') — the REAL function,
+ * verbatim from its SKILL.md. The hot list is built from this shape; HotRow
+ * below is the screen's view of it (`toHotRow`).
+ */
+export interface RecordRow {
+  id: number | string;
+  ref: string;
+  name: string;
+  relationship: string | null;
+  domain_normalized: string | null;
+  city: string | null;
+  state_code: string | null;
+  industry_raw: string | null;
+  industry_canonical: string | null;
+  industry_sub: string | null;
+  employees_band: string | null;
+  /** 0–1 */
+  completeness: number | null;
+  /** 0–1 */
+  validity: number | null;
+  freshness: 'current' | 'recent' | 'ageing' | 'stale' | 'unknown' | null;
+  duplicate: boolean;
+  is_active: boolean;
+  source_label: string | null;
+  tags: { id: number; label: string; inherited: boolean }[];
+  research_status: string | null;
+}
+
+export interface RecordList { records: RecordRow[]; total: number; }
+
+/** What the screen needs, derived from a record — nothing invented. */
+export function toHotRow(r: RecordRow): HotRow {
+  const pool = (r.source_label ?? '').toLowerCase().startsWith('pool');
+  const quality = [
+    r.completeness != null ? `completeness ${Math.round(r.completeness * 100)}%` : null,
+    r.validity != null ? `validity ${Math.round(r.validity * 100)}%` : null,
+    r.freshness && r.freshness !== 'unknown' ? r.freshness : null,
+  ].filter(Boolean).join(' · ');
+  // employees_band is already a label ('51–200'); shown verbatim, never re-worded.
+  const facts = [r.industry_raw, r.employees_band].filter(Boolean).join(' · ');
+  return {
+    id: String(r.id), ref: r.ref, name: r.name, city: r.city ?? '', size: 0, size_unit: '',
+    size_label: r.employees_band ?? '', industry: r.industry_raw ?? '',
+    why: [facts, quality].filter(Boolean).join(' — ') || 'No detail on this row beyond its name.',
+    source: pool ? 'pool' : 'mine',
+    source_label: r.source_label ?? (pool ? 'pool' : 'your list'),
+    fresh_days: r.freshness === 'current' ? 30 : r.freshness === 'recent' ? 300 : r.freshness === 'ageing' ? 900 : r.freshness === 'stale' ? 1500 : 0,
+    fresh_label: r.freshness ?? 'unknown',
+    has_domain: !!r.domain_normalized,
+    weak: r.duplicate || (r.completeness != null && r.completeness < 0.4),
+    duplicate: r.duplicate,
+    research_status: r.research_status,
+  };
+}
+
+/** Fields the ETL's company processor accepts as mapping targets. */
+export const COMPANY_FIELDS = ['name', 'website', 'domain', 'email', 'phone', 'city', 'state', 'country', 'industry_raw', 'employees_band'] as const;
+
+export interface HeadersInfo {
+  file_id: number | string;
+  filename: string;
+  headers: string[];
+  sample_rows: Record<string, unknown>[];
+  total_rows: number;
+  suggested_mapping: Record<string, string>;
+  extraction_plan: unknown;
+}
+
+export interface LandingResult {
+  session_id: number | string;
+  status: string;
+  processed: number;
+  successful: number;
+  failed: number;
+  duplicate: number;
+  conflict: number;
+  campaign_locked: number;
+  orphans: number;
+  duration_ms: number;
+}
+
 export interface HotRow {
   id: string;
   /** Tenant-facing id, never a raw PK. */
@@ -25,11 +107,16 @@ export interface HotRow {
   /** Where exactly: "pool · directory load", "your list · hospitals-q3.xlsx". */
   source_label: string;
   fresh_days: number;
+  fresh_label?: string;
+  size_label?: string;
+  industry?: string;
   has_domain: boolean;
   /** Also on the tenant's own list (merged, not duplicated). */
   also_mine?: boolean;
   /** Below the ICP range or otherwise weak — pre-unticked in Find, with why. */
   weak?: boolean;
+  duplicate?: boolean;
+  research_status?: string | null;
 }
 
 export interface HotList {
@@ -55,6 +142,14 @@ export interface Evidence { claim: string; source: string; excerpt: string; }
 
 export interface Brief {
   prospect_id: string;
+  /** The company, carried on the brief so the screen never looks it up. */
+  name: string;
+  ref: string;
+  city: string;
+  size_label: string;
+  source_label: string;
+  /** Answered from fixtures because research is not integrated (lib/preview.ts). */
+  preview_placeholder?: boolean;
   fit: Record<string, number>;
   /** The smallest ask among the offers that fit. */
   open_with: string;
@@ -75,6 +170,7 @@ export type EnrichHit = 'hit' | 'miss' | 'not_tried';
 export interface Person {
   id: string;
   prospect_id: string;
+  company_name: string;
   name: string;
   title: string;
   /** Every source tried, in order, with the outcome. Empty when nobody was found. */
@@ -122,7 +218,8 @@ export const UPLOAD_RESULT: UploadResult = {
   rows: 4, merged: 2, added: 2, invalid: 0,
 };
 
-export const BRIEF_FIXTURES: Record<string, Omit<Brief, 'prospect_id' | 'verdict'>> = {
+/** Research output per fixture company; identity (name, ref, …) is added by the mock from what it knows. */
+export const BRIEF_FIXTURES: Record<string, Pick<Brief, 'fit' | 'open_with' | 'evidence'>> = {
   sunridge: { fit: { audit: 82, platform: 71 }, open_with: 'audit', evidence: [
     { claim: 'Runs 140+ vendor contracts across two campuses', source: 'sunridge-hospital.example/procurement', excerpt: '…our empanelled vendor base of 140 firms across both campuses…' },
     { claim: 'AMC visits tracked in spreadsheets', source: 'sunridge-hospital.example/tenders/2026-biomed', excerpt: '…bidder to submit AMC visit logs in the attached Excel format…' },
@@ -155,7 +252,8 @@ const W = (email: 'found' | 'not_found'): Person['waterfall'] => [
   { source: 'apollo', result: 'not_tried' },
 ];
 
-export const PEOPLE_FIXTURES: Record<string, Omit<Person, 'contact_ref'>[]> = {
+/** People per fixture company; `company_name` is added by the mock. */
+export const PEOPLE_FIXTURES: Record<string, Omit<Person, 'contact_ref' | 'company_name'>[]> = {
   sunridge: [
     { id: 'p-sun-1', prospect_id: 'sunridge', name: 'R. Menon', title: 'Head of Procurement', waterfall: W('found'), email: 'found', linkedin: true },
     { id: 'p-sun-2', prospect_id: 'sunridge', name: 'A. Deshpande', title: 'CFO', waterfall: W('not_found'), email: 'not_found', linkedin: true }],

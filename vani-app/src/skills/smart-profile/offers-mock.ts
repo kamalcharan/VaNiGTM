@@ -47,7 +47,7 @@ export const OFFERS_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => 
     if (i >= 0) OFFERS[i] = next; else OFFERS.push(next);
     return { offer_key: key, recipe: 'offer-card' };
   },
-  'profile.generate_offers': () => {
+  'profile-skill.generate_offers': () => {
     const drafts: Offer[] = [
       { id: 'contract-audit', name: 'Contract audit', one_line: 'Two weeks, your top 50 contracts, a leakage number you can act on.', who_for: 'Heads of procurement at 200–800 bed hospitals', problem: 'Renewals missed and vendor penalties never claimed because contracts live in spreadsheets.',
         what_we_do: ['Read every contract and renewal date', 'Find penalties you are entitled to and have not claimed', 'One number: what leakage costs you a year'], signals: ['AMC visit logs in spreadsheets', 'tender notices mentioning annual maintenance contracts', 'a contracts officer being hired'],
@@ -60,7 +60,7 @@ export const OFFERS_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => 
     for (const d of drafts) if (!OFFERS.some((o) => o.id === d.id)) { OFFERS.push(d); drafted.push({ offer_key: d.id, name: d.name }); }
     return { drafted };
   },
-  'profile.confirm_offer': (p) => {
+  'profile-skill.confirm_offer': (p) => {
     const o = OFFERS.find((x) => x.id === String(p.offer_key)); if (!o) throw new Error('OFFER_NOT_FOUND');
     o.confirmed_at = new Date().toISOString(); return { success: true };
   },

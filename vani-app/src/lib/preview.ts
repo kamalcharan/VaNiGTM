@@ -25,7 +25,11 @@ type Handler = (p: Record<string, unknown>) => unknown;
  * on the live transport the real answer is the only honest one. Everything
  * the People surface reads is real today (contact-skill, 16 functions).
  */
-const REAL = new Set(['contact-skill.get_contacts', 'contact-skill.get_contact']);
+const REAL = new Set([
+  'contact-skill.get_contacts', 'contact-skill.get_contact',
+  'prospect-skill.get_records',
+  'etl.upload', 'etl.headers', 'etl.create_session', 'etl.process',
+]);
 
 export const PREVIEW_FUNCTIONS: Record<string, Handler> = Object.fromEntries(
   Object.entries({ ...CONSOLE_PREVIEW_READS, ...GTM_MOCK_READS, ...GTM_MOCK_WRITES }).filter(([k]) => !REAL.has(k)),

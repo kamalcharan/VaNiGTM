@@ -59,35 +59,24 @@ const PLATFORM_ROUTES: Record<string, (params: Record<string, unknown>) => Platf
     path: '/api/v1/auth/invite',
     body: { invitations: p.invitations },
   }),
-  // Ingestion predates the skill runner and is a REST router (/api/v1/ingest).
-  // The mission wizard reaches it with apiFetch directly because it is ported
-  // code; the Smart Profile's "What VaNi has read" writes through
-  // useSkillMutation instead, for the double-submit guard and the key, so its
-  // three writes are declared here. Reads stay on apiFetch.
-  'ingest.submit_url': (p) => ({
-    method: 'POST',
-    path: '/api/v1/ingest/url',
-    body: { url: p.url },
+  // The ETL import is a REST router with a multipart upload, which no JSON
+  // skill call can carry — so it stays REST. The upload itself goes through
+  // apiRequest with a FormData body (gtm-audience/useImport.ts); the three
+  // JSON steps after it are declared here so they keep useSkillMutation's
+  // guarantees. nginx must expose /api/v1/etl/ for any of this to reach the
+  // API (deploy/vani-main-vps/api.vikuna.io.conf).
+  'etl.headers': (p) => ({
+    method: 'GET',
+    path: `/api/v1/etl/headers/${encodeURIComponent(String(p.file_id))}`,
   }),
-  'ingest.submit_text': (p) => ({
+  'etl.create_session': (p) => ({
     method: 'POST',
-    path: '/api/v1/ingest/text',
-    body: { text: p.text, title: p.title },
+    path: '/api/v1/etl/sessions',
+    body: p,
   }),
-  'ingest.delete_source': (p) => ({
-    method: 'DELETE',
-    path: `/api/v1/ingest/sources/${encodeURIComponent(String(p.id))}`,
-  }),
-  // Offers: everyday reads and edits are research-skill functions on the
-  // generic runner. Drafting and confirming are the two REST routes on
-  // /profile (they create a run and stamp confirmed_at), so they live here.
-  'profile.generate_offers': () => ({
+  'etl.process': (p) => ({
     method: 'POST',
-    path: '/api/v1/profile/offers/generate',
-  }),
-  'profile.confirm_offer': (p) => ({
-    method: 'POST',
-    path: `/api/v1/profile/offers/${encodeURIComponent(String(p.offer_key))}/confirm`,
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/process`,
   }),
 };
 

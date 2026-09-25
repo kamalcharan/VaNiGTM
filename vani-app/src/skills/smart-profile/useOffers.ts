@@ -4,10 +4,10 @@
  * what VaNi has read, human-confirmed; only a CONFIRMED offer counts toward
  * the profile score and only a READY one can be scored against.
  *
- * Reads and everyday edits go through research-skill (get_offers /
- * save_offer — real, on the generic runner). Drafting and confirming are the
- * two REST routes on /profile, declared in the transport's platform table so
- * they still get useSkillMutation's guarantees.
+ * Everything is on the generic runner: reads and edits through research-skill
+ * (get_offers / save_offer), drafting and confirming through profile-skill
+ * (generate_offers / confirm_offer). No REST — the skill runner is the one
+ * surface nginx exposes to the console.
  */
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -59,11 +59,11 @@ export function useOfferWrites() {
     successMessage: 'Saved. Confirm it when it reads right — only a confirmed offer counts.',
     errorMessage: 'Could not save that offer.', onSuccess: refresh,
   });
-  const generate = useSkillMutation<{ drafted: { offer_key: string; name: string }[] }>('profile', 'generate_offers', {
+  const generate = useSkillMutation<{ drafted: { offer_key: string; name: string }[] }>('profile-skill', 'generate_offers', {
     successMessage: (r) => r.drafted.length ? `Drafted ${r.drafted.length} ${r.drafted.length === 1 ? 'offer' : 'offers'} from what VaNi has read. Read them — nothing counts until you confirm.` : 'Nothing to draft from yet — VaNi has not read enough about you.',
     errorMessage: 'Could not draft offers.', onSuccess: refresh,
   });
-  const confirm = useSkillMutation<{ success: boolean }>('profile', 'confirm_offer', {
+  const confirm = useSkillMutation<{ success: boolean }>('profile-skill', 'confirm_offer', {
     successMessage: 'Confirmed. It counts toward your profile now.',
     errorMessage: 'Could not confirm that offer.', onSuccess: refresh,
   });
