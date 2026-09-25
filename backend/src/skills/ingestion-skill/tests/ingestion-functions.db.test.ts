@@ -44,6 +44,7 @@ import { get_source } from '../functions/get-source';
 import { submit_url } from '../functions/submit-url';
 import { submit_text } from '../functions/submit-text';
 import { delete_source } from '../functions/delete-source';
+import { knowledge } from '../functions/knowledge';
 
 const BASE = `
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -57,6 +58,10 @@ CREATE OR REPLACE FUNCTION set_tenant_context(t UUID) RETURNS void AS $$
 BEGIN PERFORM set_config('app.current_tenant_id', t::text, true); END $$ LANGUAGE plpgsql;
 CREATE TABLE IF NOT EXISTS gt_agent_runs (id BIGSERIAL PRIMARY KEY, tenant_id UUID NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'queued', steps JSONB NOT NULL DEFAULT '[]'::jsonb, error_trace TEXT);
+CREATE TABLE IF NOT EXISTS gt_kg_nodes (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id UUID NOT NULL,
+  label VARCHAR(50) NOT NULL, name VARCHAR(200) NOT NULL, description TEXT, properties JSONB NOT NULL DEFAULT '{}'::jsonb,
+  source_run_id BIGINT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, label, name));
 `;
 
 const ctxFor = (pool: Pool, tenant: string): SkillContext =>
@@ -78,7 +83,7 @@ const ctxFor = (pool: Pool, tenant: string): SkillContext =>
     await pool.query(`INSERT INTO vn_tenants (id, slug) VALUES ($1, 'a'), ($2, 'b')`, [A, B]);
   });
   afterAll(async () => { await pool.end(); });
-  beforeEach(async () => { await pool.query('DELETE FROM gt_kb_sources'); emitted.length = 0; });
+  beforeEach(async () => { await pool.query('DELETE FROM gt_kb_sources'); await pool.query('DELETE FROM gt_kg_nodes'); emitted.length = 0; });
 
   test('empty: a tenant with nothing read sees nothing', async () => {
     const r = await list_sources({}, ctxFor(pool, A));
@@ -128,5 +133,47 @@ const ctxFor = (pool: Pool, tenant: string): SkillContext =>
     await expect(submit_text({ text: 'short' }, ctxFor(pool, A))).rejects.toThrow(/TEXT_TOO_SHORT/);
     await expect(submit_url({ url: 'not a url' }, ctxFor(pool, A))).rejects.toThrow(/INVALID_URL/);
     await expect(get_source({ source_id: '' }, ctxFor(pool, A))).rejects.toThrow(/MISSING_FIELDS/);
+  });
+
+  describe('knowledge — what VaNi knows', () => {
+    const seed = async (tenant: string) => {
+      const run = await pool.query(`INSERT INTO gt_agent_runs (tenant_id, status) VALUES ($1, 'completed') RETURNING id`, [tenant]);
+      const runId = run.rows[0].id;
+      await pool.query(`INSERT INTO gt_kb_sources (tenant_id, source_type, display_name, url, status, source_run_id)
+                        VALUES ($1, 'url', 'ledgerline.example', 'https://ledgerline.example', 'complete', $2)`, [tenant, runId]);
+      await pool.query(`INSERT INTO gt_kg_nodes (tenant_id, label, name, description, source_run_id) VALUES
+        ($1, 'Product', 'Ledgerline', 'Contract software for hospitals', $2),
+        ($1, 'PainPoint', 'Missed renewals', 'Renewals slip because contracts live in spreadsheets', $2),
+        ($1, 'Competitor', 'ContractWorks', NULL, NULL)`, [tenant, runId]);
+    };
+
+    test('empty: a tenant with nothing learned sees no nodes and no labels', async () => {
+      const r = await knowledge({}, ctxFor(pool, A));
+      expect(r.nodes).toEqual([]);
+      expect(r.labels).toEqual([]);
+      expect(r.total).toBe(0);
+    });
+
+    test('valid: nodes come grouped by kind, each with the source that produced it', async () => {
+      await seed(A);
+      const r = await knowledge({}, ctxFor(pool, A));
+      expect(r.total).toBe(3);
+      expect(r.labels).toEqual([{ label: 'Competitor', count: 1 }, { label: 'PainPoint', count: 1 }, { label: 'Product', count: 1 }]);
+      const product = r.nodes.find((n) => n.label === 'Product') as Record<string, unknown>;
+      expect(product.source_name).toBe('ledgerline.example');
+      const competitor = r.nodes.find((n) => n.label === 'Competitor') as Record<string, unknown>;
+      expect(competitor.source_name).toBeNull();   // conversation-written: no source, and that is shown, not hidden
+      const only = await knowledge({ label: 'PainPoint' }, ctxFor(pool, A));
+      expect(only.nodes).toHaveLength(1);
+      expect(only.filtered_total).toBe(1);
+      expect(only.total).toBe(3);                   // the label counts are the whole graph, not the filtered page
+    });
+
+    test('wrong tenant: B sees none of what A learned', async () => {
+      await seed(A);
+      const r = await knowledge({}, ctxFor(pool, B));
+      expect(r.nodes).toEqual([]);
+      expect(r.total).toBe(0);
+    });
   });
 });

@@ -49,3 +49,8 @@ Pasted context. At least 40 characters; clipped at 200,000. Emits FILE_UPLOADED.
 Removes the source row only; what was learned (gt_kg_nodes) stays.
 - Parameters: source_id (required, string)
 - Returns: { deleted: true, source_id, recipe: 'confirmation' }
+
+### knowledge
+What VaNi knows — every node in the tenant's knowledge graph, grouped by kind, each with the source it was read from where one is linked. A list, not a graph explorer (that stays off the roadmap).
+- Parameters: label (optional, string — one of Product / Feature / ICP / UseCase / PainPoint / Differentiator / Team / Competitor / CaseStudy / Metric / Industry / Pricing), limit (optional, number, default 200, max 500), offset (optional, number)
+- Returns: { nodes: [{ id, label, name, description, properties, updated_at, source_id, source_name, source_type }], filtered_total, labels: [{ label, count }], total, recipe: 'knowledge-list' }
