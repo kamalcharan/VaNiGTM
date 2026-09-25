@@ -3,13 +3,20 @@
  * Reads and writes for G1. Every read is a generic skill call; every write goes
  * through useSkillMutation (double-submit guard, idempotency key, a toast
  * either way) and invalidates the pathway's reads on success.
+ *
+ * Research and people are REAL (2026-09-25): research-skill and contact-skill
+ * answer these on the live transport in their own shapes. Only the pathway's
+ * position (`gtm.audience_state` / `advance` / `restart`) is still previewed —
+ * nothing on the API holds it.
  */
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery } from '@/lib/useSkill';
 import { useSkillMutation } from '@/lib/useSkillMutation';
 import type { AudienceState, AudienceStep } from './mock';
-import { toHotRow, type BatchStatus, type Brief, type HotList, type Person, type RecordList } from './mock-data';
+import {
+  toHotRow, type BatchStatus, type BriefContacts, type BriefList, type Budget, type Decision, type HotList, type Promoted, type RecordList, type ResearchQueued,
+} from './mock-data';
 
 export const useAudienceState = () => useSkillQuery<AudienceState>('gtm', 'audience_state');
 /**
@@ -38,15 +45,26 @@ export function useHotList() {
     },
   }) as unknown as ReturnType<typeof useSkillQuery<HotList>>;
 }
-export const useBriefs = () => useSkillQuery<{ briefs: Brief[] }>('research-skill', 'get_briefs');
-export const useBriefContacts = () => useSkillQuery<{ people: Person[] }>('contact-skill', 'list_brief_contacts');
 
+/** Every brief, undecided first — the queue of decisions. */
+export const useBriefs = () => useSkillQuery<BriefList>('research-skill', 'get_briefs', { limit: 100 });
+
+/** Today's research budget, in companies. */
+export const useBudget = () => useSkillQuery<Budget>('research-skill', 'get_budget');
+
+const IN_FLIGHT = new Set(['queued', 'running']);
 export function useBatchStatus() {
-  return useSkillQuery<BatchStatus | null>('research-skill', 'batch_status', {}, {
-    // A batch takes seconds per brief; poll while it runs, stop when it is done.
-    refetchInterval: (q) => (q.state.data?.data?.state === 'running' ? 600 : false),
+  return useSkillQuery<BatchStatus>('research-skill', 'batch_status', {}, {
+    // Each company takes minutes; poll while the batch is in flight, stop when
+    // it is not. `worker_down` is not in flight — polling it would only repeat
+    // the same true sentence.
+    refetchInterval: (q) => (IN_FLIGHT.has(q.state.data?.data?.verdict ?? '') ? 4000 : false),
   });
 }
+
+/** The names a brief evidenced at one company — never invented. */
+export const useBriefContacts = (briefId: number | string | null) =>
+  useSkillQuery<BriefContacts>('contact-skill', 'list_brief_contacts', { brief_id: briefId ?? '' }, { enabled: briefId != null });
 
 function useRefresh() {
   const qc = useQueryClient();
@@ -57,23 +75,30 @@ export function useAudienceWrites() {
   const refresh = useRefresh();
   const advance = useSkillMutation<AudienceState>('gtm', 'advance', { onSuccess: refresh });
   const restart = useSkillMutation<AudienceState>('gtm', 'restart', { successMessage: 'Started over. Nothing researched was lost — briefs stay on their companies.', onSuccess: refresh });
-  const research = useSkillMutation<{ batch_id: string; budget_used: number; budget_total: number }>('research-skill', 'start_research', {
-    successMessage: (r) => `Researching. ${r.budget_used} of ${r.budget_total} budget for today.`,
+  const research = useSkillMutation<ResearchQueued>('research-skill', 'start_research', {
+    // The split is the message: what was picked, what can be read, what was
+    // already known. A bare "queued" hides the three rows that had no site.
+    successMessage: (r) => [
+      `${r.queued} queued for research`,
+      r.already_researched ? `${r.already_researched} already had a brief` : '',
+      r.no_website ? `${r.no_website} skipped — no website to read` : '',
+    ].filter(Boolean).join(' · '),
     errorMessage: 'Could not start research.', onSuccess: refresh,
   });
-  const decide = useSkillMutation<{ ok: boolean }>('research-skill', 'decide_brief', { errorMessage: 'Could not save that verdict.', onSuccess: refresh });
-  const promote = useSkillMutation<{ contact_ref: string }>('contact-skill', 'promote_from_brief', {
-    successMessage: (r) => `Added to your audience as ${r.contact_ref}`, errorMessage: 'Could not add that person.', onSuccess: refresh,
+  const decide = useSkillMutation<{ brief_id: number; decision: Decision }>('research-skill', 'decide_brief', { errorMessage: 'Could not save that verdict.', onSuccess: refresh });
+  const promote = useSkillMutation<Promoted>('contact-skill', 'promote_from_brief', {
+    successMessage: (r) => (r.created ? (r.confirmed_addressed ? 'Added to your audience, reachable.' : 'Added to your audience — no address yet, so not reachable until one is found.') : 'Already in your audience.'),
+    errorMessage: 'Could not add that person.', onSuccess: refresh,
   });
-  const unpromote = useSkillMutation<{ ok: boolean }>('contact-skill', 'unpromote', { errorMessage: 'Could not remove that person.', onSuccess: refresh });
 
   return {
     advance: (to: AudienceStep | 'done') => advance.mutate({ to }),
     restart: () => restart.mutate({}),
-    research: (prospect_ids: string[], prospects: { id: string; name: string; ref: string; city: string; size: number; size_label: string; source_label: string }[]) => research.mutate({ prospect_ids, prospects }),
-    decide: (prospect_id: string, verdict: Brief['verdict']) => decide.mutate({ prospect_id, verdict }),
-    promote: (person_id: string) => promote.mutate({ person_id }),
-    unpromote: (person_id: string) => unpromote.mutate({ person_id }),
-    busy: advance.isPending || research.isPending || decide.isPending || promote.isPending || unpromote.isPending,
+    /** Real prospect ids. `refresh` redoes companies that already have a brief. */
+    research: (prospect_ids: (string | number)[], refresh = false) => research.mutate({ prospect_ids, refresh }),
+    decide: (brief_id: number | string, decision: Decision, note?: string) => decide.mutate({ brief_id, decision, note: note ?? '' }),
+    /** `confirm_addressed` only when the entry carries a channel — the server refuses otherwise. */
+    promote: (brief_id: number | string, named_index: number, addressable: boolean) => promote.mutate({ brief_id, named_index, confirm_addressed: addressable }),
+    busy: advance.isPending || research.isPending || decide.isPending || promote.isPending,
   };
 }

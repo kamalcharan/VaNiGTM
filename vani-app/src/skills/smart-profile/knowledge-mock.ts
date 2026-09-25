@@ -4,6 +4,14 @@ const SOURCES: KbSource[] = [];
 let n = 0;
 export const KNOWLEDGE_MOCK_READS: Record<string, (p: Record<string, unknown>) => unknown> = {
   'ingestion-skill.list_sources': () => ({ sources: [...SOURCES].reverse(), total: SOURCES.length, recipe: 'source-list' }),
+  // The wizard polls one source for its run steps while the crawl runs.
+  'ingestion-skill.get_source': (p) => {
+    const s = SOURCES.find((x) => x.id === String(p.source_id)); if (!s) throw new Error('SOURCE_NOT_FOUND: No source with that id for this tenant');
+    const done = s.status === 'complete';
+    return { source: { ...s, run_status: done ? 'completed' : 'running', run_steps: done
+      ? [{ step_name: 'crawl', status: 'completed', output_summary: 'read 6 pages' }, { step_name: 'extract', status: 'completed' }, { step_name: 'kg_write', status: 'completed' }]
+      : [{ step_name: 'crawl', status: 'running' }] }, recipe: 'source-detail' };
+  },
 };
 export const KNOWLEDGE_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {
   'ingestion-skill.submit_url': (p) => {

@@ -48,7 +48,7 @@ export default function PersonDetail({ id }: { id: string }) {
                 <section className={u.card}>
                   <div className={u.cardHead}>Where they came from</div>
                   <div className={s.field}><span className={s.fk}>Source</span><span className={s.fv}>{c.source ?? '—'}</span></div>
-                  <div className={s.field}><span className={s.fk}>Company</span><span className={s.fv}>{c.company_name ?? '—'}{c.prospect_ref ? <> · <Link href={`/agents/gtm/audience?step=qualify`}>brief {c.prospect_ref} →</Link></> : null}</span></div>
+                  <div className={s.field}><span className={s.fk}>Company</span><span className={s.fv}>{c.company_name ?? '—'}{c.prospect_ref ? <> · <Link href={`/agents/gtm/companies/${encodeURIComponent(c.prospect_ref)}`}>company {c.prospect_ref} →</Link></> : null}</span></div>
                   <div className={s.field}><span className={s.fk}>Added</span><span className={s.fv}>{c.created_at ? formatDate(c.created_at) : '—'}</span></div>
                 </section>
               </div>

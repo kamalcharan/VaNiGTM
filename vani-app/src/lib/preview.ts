@@ -22,12 +22,16 @@ type Handler = (p: Record<string, unknown>) => unknown;
 
 /**
  * Functions that EXIST on the API and must never be shadowed by a fixture —
- * on the live transport the real answer is the only honest one. Everything
- * the People surface reads is real today (contact-skill, 16 functions).
+ * on the live transport the real answer is the only honest one. People,
+ * Companies, the import and the whole of G1's research and people are real
+ * (2026-09-25); what G1 still previews is its POSITION (gtm.audience_state).
  */
 const REAL = new Set([
   'contact-skill.get_contacts', 'contact-skill.get_contact',
-  'prospect-skill.get_records',
+  'contact-skill.list_brief_contacts', 'contact-skill.promote_from_brief',
+  'prospect-skill.get_records', 'prospect-skill.get_prospect',
+  'research-skill.start_research', 'research-skill.batch_status', 'research-skill.get_briefs', 'research-skill.decide_brief',
+  'research-skill.get_budget', 'research-skill.get_offers',
   'etl.upload', 'etl.headers', 'etl.create_session', 'etl.process', 'etl.sessions', 'etl.records', 'etl.resolve_conflicts',
 ]);
 

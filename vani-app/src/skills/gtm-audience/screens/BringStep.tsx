@@ -10,6 +10,7 @@
  * road that works; it never shows an empty hot list with a spinner (rule 12).
  */
 import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import { useAudienceWrites, useHotList } from '../useAudience';
 import { useHeaders, useLand, useUpload, type Uploaded } from '../useImport';
@@ -63,7 +64,7 @@ function ImportBox({ onLanded }: { onLanded: () => void }) {
       <div className={s.upHead}><b>Add your own list</b><span className={s.hint}>.xlsx / .xls / .csv — mapped before anything lands</span></div>
       {result ? (
         <>
-          <p className={s.why} style={{ marginTop: 8 }}><b>{file?.filename}</b>: {result.successful} landed · {result.duplicate} already here · {result.conflict} held for review · {result.failed} failed · {result.duration_ms} ms{result.conflict ? ' — held rows are under Past imports, below.' : ''}</p>
+          <p className={s.why} style={{ marginTop: 8 }}><b>{file?.filename}</b>: {result.successful} landed · {result.duplicate} already here · {result.conflict} held for review · {result.failed} failed · {result.duration_ms} ms{result.conflict ? ' — held rows are under Past imports, below.' : ''} Landed rows are on the hot list above and under <Link href="/agents/gtm/companies">Companies</Link>.</p>
           <div className={s.actions} style={{ marginTop: 10 }}><button type="button" className={s.quiet} onClick={() => { setFile(null); setResult(null); }}>Add another list</button></div>
         </>
       ) : file && info ? (
@@ -107,40 +108,44 @@ function ImportBox({ onLanded }: { onLanded: () => void }) {
 export function BringStep() {
   const q = useHotList();
   const w = useAudienceWrites();
+  // The import is NOT inside the hot-list boundary: a hot list that cannot be
+  // read must not hide the one road that adds to it. The boundary reports its
+  // own failure above; the import box stays usable below it.
+  const importBox = <><ImportBox onLanded={() => void q.refetch()} /><ImportsPanel /></>;
   return (
-    <DataBoundary query={q} label="hot list" skeleton={<SkeletonRows rows={5} lines={2} />}>
-      {(d: HotList) => {
-        const fed = d.pool_state === 'fed';
-        const mine = d.rows.filter((r) => r.source === 'mine').length;
-        const importBox = <><ImportBox onLanded={() => void q.refetch()} /><ImportsPanel /></>;
-        if (!d.rows.length) {
+    <div className={s.card}>
+      <div className={s.eyebrow}>// BUILD THE AUDIENCE · 1 OF 4</div>
+      <DataBoundary query={q} label="hot list" skeleton={<SkeletonRows rows={5} lines={2} />}>
+        {(d: HotList) => {
+          const fed = d.pool_state === 'fed';
+          const mine = d.rows.filter((r) => r.source === 'mine').length;
+          if (!d.rows.length) {
+            return (
+              <>
+                <h1 className={s.h}>I have no companies for you yet</h1>
+                <p className={s.sub}>The hot list opens from our global data — and for your market it has never been fed. That is the truth today, so it is the screen today: bring a list, or connect a source.</p>
+                <div className={s.chips}>{d.sources.map((src) => <SourceChip key={src.id} src={src} />)}</div>
+              </>
+            );
+          }
           return (
-            <div className={s.card}>
-              <div className={s.eyebrow}>// BUILD THE AUDIENCE · 1 OF 4</div>
-              <h1 className={s.h}>I have no companies for you yet</h1>
-              <p className={s.sub}>The hot list opens from our global data — and for your market it has never been fed. That is the truth today, so it is the screen today: bring a list, or connect a source.</p>
+            <>
+              <h1 className={s.h}>{fed ? `${d.rows.length} companies look like your buyer` : `${d.rows.length} companies from your list`}</h1>
+              <p className={s.sub}>
+                {fed ? 'From our global data, matched on your vocabulary and your buyer, with your own list merged in. Each row says where it came from and how fresh it is.' : 'From what you brought. Nothing from the pool — it has not been fed for your market.'}
+                {mine && fed ? ' Where a company was already here, it is one row with both sources.' : ''}
+                {' '}Every row is also under <Link href="/agents/gtm/companies">Companies</Link>.
+              </p>
               <div className={s.chips}>{d.sources.map((src) => <SourceChip key={src.id} src={src} />)}</div>
-              {importBox}
-            </div>
+              <div className={s.list}>{d.rows.map((r) => <RowCard key={r.id} r={r}><Link href={`/agents/gtm/companies/${encodeURIComponent(r.ref)}`} className={s.side}>open →</Link></RowCard>)}</div>
+              <div className={s.actions}>
+                <button type="button" className={s.primary} onClick={() => void w.advance('find')} disabled={w.busy}>Pick who to research →</button>
+              </div>
+            </>
           );
-        }
-        return (
-          <div className={s.card}>
-            <div className={s.eyebrow}>// BUILD THE AUDIENCE · 1 OF 4</div>
-            <h1 className={s.h}>{fed ? `${d.rows.length} companies look like your buyer` : `${d.rows.length} companies from your list`}</h1>
-            <p className={s.sub}>
-              {fed ? 'From our global data, matched on your vocabulary and your buyer, with your own list merged in. Each row says where it came from and how fresh it is.' : 'From what you brought. Nothing from the pool — it has not been fed for your market.'}
-              {mine && fed ? ' Where a company was already here, it is one row with both sources.' : ''}
-            </p>
-            <div className={s.chips}>{d.sources.map((src) => <SourceChip key={src.id} src={src} />)}</div>
-            <div className={s.list}>{d.rows.map((r) => <RowCard key={r.id} r={r} />)}</div>
-            {importBox}
-            <div className={s.actions}>
-              <button type="button" className={s.primary} onClick={() => void w.advance('find')} disabled={w.busy}>Pick who to research →</button>
-            </div>
-          </div>
-        );
-      }}
-    </DataBoundary>
+        }}
+      </DataBoundary>
+      {importBox}
+    </div>
   );
 }

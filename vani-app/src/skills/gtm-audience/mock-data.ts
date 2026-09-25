@@ -136,57 +136,108 @@ export interface UploadResult {
   invalid: number;
 }
 
-export interface Offer { id: string; name: string; ask: 'entry' | 'project' | 'retainer'; }
+/* ── Research: research-skill, REAL shapes ──────────────────────────────
+ * Verbatim from the functions the screens now call (get_briefs.sql,
+ * batch-status.ts, start-research.ts, account.agent.ts). Offer ids are the
+ * tenant's offer_keys; fit is keyed by them. */
 
-export interface Evidence { claim: string; source: string; excerpt: string; }
+export interface Evidence { claim: string; url: string; excerpt: string; }
 
+export type BriefStatus = 'drafted' | 'unreadable' | 'extract_failed' | 'approved' | 'rejected' | 'no_contact' | string;
+
+export interface NamedContact { name?: string | null; title?: string | null; email?: string | null; phone?: string | null; }
+
+/** One row of `research-skill.get_briefs`. */
 export interface Brief {
-  prospect_id: string;
-  /** The company, carried on the brief so the screen never looks it up. */
-  name: string;
+  id: number | string;
+  prospect_id: number | string;
   ref: string;
-  city: string;
-  size_label: string;
-  source_label: string;
-  /** Answered from fixtures because research is not integrated (lib/preview.ts). */
-  preview_placeholder?: boolean;
-  fit: Record<string, number>;
-  /** The smallest ask among the offers that fit. */
-  open_with: string;
-  evidence: Evidence[];
-  verdict: 'yes' | 'later' | 'no' | null;
-}
-
-export interface BatchStatus {
-  batch_id: string;
-  state: 'running' | 'done';
-  budget_used: number;
-  budget_total: number;
-  lines: { at: string; text: string; done?: boolean }[];
-}
-
-export type EnrichHit = 'hit' | 'miss' | 'not_tried';
-
-export interface Person {
-  id: string;
-  prospect_id: string;
-  company_name: string;
   name: string;
-  title: string;
-  /** Every source tried, in order, with the outcome. Empty when nobody was found. */
-  waterfall: { source: string; result: EnrichHit }[];
-  email: 'found' | 'not_found' | 'n/a';
-  linkedin: boolean;
-  /** Set once promoted: the tenant-facing contact id. */
-  contact_ref: string | null;
-  /** Nothing found — say so; no row to promote. */
-  none?: string;
+  domain: string | null;
+  status: BriefStatus;
+  pages_read?: number | null;
+  what_they_make: string | null;
+  scale_signals?: string | null;
+  service_signals?: string | null;
+  digital_maturity?: string | null;
+  named_contacts: NamedContact[] | null;
+  /** offer_key → score 0–1 with the model's reason. Empty when nothing fit or the site was unreadable. */
+  fit: Record<string, { score: number; reason: string }> | null;
+  recommended_offer: string | null;
+  best_fit_offer: string | null;
+  human_offer: string | null;
+  effective_offer: string | null;
+  fit_margin: number | null;
+  fit_reason: string | null;
+  hook: string | null;
+  raw_evidence: Evidence[] | null;
+  error: string | null;
+  decision_note: string | null;
+  decided_at: string | null;
+  updated_at: string;
+  unevidenced: boolean;
 }
 
-export const OFFERS: Offer[] = [
-  { id: 'audit', name: 'Contract audit', ask: 'entry' },
-  { id: 'platform', name: 'Ledgerline platform', ask: 'project' },
-];
+/** Postgres counts arrive as strings; read them with Number(). */
+export interface BriefStats { total?: number | string; with_offer?: number | string; no_fit?: number | string; unevidenced?: number | string; decided?: number | string; approved?: number | string; declined?: number | string; unreadable?: number | string; extract_failed?: number | string; }
+
+export interface BriefList { briefs: Brief[]; total: number; stats: BriefStats; }
+
+export type BatchVerdict = 'never_run' | 'queued' | 'running' | 'worker_down' | 'failed' | 'completed' | 'unknown';
+
+/** `research-skill.batch_status` verbatim. */
+export interface BatchStatus {
+  verdict: BatchVerdict;
+  message: string;
+  healthy: boolean;
+  stopped_for_budget?: boolean;
+  not_attempted?: number;
+  done_count?: number;
+  requested?: number | null;
+  run_status?: string | null;
+  event_status?: string | null;
+  event_age_seconds?: number;
+  error?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+}
+
+/** `research-skill.start_research` — the split, reported before anything runs. */
+export interface ResearchQueued {
+  selected: number; reachable: number; no_website: number; already_researched: number;
+  extraction_failed?: number; to_research: number; queued: number; event_id?: string | null;
+}
+
+export type Decision = 'approved' | 'rejected' | 'no_contact';
+
+/** `research-skill.get_budget` verbatim — the number the button converts into companies. */
+export interface Budget { limit: number | null; used: number; remaining: number | null; capped: boolean; tracked: boolean; cost_per_company: number; affordable_companies: number | null; }
+
+/* ── People: contact-skill, REAL shapes ────────────────────────────────── */
+
+/** One entry of `contact-skill.list_brief_contacts` — a name the brief evidenced, never invented. */
+export interface BriefContact {
+  named_index: number;
+  name: string | null;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
+  source_url: string | null;
+  has_channel: boolean;
+  has_name: boolean;
+  addressable: boolean;
+  promoted_contact_id: number | null;
+}
+
+export interface BriefContacts {
+  brief: { id: number; prospect_id: number; status: string; named_count: number };
+  entries: BriefContact[];
+  empty_reason: string | null;
+}
+
+export interface Promoted { contact_id: number; created: boolean; channels_written?: number; confirmed_addressed: boolean; journey_state: string | null; }
+
+/* ── Fixtures (mock mode only) ─────────────────────────────────────────── */
 
 export const HOT_ROWS: HotRow[] = [
   { id: 'sunridge', ref: 'PR-0001', name: 'Sunridge Multispeciality Hospital', city: 'Pune', size: 420, size_unit: 'beds', source: 'pool', source_label: 'pool · directory load', fresh_days: 21, has_domain: true, why: '"vendor compliance" and "AMC" appear on their procurement page; 400+ beds' },
@@ -218,59 +269,48 @@ export const UPLOAD_RESULT: UploadResult = {
   rows: 4, merged: 2, added: 2, invalid: 0,
 };
 
-/** Research output per fixture company; identity (name, ref, …) is added by the mock from what it knows. */
-export const BRIEF_FIXTURES: Record<string, Pick<Brief, 'fit' | 'open_with' | 'evidence'>> = {
-  sunridge: { fit: { audit: 82, platform: 71 }, open_with: 'audit', evidence: [
-    { claim: 'Runs 140+ vendor contracts across two campuses', source: 'sunridge-hospital.example/procurement', excerpt: '…our empanelled vendor base of 140 firms across both campuses…' },
-    { claim: 'AMC visits tracked in spreadsheets', source: 'sunridge-hospital.example/tenders/2026-biomed', excerpt: '…bidder to submit AMC visit logs in the attached Excel format…' },
-    { claim: 'Procurement head in post since March', source: 'search · trade press', excerpt: '…appointed Head of Procurement, Sunridge, March 2026…' }] },
-  kaveri: { fit: { audit: 74, platform: 58 }, open_with: 'audit', evidence: [
-    { claim: 'Three AMC tenders live this quarter', source: 'kaveri-heart.example/tenders', excerpt: '…annual maintenance contract for cath-lab, echo and monitoring…' },
-    { claim: 'No contracts role on the org chart', source: 'kaveri-heart.example/about/leadership', excerpt: '(no procurement or contracts title listed)' }] },
-  northfield: { fit: { audit: 66, platform: 77 }, open_with: 'audit', evidence: [
-    { claim: 'NABH renewed; contract governance cited', source: 'search · accreditation notice', excerpt: '…demonstrated vendor contract governance and SLA review…' },
-    { claim: '610 beds, single campus', source: 'northfield-general.example', excerpt: '…610-bed tertiary care…' }] },
-  brigid: { fit: { audit: 88, platform: 80 }, open_with: 'audit', evidence: [
-    { claim: 'Hiring a Contracts Officer now', source: 'search · job board', excerpt: '…Contracts Officer — manage renewals, vendor SLAs and AMC schedules…' },
-    { claim: 'Renewal leakage named as a problem in the posting', source: 'search · job board', excerpt: '…reduce missed renewals and unenforced penalties…' }] },
-  meadow: { fit: { audit: 69, platform: 52 }, open_with: 'audit', evidence: [
-    { claim: 'Head of Procurement quoted on SLA penalties', source: 'search · trade press', excerpt: '…we lose money every quarter on penalties we never claim…' }] },
-  harbour: { fit: { audit: 61, platform: 84 }, open_with: 'audit', evidence: [
-    { claim: 'Three sites, group procurement', source: 'harbourview.example/group', excerpt: '…centralised procurement for all three hospitals…' },
-    { claim: '"Renewal" in the risk section of the annual report', source: 'harbourview.example/investors/ar-2026.pdf', excerpt: '…risk of unfavourable auto-renewal on service contracts…' }] },
-  cedar: { fit: { audit: 44, platform: 49 }, open_with: 'audit', evidence: [
-    { claim: 'Teaching hospital; procurement under the trust', source: 'cedarridge.example/trust', excerpt: '…procurement is administered by the Cedar Ridge Education Trust…' }] },
-  ashoka: { fit: { audit: 38, platform: 30 }, open_with: 'audit', evidence: [
-    { claim: '180 beds; one vocabulary hit on a 2024 page', source: 'ashoka-childrens.example/vendors', excerpt: '…vendor compliance form…' }] },
-  trident: { fit: { audit: 22, platform: 18 }, open_with: 'audit', evidence: [
-    { claim: '120 beds; nothing on contracts anywhere on the site', source: 'trident-ortho.example', excerpt: '(no evidence found)' }] },
+/** Offer keys match smart-profile/offers-mock.ts, which answers get_offers in mock mode. */
+export const OFFER_AUDIT = 'contract-audit';
+export const OFFER_PLATFORM = 'ledgerline-platform';
+
+type BriefFixture = Pick<Brief, 'what_they_make' | 'fit' | 'recommended_offer' | 'best_fit_offer' | 'hook' | 'raw_evidence' | 'named_contacts'> & Partial<Pick<Brief, 'status' | 'error' | 'fit_margin' | 'fit_reason'>>;
+const F = (a: number, p: number, hook: string | null, what: string, ev: Evidence[], named: NamedContact[], extra: Partial<BriefFixture> = {}): BriefFixture => {
+  const best = a >= p ? OFFER_AUDIT : OFFER_PLATFORM;
+  return { what_they_make: what, fit: { [OFFER_AUDIT]: { score: a, reason: 'Contracts live in spreadsheets; an audit is a two-week yes.' }, [OFFER_PLATFORM]: { score: p, reason: 'Platform fit rises with sites and contract count.' } },
+    // The smallest sane ask: the audit opens unless nothing fits.
+    recommended_offer: Math.max(a, p) >= 0.5 ? OFFER_AUDIT : null, best_fit_offer: Math.max(a, p) >= 0.5 ? best : null, fit_margin: Math.abs(a - p), hook, raw_evidence: ev, named_contacts: named, ...extra };
 };
 
-const W = (email: 'found' | 'not_found'): Person['waterfall'] => [
-  { source: 'upload', result: 'miss' },
-  { source: 'pool', result: email === 'found' ? 'hit' : 'miss' },
-  { source: 'apollo', result: 'not_tried' },
-];
-
-/** People per fixture company; `company_name` is added by the mock. */
-export const PEOPLE_FIXTURES: Record<string, Omit<Person, 'contact_ref' | 'company_name'>[]> = {
-  sunridge: [
-    { id: 'p-sun-1', prospect_id: 'sunridge', name: 'R. Menon', title: 'Head of Procurement', waterfall: W('found'), email: 'found', linkedin: true },
-    { id: 'p-sun-2', prospect_id: 'sunridge', name: 'A. Deshpande', title: 'CFO', waterfall: W('not_found'), email: 'not_found', linkedin: true }],
-  brigid: [
-    { id: 'p-bri-1', prospect_id: 'brigid', name: 'T. Varghese', title: 'Chief Operating Officer', waterfall: W('found'), email: 'found', linkedin: true },
-    { id: 'p-bri-2', prospect_id: 'brigid', name: '(open role)', title: 'Contracts Officer — being hired', waterfall: [], email: 'n/a', linkedin: false, none: 'The buyer is being hired. Nobody to promote yet — say so, do not fake a spinner over it.' }],
-  harbour: [
-    { id: 'p-har-1', prospect_id: 'harbour', name: 'S. Rao', title: 'Group Procurement Head', waterfall: W('found'), email: 'found', linkedin: true },
-    { id: 'p-har-2', prospect_id: 'harbour', name: 'P. Naidu', title: 'Director, Biomedical', waterfall: W('not_found'), email: 'not_found', linkedin: true }],
-  northfield: [
-    { id: 'p-nor-1', prospect_id: 'northfield', name: 'K. Patel', title: 'Head of Administration', waterfall: W('found'), email: 'found', linkedin: false }],
-  kaveri: [
-    { id: 'p-kav-0', prospect_id: 'kaveri', name: '(none found)', title: 'no procurement title on the leadership page', waterfall: [], email: 'n/a', linkedin: false, none: 'No procurement or contracts title anywhere on their leadership page. Nobody found.' }],
-  meadow: [
-    { id: 'p-mea-1', prospect_id: 'meadow', name: 'N. Joshi', title: 'Head of Procurement', waterfall: W('found'), email: 'found', linkedin: true }],
-  cedar: [
-    { id: 'p-ced-0', prospect_id: 'cedar', name: 'Trust office', title: 'procurement via the trust — no named buyer', waterfall: [], email: 'n/a', linkedin: false, none: 'Procurement is administered by the trust; no named buyer on any page read.' }],
+/** Research output per fixture company; identity (name, ref) is joined by the mock from what it knows. */
+export const BRIEF_FIXTURES: Record<string, BriefFixture> = {
+  sunridge: F(0.82, 0.71, 'Their tender pack asks bidders for AMC visit logs in Excel — the audit starts exactly there.', 'Multispeciality hospital, two campuses, 140+ empanelled vendors.', [
+    { claim: 'Runs 140+ vendor contracts across two campuses', url: 'https://sunridge-hospital.example/procurement', excerpt: '…our empanelled vendor base of 140 firms across both campuses…' },
+    { claim: 'AMC visits tracked in spreadsheets', url: 'https://sunridge-hospital.example/tenders/2026-biomed', excerpt: '…bidder to submit AMC visit logs in the attached Excel format…' },
+    { claim: 'Procurement head in post since March', url: 'https://sunridge-hospital.example/about/leadership', excerpt: '…R. Menon, Head of Procurement (since March 2026)…' }],
+    [{ name: 'R. Menon', title: 'Head of Procurement', email: 'r.menon@sunridge-hospital.example', phone: null }, { name: 'A. Deshpande', title: 'CFO', email: null, phone: null }]),
+  kaveri: F(0.74, 0.58, 'Three AMC tenders live this quarter and no contracts role on the org chart.', 'Cardiac specialty hospital, single site.', [
+    { claim: 'Three AMC tenders live this quarter', url: 'https://kaveri-heart.example/tenders', excerpt: '…annual maintenance contract for cath-lab, echo and monitoring…' },
+    { claim: 'No contracts role on the org chart', url: 'https://kaveri-heart.example/about/leadership', excerpt: '(no procurement or contracts title listed)' }], []),
+  northfield: F(0.66, 0.77, null, '610-bed tertiary care, single campus, NABH renewed this year.', [
+    { claim: 'NABH renewed; contract governance cited', url: 'https://northfield-general.example/news/nabh-2026', excerpt: '…demonstrated vendor contract governance and SLA review…' },
+    { claim: '610 beds, single campus', url: 'https://northfield-general.example', excerpt: '…610-bed tertiary care…' }],
+    [{ name: 'K. Patel', title: 'Head of Administration', email: 'k.patel@northfield-general.example', phone: '+91 79 4000 0000' }]),
+  brigid: F(0.88, 0.80, 'They are hiring a Contracts Officer to stop missed renewals — the audit is that person\'s first month, done in two weeks.', 'Multispeciality hospital, 340 beds.', [
+    { claim: 'Hiring a Contracts Officer now', url: 'https://stbrigids.example/careers/contracts-officer', excerpt: '…Contracts Officer — manage renewals, vendor SLAs and AMC schedules…' },
+    { claim: 'Renewal leakage named as a problem in the posting', url: 'https://stbrigids.example/careers/contracts-officer', excerpt: '…reduce missed renewals and unenforced penalties…' }],
+    [{ name: 'T. Varghese', title: 'Chief Operating Officer', email: 't.varghese@stbrigids.example', phone: null }]),
+  meadow: F(0.69, 0.52, 'Their procurement head told the press they lose money every quarter on penalties they never claim.', 'Medical centre, 290 beds.', [
+    { claim: 'Head of Procurement quoted on SLA penalties', url: 'https://meadowbrook.example/press/2026-procurement', excerpt: '…we lose money every quarter on penalties we never claim…' }],
+    [{ name: 'N. Joshi', title: 'Head of Procurement', email: null, phone: '+91 712 250 0000' }]),
+  harbour: F(0.61, 0.84, 'Their own annual report lists auto-renewal on service contracts as a risk.', 'Three-site hospital group with central procurement.', [
+    { claim: 'Three sites, group procurement', url: 'https://harbourview.example/group', excerpt: '…centralised procurement for all three hospitals…' },
+    { claim: '"Renewal" in the risk section of the annual report', url: 'https://harbourview.example/investors/ar-2026.pdf', excerpt: '…risk of unfavourable auto-renewal on service contracts…' }],
+    [{ name: 'S. Rao', title: 'Group Procurement Head', email: 's.rao@harbourview.example', phone: null }, { name: 'P. Naidu', title: 'Director, Biomedical', email: null, phone: null }]),
+  cedar: F(0.44, 0.49, null, 'Teaching hospital; procurement administered by the education trust.', [
+    { claim: 'Teaching hospital; procurement under the trust', url: 'https://cedarridge.example/trust', excerpt: '…procurement is administered by the Cedar Ridge Education Trust…' }], []),
+  ashoka: F(0.38, 0.30, null, "Children's hospital, 180 beds.", [
+    { claim: '180 beds; one vocabulary hit on a 2024 page', url: 'https://ashoka-childrens.example/vendors', excerpt: '…vendor compliance form…' }], []),
+  trident: F(0.22, 0.18, null, 'Orthopaedic and spine hospital, 120 beds.', [], [], { status: 'unreadable', error: 'CRAWL_EMPTY: trident-ortho.example rendered 0 readable pages (JS-only site)', fit: {}, recommended_offer: null, best_fit_offer: null }),
 };
 
 /** Research budget: briefs per day on the platform posture. */

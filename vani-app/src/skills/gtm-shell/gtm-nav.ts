@@ -26,6 +26,8 @@ const gtmWorkspace: SkillModule = {
       summary: 'Hot list → find → qualify → people. A list worth a message, in about ten minutes.' },
     { id: 'gtm-motion',   label: 'Put them in motion',   href: '/agents/gtm/motion',   group: 'workspace',    icon: '➤', status: 'live',
       summary: 'Segment → story → cadence → send. Sending stays locked until a consent model exists.' },
+    { id: 'gtm-companies', label: 'Companies',           href: '/agents/gtm/companies', group: 'workspace',   icon: '▣', status: 'live',
+      summary: 'Every company you hold — imported, from the pool, researched. A reference surface, not a pathway.' },
     { id: 'gtm-people',   label: 'People',               href: '/agents/gtm/people',   group: 'workspace',    icon: '◯', status: 'live',
       summary: 'Everyone in your audience — a reference surface, not a pathway.' },
     { id: 'gtm-journeys', label: 'Journeys',             href: '/agents/gtm/journeys', group: 'workspace',    icon: '⋯', status: 'live',

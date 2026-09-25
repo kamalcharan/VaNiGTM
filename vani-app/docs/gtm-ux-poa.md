@@ -372,6 +372,32 @@ modes. Approve, then integration begins.
 
 ## 4b. Integration log
 
+- **2026-09-25 (later)** — Charan: "knowledge still blank · import screens not
+  visible · from where does the user pick data and create research · where
+  does the user see the list imported". Four answers, all code:
+  1. **Knowledge** — the Mission Wizard's crawl still went to `/api/v1/ingest`
+     (REST, not exposed by nginx), so on the deployed stack no source was ever
+     registered and the section had nothing to list. The wizard now uses
+     `ingestion-skill.submit_url / submit_text / get_source / list_sources`
+     on the skill runner (`callSkill` in `lib/useSkill.ts`). Still gated on a
+     VaNiGTM deploy — those functions are in the repo since `deea931`, not on
+     the VPS.
+  2. **Import** — the import box was rendered INSIDE the hot-list boundary,
+     so a `prospect-skill.get_records` failure hid it. Hoisted; it renders
+     whatever the hot list does.
+  3. **Research** — G1's Find · Qualify · People now run on the REAL
+     `research-skill` (`get_budget`, `start_research`, `batch_status`,
+     `get_briefs`, `get_offers`, `decide_brief`) and `contact-skill`
+     (`list_brief_contacts`, `promote_from_brief`) in their own shapes. The
+     picker is Find: tick rows of the hot list (the tenant's prospects), press
+     Research; the server validates the offers and reports the split. Verdicts
+     are the server's enum and a reason is required to rule a company out.
+     `lib/preview.ts` shrank to the pathway's position + G2 + console reads.
+  4. **Companies** — `/agents/gtm/companies` (`gtm-companies`), a reference
+     surface over `prospect-skill.get_records` with a detail on
+     `get_prospect` (the dossier: record, research, people, the file's own
+     row). Linked from the hot list, the import result, briefs and People.
+
 - **2026-09-25** — People (`contact-skill`), Offers (`research-skill` +
   `profile-skill.generate_offers/confirm_offer`), "What VaNi has read"
   (`ingestion-skill.list_sources/submit_url/submit_text/delete_source`) and

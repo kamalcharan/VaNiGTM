@@ -35,6 +35,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
+import { callSkill } from '@/lib/useSkill';
 import { useToast } from '@/platform/feedback';
 import { useMissionOnboarding } from '../useOnboarding';
 import { useMissionHandoff } from '../useMissionHandoff';
@@ -470,14 +471,14 @@ export default function MissionWizardPage() {
      be many sources), so we take the newest source and fetch just that one. */
   const restoreResearchSteps = useCallback(async () => {
     try {
-      const list = await apiFetch<{ sources: { id: string; source_type: string }[] }>(
-        API.ingest.listSources,
+      const list = await callSkill<{ sources: { id: string; source_type: string }[] }>(
+        'ingestion-skill', 'list_sources', { limit: 20 },
       );
       const newest = list.sources?.find((x) => x.source_type === 'url') ?? list.sources?.[0];
       if (!newest) return;
 
-      const res = await apiFetch<{ source: KbSource }>(
-        API.ingest.getSource, { pathParams: { id: newest.id } },
+      const res = await callSkill<{ source: KbSource }>(
+        'ingestion-skill', 'get_source', { source_id: newest.id },
       );
       if (Array.isArray(res.source.run_steps) && res.source.run_steps.length > 0) {
         setResearchSteps(res.source.run_steps);
@@ -530,7 +531,7 @@ export default function MissionWizardPage() {
       }
 
       try {
-        const res = await apiFetch<{ source: KbSource }>(API.ingest.getSource, { pathParams: { id: sourceId } });
+        const res = await callSkill<{ source: KbSource }>('ingestion-skill', 'get_source', { source_id: sourceId });
         const src = res.source;
 
         if (Array.isArray(src.run_steps) && src.run_steps.length > 0) {
@@ -579,7 +580,7 @@ export default function MissionWizardPage() {
     setResearchNote('Submitting your website to VaNi…');
 
     try {
-      const res = await apiFetch<{ source_id: string }>(API.ingest.submitUrl, { body: { url: input } });
+      const res = await callSkill<{ source_id: string }>('ingestion-skill', 'submit_url', { url: input });
       pollResearch(res.source_id);
     } catch (err) {
       setResearch('error');
@@ -601,8 +602,8 @@ export default function MissionWizardPage() {
     setResearchNote('Analyzing your pasted copy…');
 
     try {
-      const res = await apiFetch<{ source_id: string }>(API.ingest.submitText, {
-        body: { text, title: 'Website copy (pasted)' },
+      const res = await callSkill<{ source_id: string }>('ingestion-skill', 'submit_text', {
+        text, title: 'Website copy (pasted)',
       });
       pollResearch(res.source_id);
     } catch (err) {
