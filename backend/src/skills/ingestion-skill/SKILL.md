@@ -28,7 +28,7 @@ llm-provider-skill). The REST router stays for direct API use.
 ### list_sources
 What VaNi has read, newest first. `raw_text` omitted — it can be large.
 - Parameters: limit (optional, number, default 50, max 100), offset (optional, number)
-- Returns: { sources: [{ id, source_type, display_name, status, chunk_count, node_count, error_msg, created_at, updated_at }], total, recipe: 'source-list' }
+- Returns: { sources: [{ id, source_type, display_name, url, status, chunk_count, node_count, error_msg, created_at, updated_at }], total, recipe: 'source-list' }
 
 ### get_source
 One source with its processing status and the agent run's steps.

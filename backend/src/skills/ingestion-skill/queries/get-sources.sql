@@ -6,6 +6,7 @@ SELECT
   id,
   source_type,
   display_name,
+  url,
   gdrive_file_id,
   gdrive_modified_at,
   status,

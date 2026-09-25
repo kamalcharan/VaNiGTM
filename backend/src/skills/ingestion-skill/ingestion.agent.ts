@@ -26,7 +26,8 @@ import { DocxParser } from './parsers/docx.parser';
 import { PptxParser } from './parsers/pptx.parser';
 import { TextParser } from './parsers/text.parser';
 import { chunkText } from './pipeline/chunker';
-import { extractFromChunks, type SourcedChunk } from './pipeline/extractor';
+import { extractFromChunks, EXTRACTION_PROMPT, EXTRACT_MAX_TOKENS, type SourcedChunk } from './pipeline/extractor';
+import { charBudgetFor } from '../../agent-core/llm.gate';
 import { draftProfileFromText } from '../profile-skill/profile.drafter';
 
 /* ── Parser registry (text.parser is the fallback, registered LAST) ─────── */
@@ -339,8 +340,25 @@ export class IngestionAgent {
       }
 
       // 4. STEP: chunk — per section, so each chunk knows its page of origin.
+      //
+      // The chunk size is DERIVED from the model window, never a number next
+      // to it (CLAUDE.md, "the budget is the authority"): 4,000 chars was a
+      // hand-picked cap that fits an 8k window and overran a smaller one with
+      // "Context size has been exceeded" from the server. Whatever the
+      // window is, a chunk plus the extraction prompt plus the reserved
+      // answer now fits inside it — or the run fails here, with the numbers,
+      // before a single call is spent.
+      const CHUNK_CAP = 4_000;
+      const room = charBudgetFor(undefined, EXTRACT_MAX_TOKENS, EXTRACTION_PROMPT);
+      if (room < 400) {
+        throw new Error(
+          `LLM_WINDOW_TOO_SMALL: the extraction prompt plus ${EXTRACT_MAX_TOKENS} reserved output tokens `
+          + `leave ${room} chars for text inside LLM_CONTEXT_TOKENS — raise it to the server's real window.`,
+        );
+      }
+      const chunkChars = Math.min(CHUNK_CAP, room);
       const chunks: SourcedChunk[] = sections.flatMap((sec) =>
-        chunkText(sec.text).map((c) => ({ ...c, source_url: sec.url })),
+        chunkText(sec.text, chunkChars).map((c) => ({ ...c, source_url: sec.url })),
       );
 
       await db.query(

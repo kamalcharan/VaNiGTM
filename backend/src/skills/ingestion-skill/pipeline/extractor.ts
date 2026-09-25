@@ -24,6 +24,9 @@ import { callLLM } from '../../../agent-core/llm.client';
 import type { Pool } from 'pg';
 import type { Chunk } from './chunker';
 
+/** Reserved for the answer on every extraction call. */
+export const EXTRACT_MAX_TOKENS = 800;
+
 export interface SourcedChunk extends Chunk {
   /** URL of the page this chunk came from (null for pasted text / files). */
   source_url?: string | null;
@@ -54,7 +57,7 @@ const RELATION_TYPES = new Set([
   'DIFFERENTIATES_FROM', 'BUILT_BY', 'PROVES',
 ]);
 
-const EXTRACTION_PROMPT = `You are a knowledge extraction system for a GTM platform.
+export const EXTRACTION_PROMPT = `You are a knowledge extraction system for a GTM platform.
 Extract product and GTM knowledge from the text below.
 
 For each distinct insight, output:
@@ -111,7 +114,7 @@ export async function extractFromChunks(
         runId,
         system:    EXTRACTION_PROMPT,
         messages:  [{ role: 'user', content: chunk.text }],
-        maxTokens: 800,
+        maxTokens: EXTRACT_MAX_TOKENS,
       });
 
       const nodeMatches = [...result.text.matchAll(/<extract>([\s\S]*?)<\/extract>/g)];
