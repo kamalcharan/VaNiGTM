@@ -18,3 +18,34 @@ when syncing a Google Drive folder. It emits `KNOWLEDGE_UPDATED` after a
 successful ingestion so the profile-completion checker can recalculate the
 tenant's profile score, and `FOLDER_CONNECTED` once the OAuth handshake
 finishes.
+
+## Functions
+
+These expose the `/api/v1/ingest` operations on the generic skill runner, so a
+console reaches them without a second REST surface (the same precedent as
+llm-provider-skill). The REST router stays for direct API use.
+
+### list_sources
+What VaNi has read, newest first. `raw_text` omitted — it can be large.
+- Parameters: limit (optional, number, default 50, max 100), offset (optional, number)
+- Returns: { sources: [{ id, source_type, display_name, status, chunk_count, node_count, error_msg, created_at, updated_at }], total, recipe: 'source-list' }
+
+### get_source
+One source with its processing status and the agent run's steps.
+- Parameters: source_id (required, string)
+- Returns: { source: { …list fields, raw_chars, run_status, run_steps, run_error }, recipe: 'source-detail' }
+
+### submit_url
+Point VaNi at a page. Re-submitting a URL re-ingests it instead of adding a second row. Emits URL_SUBMITTED.
+- Parameters: url (required, string — a bare domain becomes https://)
+- Returns: { source_id, url, recipe: 'source-detail' }
+
+### submit_text
+Pasted context. At least 40 characters; clipped at 200,000. Emits FILE_UPLOADED.
+- Parameters: text (required, string), title (optional, string)
+- Returns: { source_id, recipe: 'source-detail' }
+
+### delete_source
+Removes the source row only; what was learned (gt_kg_nodes) stays.
+- Parameters: source_id (required, string)
+- Returns: { deleted: true, source_id, recipe: 'confirmation' }
