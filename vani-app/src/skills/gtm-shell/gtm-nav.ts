@@ -15,6 +15,10 @@ const gtmWorkspace: SkillModule = {
   name: 'GTM',
   routes: [
     { id: 'gtm-landing',  label: 'Landing',              href: '/agents/gtm',          group: 'organization', icon: '⚑', status: 'live' },
+    // A link OUT to the BRAIN object, like Settings below: offers belong to the
+    // tenant, every agent reads them, so they live beside the Smart Profile.
+    // GTM shows the door, never a second editor.
+    { id: 'gtm-offers',   label: 'Offers',               href: '/smart-profile/offers', group: 'organization', icon: '◇', status: 'live' },
     { id: 'gtm-today',    label: 'Today',                href: '/agents/gtm/today',    group: 'organization', icon: '◔', status: 'live',
       summary: 'The queue: who has gone quiet, why, and what it costs to leave them. Fills the day after something is in motion.' },
     { id: 'gtm-audience', label: 'Build the audience',   href: '/agents/gtm/audience', group: 'workspace',    icon: '◎', status: 'live',
