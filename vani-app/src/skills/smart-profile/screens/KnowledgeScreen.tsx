@@ -21,6 +21,7 @@ import u from '@/platform/shell/ui.module.css';
 import s from '../smart-profile.module.css';
 import k from '../knowledge.module.css';
 import { KnowledgeSection } from './KnowledgeSection';
+import { FailoverQueue } from './FailoverQueue';
 import { KIND_LABELS, isReading, useKnowledgeGraph, useSourcesRead, type Knowledge, type KgNode } from '../useKnowledge';
 
 const kind = (l: string) => KIND_LABELS[l] ?? l;
@@ -49,6 +50,8 @@ export default function KnowledgeScreen() {
       </header>
 
       <KnowledgeSection compact />
+
+      <FailoverQueue signal={(sources.data?.data ?? []).map((x) => `${x.id}:${x.status}`).join(',')} />
 
       <section className={s.section}>
         <header className={s.sectionHead}>

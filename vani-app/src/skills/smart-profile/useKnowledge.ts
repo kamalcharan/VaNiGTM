@@ -28,6 +28,8 @@ export interface KbSource {
   /** 'url' | 'txt' | 'gdrive' | file kinds the pipeline records. */
   source_type: string;
   display_name: string;
+  /** The page, for url sources; null for files and pasted text. */
+  url?: string | null;
   status: SourceStatus;
   chunk_count: number | null;
   node_count: number | null;
@@ -107,3 +109,31 @@ export const useKnowledgeGraph = (label: string | null, reading: boolean) =>
   useSkillQuery<Knowledge>('ingestion-skill', 'knowledge', { limit: 300, ...(label ? { label } : {}) }, {
     refetchInterval: reading ? 4000 : false,
   });
+
+/* ── Runs parked on a failover decision (llm-provider-skill, REAL) ─────────
+ * With HAIKU_DEFAULT=false a platform-model failure parks the run instead
+ * of spending Vikuna's Anthropic key on its own. Someone has to say yes or
+ * no; until now that someone had only the CLI. */
+
+export interface PendingFailover {
+  run_id: string;
+  agent: string;
+  asked_at: string;
+  failover_model: string | null;
+  /** The server's own words — "cannot reach" and "context size exceeded" are different outages. */
+  vps_error: string | null;
+  question: string | null;
+}
+export interface PendingFailovers { runs: PendingFailover[]; detail: string; }
+
+export const useFailovers = () => useSkillQuery<PendingFailovers>('llm-provider-skill', 'pending_failovers');
+
+export function useResolveFailover() {
+  const qc = useQueryClient();
+  const m = useSkillMutation<{ ok: boolean; approved?: boolean; event_id?: string; reason?: string; detail: string }>('llm-provider-skill', 'resolve_failover', {
+    successMessage: (r) => (r.ok ? (r.approved ? 'Approved — the run is re-queued on the failover model. This one costs money.' : 'Declined. The run is failed with its real cause; nothing spent.') : r.detail),
+    errorMessage: 'Could not record that decision.',
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['skill'] }),
+  });
+  return { resolve: (run_id: string, approve: boolean) => m.mutate({ run_id, approve }), busy: m.isPending };
+}

@@ -4,6 +4,8 @@ const SOURCES: KbSource[] = [];
 let n = 0;
 interface Node { id: string; label: string; name: string; description: string | null; properties: Record<string, unknown>; updated_at: string; source_id: string | null; source_name: string | null; source_type: string | null; }
 const NODES: Node[] = [];
+interface Failover { run_id: string; agent: string; asked_at: string; failover_model: string | null; vps_error: string | null; question: string | null; source: KbSource; }
+const FAILOVERS: Failover[] = [];
 /** What a read of a site or a deck yields in mock mode — fictional, Ledgerline. */
 const LEARNED: [string, string, string][] = [
   ['Product', 'Ledgerline', 'Contract software for hospitals: every vendor contract, renewal and SLA in one place.'],
@@ -23,6 +25,8 @@ function learn(src: KbSource, count: number) {
   }
 }
 export const KNOWLEDGE_MOCK_READS: Record<string, (p: Record<string, unknown>) => unknown> = {
+  'llm-provider-skill.pending_failovers': () => ({ runs: FAILOVERS.map(({ source: _s, ...r }) => r),
+    detail: FAILOVERS.length ? `${FAILOVERS.length} run${FAILOVERS.length === 1 ? '' : 's'} waiting on a decision.` : 'Nothing waiting. Either the platform model is answering, or HAIKU_DEFAULT is true and escalation is automatic.' }),
   'ingestion-skill.list_sources': () => ({ sources: [...SOURCES].reverse(), total: SOURCES.length, recipe: 'source-list' }),
   'ingestion-skill.knowledge': (p) => {
     const label = String(p.label ?? '').trim() || null;
@@ -40,13 +44,26 @@ export const KNOWLEDGE_MOCK_READS: Record<string, (p: Record<string, unknown>) =
   },
 };
 export const KNOWLEDGE_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {
+  'llm-provider-skill.resolve_failover': (p) => {
+    const i = FAILOVERS.findIndex((f) => f.run_id === String(p.run_id));
+    if (i < 0) return { ok: false, reason: 'NOT_WAITING', detail: `Run ${String(p.run_id)} is not waiting on a failover decision.` };
+    const [f] = FAILOVERS.splice(i, 1);
+    if (p.approve === true) { f.source.status = 'pending'; f.source.error_msg = null; setTimeout(() => { f.source.status = 'complete'; f.source.node_count = 5; learn(f.source, 5); }, 2500); return { ok: true, approved: true, event_id: `evt-${f.run_id}`, detail: 'Re-emitted with allow_failover: true.' }; }
+    return { ok: true, approved: false, detail: 'Run failed with the real cause; nothing spent.' };
+  },
   'ingestion-skill.submit_url': (p) => {
     const url = String(p.url ?? '').trim(); if (!url) throw new Error('MISSING_FIELDS: url is required');
     const href = /^https?:\/\//i.test(url) ? url : `https://${url}`; const host = new URL(href).hostname;
     const ex = SOURCES.find((s) => s.source_type === 'url' && s.display_name === host);
-    if (ex) { ex.status = 'pending'; ex.error_msg = null; return { source_id: ex.id, url: href }; }
-    const s: KbSource = { id: `src-${++n}`, source_type: 'url', display_name: host, status: 'pending', chunk_count: 0, node_count: 0, error_msg: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    SOURCES.push(s); setTimeout(() => { s.status = 'complete'; s.node_count = 7; learn(s, 7); }, 3000);
+    if (ex) { ex.status = 'pending'; ex.error_msg = null; setTimeout(() => { ex.status = 'complete'; ex.node_count = 7; learn(ex, 7); }, 3000); return { source_id: ex.id, url: href }; }
+    const s: KbSource = { id: `src-${++n}`, source_type: 'url', display_name: host, url: href, status: 'pending', chunk_count: 0, node_count: 0, error_msg: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    SOURCES.push(s);
+    // A host with "fail" in it rehearses the parked-run path: the platform
+    // model overran its window, HAIKU_DEFAULT=false, a person must decide.
+    if (/fail/.test(host)) {
+      setTimeout(() => { s.status = 'error'; s.error_msg = 'LLM_FAILOVER_NEEDS_APPROVAL: LLM_VPS_ERROR: the platform LLM returned 500 Internal Server Error — {"error":{"code":500,"message":"Context size has been exceeded.","type":"server_error"}}';
+        FAILOVERS.push({ run_id: String(200 + FAILOVERS.length), agent: 'ingestion-skill', asked_at: new Date().toISOString(), failover_model: 'claude-haiku-4-5', vps_error: 'LLM_VPS_ERROR: 500 {"message":"Context size has been exceeded."}', question: `Retry ${host} on claude-haiku-4-5? This spends Vikuna's key.`, source: s }); }, 2500);
+    } else setTimeout(() => { s.status = 'complete'; s.node_count = 7; learn(s, 7); }, 3000);
     return { source_id: s.id, url: href };
   },
   'ingestion-skill.submit_text': (p) => {

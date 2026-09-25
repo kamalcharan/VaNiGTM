@@ -24,7 +24,10 @@ const KIND: Record<string, string> = {
 const MIN_TEXT = 40; // the server's own floor (TEXT_TOO_SHORT)
 
 function statusOf(src: KbSource): { text: string; tone: 'reading' | 'ok' | 'bad' } {
-  if (src.status === 'error') return { text: `failed — ${src.error_msg || 'no reason recorded'}`, tone: 'bad' };
+  if (src.status === 'error') {
+    const parked = /LLM_FAILOVER_NEEDS_APPROVAL/.test(src.error_msg ?? '');
+    return { text: `failed — ${src.error_msg || 'no reason recorded'}${parked ? ' · waiting on your decision below' : ''}`, tone: 'bad' };
+  }
   if (src.status === 'pending') return { text: 'queued', tone: 'reading' };
   if (src.status === 'processing') return { text: 'reading…', tone: 'reading' };
   const n = src.node_count ?? 0;
@@ -150,6 +153,17 @@ export function KnowledgeSection({ n, compact }: { n?: number; compact?: boolean
                         {st.text} · {formatDate(src.created_at)}
                       </span>
                     </div>
+                    {src.status === 'error' && src.source_type === 'url' && src.url && (
+                      <button
+                        type="button"
+                        className={s.srcRemove}
+                        onClick={() => void submitUrl(src.url!)}
+                        disabled={isBusy}
+                        title="Read the page again. Same row, not a second one."
+                      >
+                        Read again
+                      </button>
+                    )}
                     {!isReading(src) && (
                       <button
                         type="button"
