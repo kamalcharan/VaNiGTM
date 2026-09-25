@@ -15,6 +15,7 @@ import { useAudienceWrites, useHotList } from '../useAudience';
 import { useHeaders, useLand, useUpload, type Uploaded } from '../useImport';
 import { COMPANY_FIELDS, type HeadersInfo, type HotList, type HotRow, type LandingResult } from '../mock-data';
 import s from '../audience.module.css';
+import { ImportsPanel } from './ImportsPanel';
 
 function SourceChip({ src }: { src: HotList['sources'][number] }) {
   const cls = src.state === 'connected' ? (src.id === 'mine' ? s.chipMine : s.chipPool) : src.state === 'not_connected' && src.id === 'pool' ? s.chipBad : '';
@@ -62,7 +63,7 @@ function ImportBox({ onLanded }: { onLanded: () => void }) {
       <div className={s.upHead}><b>Add your own list</b><span className={s.hint}>.xlsx / .xls / .csv — mapped before anything lands</span></div>
       {result ? (
         <>
-          <p className={s.why} style={{ marginTop: 8 }}><b>{file?.filename}</b>: {result.successful} landed · {result.duplicate} already here · {result.conflict} held for review · {result.failed} failed · {result.duration_ms} ms</p>
+          <p className={s.why} style={{ marginTop: 8 }}><b>{file?.filename}</b>: {result.successful} landed · {result.duplicate} already here · {result.conflict} held for review · {result.failed} failed · {result.duration_ms} ms{result.conflict ? ' — held rows are under Past imports, below.' : ''}</p>
           <div className={s.actions} style={{ marginTop: 10 }}><button type="button" className={s.quiet} onClick={() => { setFile(null); setResult(null); }}>Add another list</button></div>
         </>
       ) : file && info ? (
@@ -111,7 +112,7 @@ export function BringStep() {
       {(d: HotList) => {
         const fed = d.pool_state === 'fed';
         const mine = d.rows.filter((r) => r.source === 'mine').length;
-        const importBox = <ImportBox onLanded={() => void q.refetch()} />;
+        const importBox = <><ImportBox onLanded={() => void q.refetch()} /><ImportsPanel /></>;
         if (!d.rows.length) {
           return (
             <div className={s.card}>

@@ -276,3 +276,33 @@ export const PEOPLE_FIXTURES: Record<string, Omit<Person, 'contact_ref' | 'compa
 /** Research budget: briefs per day on the platform posture. */
 export const BUDGET_TOTAL = 40;
 export const BUDGET_PER_BRIEF = 2;
+
+/** One past import — `GET /etl/sessions` verbatim. */
+export interface ImportSession {
+  id: number | string;
+  import_type: string;
+  status: 'staged' | 'processing' | 'completed' | 'completed_with_errors' | 'needs_review' | 'failed' | string;
+  total_records: number;
+  processed_records: number;
+  successful_records: number;
+  failed_records: number;
+  duplicate_records: number;
+  orphan_records: number;
+  original_filename: string | null;
+  created_at: string;
+  tenant_seq: number;
+}
+
+export interface FieldDiff { [field: string]: { existing: unknown; incoming: unknown; recommended: 'take' | 'keep'; reason?: string } }
+
+/** A staged row — `GET /etl/sessions/:id/records` verbatim. */
+export interface StagedRow {
+  id: number | string;
+  row_number: number;
+  processing_status: 'pending' | 'success' | 'failed' | 'duplicate' | 'conflict' | 'orphan' | string;
+  mapped_data: Record<string, unknown>;
+  error_messages: string[] | null;
+  field_diff: FieldDiff | null;
+  campaign_locked: boolean;
+  conflict_kind: 'existing' | 'in_file' | null;
+}

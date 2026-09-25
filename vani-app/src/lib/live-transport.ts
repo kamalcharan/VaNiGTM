@@ -78,6 +78,16 @@ const PLATFORM_ROUTES: Record<string, (params: Record<string, unknown>) => Platf
     method: 'POST',
     path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/process`,
   }),
+  'etl.sessions': () => ({ method: 'GET', path: '/api/v1/etl/sessions?type=company' }),
+  'etl.records': (p) => ({
+    method: 'GET',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/records?status=${encodeURIComponent(String(p.status ?? 'all'))}&limit=${Number(p.limit ?? 50)}`,
+  }),
+  'etl.resolve_conflicts': (p) => ({
+    method: 'POST',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/conflicts/resolve`,
+    body: p.accept_recommended ? { accept_recommended: true } : { decisions: p.decisions },
+  }),
 };
 
 export const liveTransport: SkillTransport = async (skill, fn, params) => {

@@ -10,7 +10,7 @@
 import { GTM_JOURNEY_STATE } from '@/skills/gtm-shell/mock';
 import {
   BRIEF_FIXTURES, BUDGET_PER_BRIEF, BUDGET_TOTAL, HOT_ROWS, PEOPLE_FIXTURES, UPLOAD_RESULT, UPLOAD_ROWS,
-  type BatchStatus, type Brief, type HotRow, type LandingResult, type Person, type RecordRow,
+  type BatchStatus, type Brief, type HotRow, type ImportSession, type LandingResult, type Person, type RecordRow, type StagedRow,
 } from './mock-data';
 
 export type AudienceStep = 'bring' | 'find' | 'qualify' | 'people';
@@ -32,9 +32,23 @@ export interface Known { id: string; name: string; ref: string; city: string; si
 const KNOWN = new Map<string, Known>();
 export const knownCompany = (id: string) => KNOWN.get(id);
 
+/** One held row per mock import: Sunridge is already here with a different
+ *  city and no website; the file proposes both. */
+const HELD: StagedRow[] = [];
+function seedHeld() {
+  HELD.length = 0;
+  HELD.push({ id: 'st-7', row_number: 7, processing_status: 'conflict', campaign_locked: false, conflict_kind: 'existing', error_messages: null,
+    mapped_data: { name: 'Sunridge Multispeciality Hospital', city: 'Pune (Hinjewadi)', website: 'sunridge-hospital.example' },
+    field_diff: {
+      city: { existing: 'Pune', incoming: 'Pune (Hinjewadi)', recommended: 'keep', reason: 'What you already hold is at least as fresh (0.81 vs 0.74).' },
+      website: { existing: null, incoming: 'sunridge-hospital.example', recommended: 'take', reason: 'Filling a hole loses nothing.' },
+    } });
+}
+
 const S = {
   reached: new Set<AudienceStep | 'done'>(['bring']),
   uploaded: false,
+  sessions: [] as ImportSession[],
   cohort: new Set<string>(),
   batchStartedAt: null as number | null,
   batchId: null as string | null,
@@ -95,6 +109,8 @@ export const AUDIENCE_MOCK_READS: Record<string, (p: Record<string, unknown>) =>
   'etl.headers': () => ({ file_id: 'mock-file', filename: UPLOAD_RESULT.file, headers: ['Hospital Name', 'City', 'Website', 'Beds (approx)'],
     sample_rows: [{ 'Hospital Name': 'Lotus Valley Hospital', City: 'Coimbatore', Website: '', 'Beds (approx)': 310 }, { 'Hospital Name': 'Cedar Ridge Medical College', City: 'Mysuru', Website: 'cedarridge.example', 'Beds (approx)': 700 }],
     total_rows: 4, suggested_mapping: { 'Hospital Name': 'company.name', City: 'company.city', Website: 'company.website', 'Beds (approx)': 'company.employees_band' }, extraction_plan: null }),
+  'etl.sessions': () => ({ sessions: S.sessions }),
+  'etl.records': (p) => { const rows = String(p.status ?? 'all') === 'conflict' ? HELD : HELD; return { records: rows, total: rows.length, page: 1, limit: 100, total_pages: 1 }; },
   'research-skill.batch_status': (): BatchStatus | null => {
     if (!S.batchStartedAt || !S.batchId) return null;
     const ids = [...S.cohort]; const elapsed = Date.now() - S.batchStartedAt;
@@ -113,11 +129,23 @@ export const AUDIENCE_MOCK_READS: Record<string, (p: Record<string, unknown>) =>
 
 export const AUDIENCE_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {
   'gtm.advance': (p) => { S.reached.add(p.to as AudienceStep | 'done'); return state(); },
-  'gtm.restart': () => { S.reached = new Set(['bring']); S.uploaded = false; S.cohort = new Set(); S.batchStartedAt = null; S.batchId = null; S.verdicts = {}; S.promoted = []; return state(); },
+  'gtm.restart': () => { S.reached = new Set(['bring']); S.uploaded = false; S.sessions = []; HELD.length = 0; S.cohort = new Set(); S.batchStartedAt = null; S.batchId = null; S.verdicts = {}; S.promoted = []; return state(); },
   // The ETL steps, REAL on the API (mock mode only).
   'etl.upload': (p) => ({ file_id: 'mock-file', filename: String(p.filename ?? UPLOAD_RESULT.file), size: 18_204, import_type: 'company' }),
   'etl.create_session': () => ({ session_id: 'mock-session', status: 'staged', total_records: UPLOAD_RESULT.rows, import_type: 'company' }),
-  'etl.process': (): LandingResult => { S.uploaded = true; return { session_id: 'mock-session', status: 'completed', processed: UPLOAD_RESULT.rows, successful: UPLOAD_RESULT.added, failed: 0, duplicate: UPLOAD_RESULT.merged, conflict: 0, campaign_locked: 0, orphans: 0, duration_ms: 412 }; },
+  'etl.process': (): LandingResult => {
+    S.uploaded = true; seedHeld();
+    const id = `mock-session-${S.sessions.length + 1}`;
+    S.sessions.unshift({ id, import_type: 'company', status: 'needs_review', total_records: UPLOAD_RESULT.rows, processed_records: UPLOAD_RESULT.rows, successful_records: UPLOAD_RESULT.added, failed_records: 0, duplicate_records: UPLOAD_RESULT.merged - 1, orphan_records: 0, original_filename: UPLOAD_RESULT.file, created_at: new Date().toISOString(), tenant_seq: S.sessions.length + 1 });
+    return { session_id: id, status: 'needs_review', processed: UPLOAD_RESULT.rows, successful: UPLOAD_RESULT.added, failed: 0, duplicate: UPLOAD_RESULT.merged - 1, conflict: 1, campaign_locked: 0, orphans: 0, duration_ms: 412 };
+  },
+  'etl.resolve_conflicts': (p) => {
+    const before = HELD.length;
+    if (p.accept_recommended) HELD.length = 0;
+    else for (const d of (p.decisions as { staging_id: string }[]) ?? []) { const i = HELD.findIndex((h) => String(h.id) === String(d.staging_id)); if (i >= 0) HELD.splice(i, 1); }
+    const s = S.sessions[0]; if (s && HELD.length === 0) s.status = 'completed';
+    return { applied: before - HELD.length, skipped: 0, conflicts_remaining: HELD.length };
+  },
   'research-skill.start_research': (p) => {
     const ids = ((p.prospect_ids as string[]) ?? []).map(String);
     for (const k of (p.prospects as Known[]) ?? []) KNOWN.set(String(k.id), { ...k, id: String(k.id) });

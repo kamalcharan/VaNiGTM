@@ -28,7 +28,7 @@ type Handler = (p: Record<string, unknown>) => unknown;
 const REAL = new Set([
   'contact-skill.get_contacts', 'contact-skill.get_contact',
   'prospect-skill.get_records',
-  'etl.upload', 'etl.headers', 'etl.create_session', 'etl.process',
+  'etl.upload', 'etl.headers', 'etl.create_session', 'etl.process', 'etl.sessions', 'etl.records', 'etl.resolve_conflicts',
 ]);
 
 export const PREVIEW_FUNCTIONS: Record<string, Handler> = Object.fromEntries(
