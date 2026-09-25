@@ -11,6 +11,7 @@
  * action, not a shrug.
  */
 import { useState } from 'react';
+import Link from 'next/link';
 import { DataBoundary, SkeletonRows, useToast } from '@/platform/feedback';
 import { formatDate } from '@/lib/format';
 import s from '../smart-profile.module.css';
@@ -30,7 +31,7 @@ function statusOf(src: KbSource): { text: string; tone: 'reading' | 'ok' | 'bad'
   return { text: n ? `read · ${n} ${n === 1 ? 'entry' : 'entries'}` : 'read · nothing usable found', tone: n ? 'ok' : 'bad' };
 }
 
-export function KnowledgeSection({ n }: { n: number }) {
+export function KnowledgeSection({ n, compact }: { n?: number; compact?: boolean }) {
   const q = useSourcesRead();
   const { submitUrl, submitText, remove, isBusy } = useTeach();
   const { showToast } = useToast();
@@ -60,10 +61,10 @@ export function KnowledgeSection({ n }: { n: number }) {
   return (
     <section className={s.section}>
       <header className={s.sectionHead}>
-        <span className={s.sectionNum}>{n}</span>
+        {n != null && <span className={s.sectionNum}>{n}</span>}
         <div className={s.sectionTitles}>
           <h2 className={s.sectionTitle}>What VaNi has read</h2>
-          <p className={s.sectionWhat}>Every source behind the sections above. Agents build on this; add to it any time.</p>
+          <p className={s.sectionWhat}>{compact ? 'Every source, with what it yielded. Add to it any time.' : <>Every source behind the sections above. What VaNi learned from them is under <Link href="/smart-profile/knowledge">Knowledge</Link>; add to it any time.</>}</p>
         </div>
         <button type="button" className={s.sectionEdit} onClick={() => setOpen((v) => !v)}>
           {open ? 'Cancel' : 'Teach VaNi'}

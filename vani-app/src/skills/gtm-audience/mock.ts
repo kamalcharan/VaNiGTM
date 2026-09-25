@@ -34,8 +34,14 @@ export const knownCompany = (id: string) => KNOWN.get(id);
 /** One held row per mock import: Sunridge is already here with a different
  *  city and no website; the file proposes both. */
 const HELD: StagedRow[] = [];
+/** One failed row per mock import: no name anywhere on the row. */
+const FAILED: StagedRow[] = [];
 function seedHeld() {
   HELD.length = 0;
+  FAILED.length = 0;
+  FAILED.push({ id: 'st-9', row_number: 9, processing_status: 'failed', campaign_locked: false, conflict_kind: null, field_diff: null,
+    mapped_data: { city: 'Salem', website: 'valley-care.example' }, raw_data: { 'Hospital Name': '', City: 'Salem', Website: 'valley-care.example', 'Beds (approx)': 90 },
+    error_messages: ['company.name is required — the column mapped to it was empty on this row'] });
   HELD.push({ id: 'st-7', row_number: 7, processing_status: 'conflict', campaign_locked: false, conflict_kind: 'existing', error_messages: null,
     mapped_data: { name: 'Sunridge Multispeciality Hospital', city: 'Pune (Hinjewadi)', website: 'sunridge-hospital.example' },
     field_diff: {
@@ -174,7 +180,7 @@ export const AUDIENCE_MOCK_READS: Record<string, (p: Record<string, unknown>) =>
     sample_rows: [{ 'Hospital Name': 'Lotus Valley Hospital', City: 'Coimbatore', Website: '', 'Beds (approx)': 310 }, { 'Hospital Name': 'Cedar Ridge Medical College', City: 'Mysuru', Website: 'cedarridge.example', 'Beds (approx)': 700 }],
     total_rows: 4, suggested_mapping: { 'Hospital Name': 'company.name', City: 'company.city', Website: 'company.website', 'Beds (approx)': 'company.employees_band' }, extraction_plan: null }),
   'etl.sessions': () => ({ sessions: S.sessions }),
-  'etl.records': (p) => { const rows = String(p.status ?? 'all') === 'conflict' ? HELD : HELD; return { records: rows, total: rows.length, page: 1, limit: 100, total_pages: 1 }; },
+  'etl.records': (p) => { const st = String(p.status ?? 'all'); const rows = st === 'conflict' ? HELD : st === 'failed' ? FAILED : [...HELD, ...FAILED]; return { records: rows, total: rows.length, page: 1, limit: 100, total_pages: 1 }; },
   // REAL on the API: research-skill, in its own shapes.
   'research-skill.get_budget': (): Budget => ({ limit: BUDGET_TOTAL * 14_000, used: S.cohort.length * 14_000, remaining: (BUDGET_TOTAL - S.cohort.length) * 14_000, capped: true, tracked: true, cost_per_company: 14_000, affordable_companies: BUDGET_TOTAL - S.cohort.length }),
   'research-skill.batch_status': () => batchStatus(),
@@ -204,8 +210,8 @@ export const AUDIENCE_MOCK_WRITES: Record<string, (p: Record<string, unknown>) =
   'etl.process': (): LandingResult => {
     S.uploaded = true; seedHeld();
     const id = `mock-session-${S.sessions.length + 1}`;
-    S.sessions.unshift({ id, import_type: 'company', status: 'needs_review', total_records: UPLOAD_RESULT.rows, processed_records: UPLOAD_RESULT.rows, successful_records: UPLOAD_RESULT.added, failed_records: 0, duplicate_records: UPLOAD_RESULT.merged - 1, orphan_records: 0, original_filename: UPLOAD_RESULT.file, created_at: new Date().toISOString(), tenant_seq: S.sessions.length + 1 });
-    return { session_id: id, status: 'needs_review', processed: UPLOAD_RESULT.rows, successful: UPLOAD_RESULT.added, failed: 0, duplicate: UPLOAD_RESULT.merged - 1, conflict: 1, campaign_locked: 0, orphans: 0, duration_ms: 412 };
+    S.sessions.unshift({ id, import_type: 'company', status: 'needs_review', total_records: UPLOAD_RESULT.rows, processed_records: UPLOAD_RESULT.rows, successful_records: UPLOAD_RESULT.added, failed_records: 1, duplicate_records: UPLOAD_RESULT.merged - 1, orphan_records: 0, original_filename: UPLOAD_RESULT.file, created_at: new Date().toISOString(), tenant_seq: S.sessions.length + 1 });
+    return { session_id: id, status: 'needs_review', processed: UPLOAD_RESULT.rows, successful: UPLOAD_RESULT.added, failed: 1, duplicate: UPLOAD_RESULT.merged - 1, conflict: 1, campaign_locked: 0, orphans: 0, duration_ms: 412 };
   },
   'etl.resolve_conflicts': (p) => {
     const before = HELD.length;

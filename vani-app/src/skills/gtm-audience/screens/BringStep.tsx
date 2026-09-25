@@ -9,14 +9,13 @@
  * are read from. When nothing has been fed the screen says so and offers the
  * road that works; it never shows an empty hot list with a spinner (rule 12).
  */
-import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import { useAudienceWrites, useHotList } from '../useAudience';
-import { useHeaders, useLand, useUpload, type Uploaded } from '../useImport';
-import { COMPANY_FIELDS, type HeadersInfo, type HotList, type HotRow, type LandingResult } from '../mock-data';
+import type { HotList, HotRow } from '../mock-data';
 import s from '../audience.module.css';
 import { ImportsPanel } from './ImportsPanel';
+import { ImportBox } from './ImportBox';
 
 function SourceChip({ src }: { src: HotList['sources'][number] }) {
   const cls = src.state === 'connected' ? (src.id === 'mine' ? s.chipMine : s.chipPool) : src.state === 'not_connected' && src.id === 'pool' ? s.chipBad : '';
@@ -45,73 +44,13 @@ export function RowCard({ r, children, onTick, on, off }: { r: HotRow; children?
   );
 }
 
-/** Upload → confirm the mapping → land. The whole import, as one step. */
-function ImportBox({ onLanded }: { onLanded: () => void }) {
-  const { upload, isUploading } = useUpload();
-  const [file, setFile] = useState<Uploaded | null>(null);
-  const [mapping, setMapping] = useState<Record<string, string> | null>(null);
-  const [result, setResult] = useState<LandingResult | null>(null);
-  const headers = useHeaders(file?.file_id ?? null);
-  const { land, isLanding } = useLand();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const info = headers.data?.data;
-  const map = mapping ?? info?.suggested_mapping ?? {};
-
-  async function pick(f: File | undefined) { if (!f) return; const u = await upload(f); if (u) { setFile(u); setMapping(null); setResult(null); } }
-
-  return (
-    <div className={s.up}>
-      <div className={s.upHead}><b>Add your own list</b><span className={s.hint}>.xlsx / .xls / .csv — mapped before anything lands</span></div>
-      {result ? (
-        <>
-          <p className={s.why} style={{ marginTop: 8 }}><b>{file?.filename}</b>: {result.successful} landed · {result.duplicate} already here · {result.conflict} held for review · {result.failed} failed · {result.duration_ms} ms{result.conflict ? ' — held rows are under Past imports, below.' : ''} Landed rows are on the hot list above and under <Link href="/agents/gtm/companies">Companies</Link>.</p>
-          <div className={s.actions} style={{ marginTop: 10 }}><button type="button" className={s.quiet} onClick={() => { setFile(null); setResult(null); }}>Add another list</button></div>
-        </>
-      ) : file && info ? (
-        <>
-          <p className={s.hint} style={{ marginTop: 8 }}>{info.filename} · {info.total_rows} rows · {info.headers.length} columns. VaNi's guess per column; change any that is wrong. A column mapped to nothing is kept on the record, not lost.</p>
-          <div className={s.map}>
-            {info.headers.map((h) => (
-              <div key={h} style={{ display: 'contents' }}>
-                <span className={s.mapA} title={String(info.sample_rows[0]?.[h] ?? '')}>{h}</span><span className={s.mapArr}>→</span>
-                <select className={s.mapB} style={{ background: 'var(--bg2)', border: '1px solid var(--line2)', borderRadius: 6, padding: '3px 6px', font: 'inherit', fontSize: 12 }}
-                  value={map[h] ?? ''} onChange={(e) => setMapping({ ...map, [h]: e.target.value })} disabled={isLanding}>
-                  <option value="">— keep, do not map —</option>
-                  {COMPANY_FIELDS.map((f) => <option key={f} value={`company.${f}`}>company.{f}</option>)}
-                </select>
-              </div>
-            ))}
-          </div>
-          <div className={s.actions} style={{ marginTop: 12 }}>
-            <button type="button" className={s.primary} disabled={isLanding || !Object.values(map).some((v) => v === 'company.name' || v === 'name')}
-              onClick={async () => { const r = await land({ file_id: file.file_id, filename: file.filename, mapping: Object.fromEntries(Object.entries(map).filter(([, v]) => v)), extraction_plan: info.extraction_plan }); if (r) { setResult(r); onLanded(); } }}>
-              {isLanding ? 'Landing…' : `Land ${info.total_rows} rows`}
-            </button>
-            <button type="button" className={s.quiet} onClick={() => setFile(null)} disabled={isLanding}>Cancel</button>
-            {!Object.values(map).some((v) => v === 'company.name' || v === 'name') && <span className={s.hint}>Map one column to company.name first.</span>}
-          </div>
-        </>
-      ) : file ? (
-        <DataBoundary query={headers} label="the file's columns" skeleton={<SkeletonRows rows={2} />}>{(_d: HeadersInfo) => <span />}</DataBoundary>
-      ) : (
-        <div className={s.actions} style={{ marginTop: 10 }}>
-          <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={(e) => void pick(e.target.files?.[0])} />
-          <button type="button" className={s.quiet} onClick={() => inputRef.current?.click()} disabled={isUploading}>{isUploading ? 'Uploading…' : 'Choose a spreadsheet'}</button>
-          <button type="button" className={s.quiet} disabled title="Not built — Settings → Data">Connect my Apollo / Clay</button>
-          <span className={s.chip}>own provider · not built</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function BringStep() {
   const q = useHotList();
   const w = useAudienceWrites();
   // The import is NOT inside the hot-list boundary: a hot list that cannot be
   // read must not hide the one road that adds to it. The boundary reports its
   // own failure above; the import box stays usable below it.
-  const importBox = <><ImportBox onLanded={() => void q.refetch()} /><ImportsPanel /></>;
+  const importBox = <><ImportBox onLanded={() => void q.refetch()} /><ImportsPanel /><p className={s.hint} style={{ marginTop: 10 }}>The whole import — every past load, held rows, failed rows — is also at <Link href="/agents/gtm/import">Import a list</Link>.</p></>;
   return (
     <div className={s.card}>
       <div className={s.eyebrow}>// BUILD THE AUDIENCE · 1 OF 4</div>

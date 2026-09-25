@@ -1,0 +1,12 @@
+/* Knowledge — what VaNi learned, as a list by kind. Tokens only. */
+.kinds { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.kinds button { cursor: pointer; font: inherit; font-size: 11px; }
+.groups { display: flex; flex-direction: column; gap: 16px; }
+.group { border: 1px solid var(--line); border-radius: 10px; background: var(--bg2); padding: 12px 14px; }
+.groupHead { font-family: var(--display); font-weight: 600; font-size: 14px; display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.groupMeta { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--tx3); }
+.nodes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.node { background: var(--surf); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.nodeName { font-weight: 600; font-size: 13.5px; }
+.nodeDesc { font-size: 12.5px; line-height: 1.55; color: var(--tx2); margin-top: 3px; }
+.nodeMeta { font-family: var(--mono); font-size: 10.5px; color: var(--tx3); margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap; }

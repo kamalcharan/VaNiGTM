@@ -24,6 +24,8 @@ const gtmWorkspace: SkillModule = {
       summary: 'The queue: who has gone quiet, why, and what it costs to leave them. Fills the day after something is in motion.' },
     { id: 'gtm-audience', label: 'Build the audience',   href: '/agents/gtm/audience', group: 'workspace',    icon: '◎', status: 'live',
       summary: 'Hot list → find → qualify → people. A list worth a message, in about ten minutes.' },
+    { id: 'gtm-import',   label: 'Import a list',        href: '/agents/gtm/import',   group: 'workspace',    icon: '⤓', status: 'live',
+      summary: 'Bring a spreadsheet of companies and people. Mapped before anything lands; clashes held for your decision; every past load with its held and failed rows.' },
     { id: 'gtm-motion',   label: 'Put them in motion',   href: '/agents/gtm/motion',   group: 'workspace',    icon: '➤', status: 'live',
       summary: 'Segment → story → cadence → send. Sending stays locked until a consent model exists.' },
     { id: 'gtm-companies', label: 'Companies',           href: '/agents/gtm/companies', group: 'workspace',   icon: '▣', status: 'live',

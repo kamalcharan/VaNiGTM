@@ -11,6 +11,7 @@
  * decision here.
  */
 import { useState } from 'react';
+import Link from 'next/link';
 import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import { formatDateTime } from '@/lib/format';
 import u from '@/platform/shell/ui.module.css';
@@ -74,9 +75,40 @@ function Review({ session }: { session: ImportSession }) {
   );
 }
 
+/** The rows a load refused, each with the reason and the row as the file had it. */
+function Failed({ session }: { session: ImportSession }) {
+  const q = useStagedRows(session.id, 'failed');
+  return (
+    <DataBoundary query={q} label="failed rows" skeleton={<SkeletonRows rows={2} lines={2} />}
+      isEmpty={(d: { records: StagedRow[] } | undefined) => !d?.records?.length}
+      empty="Nothing failed in this import.">
+      {(d: { records: StagedRow[] }) => (
+        <div style={{ marginTop: 10 }}>
+          <p className={s.hint}>{d.records.length} {d.records.length === 1 ? 'row was' : 'rows were'} refused. Each says why; fix the file and add it again — a row already landed is not landed twice.</p>
+          <div className={s.list}>
+            {d.records.map((r) => {
+              const raw = Object.entries(r.raw_data ?? r.mapped_data ?? {}).filter(([, v]) => v != null && v !== '');
+              return (
+                <div key={r.id} className={`${s.row} ${s.rowNoTick}`}>
+                  <div>
+                    <div className={s.name}>{String(r.mapped_data?.name ?? r.raw_data?.['name'] ?? '(no company name)')}<small>row {r.row_number}</small></div>
+                    {(r.error_messages ?? []).map((m, i) => <div key={i} className={s.why} style={{ color: 'var(--color-danger)' }}>{m}</div>)}
+                    {raw.length > 0 && <div className={s.meta}>{raw.map(([k, v]) => <span key={k}>{k}: {String(v)}</span>)}</div>}
+                  </div>
+                  <span />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </DataBoundary>
+  );
+}
+
 export function ImportsPanel() {
   const q = useImportSessions();
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<{ id: string; view: 'held' | 'failed' } | null>(null);
   return (
     <DataBoundary query={q} label="past imports" skeleton={<SkeletonRows rows={2} />}
       isEmpty={(d: { sessions: ImportSession[] } | undefined) => !d?.sessions?.length}
@@ -87,17 +119,21 @@ export function ImportsPanel() {
           <div className={s.list} style={{ marginTop: 6 }}>
             {d.sessions.map((ss) => {
               const st = STATUS[ss.status] ?? { label: ss.status, tone: 'dim' as const };
-              const isOpen = open === String(ss.id);
+              const isOpen = open?.id === String(ss.id);
+              const toggle = (view: 'held' | 'failed') => setOpen(isOpen && open?.view === view ? null : { id: String(ss.id), view });
               return (
                 <div key={ss.id} className={`${s.row} ${s.rowNoTick}`}>
                   <div>
                     <div className={s.name}>{ss.original_filename ?? `import #${ss.tenant_seq}`}<small>#{ss.tenant_seq} · {formatDateTime(ss.created_at)}</small></div>
                     <div className={s.why}>{ss.total_records} rows · {ss.successful_records} landed · {ss.duplicate_records} already here · {ss.failed_records} failed{ss.orphan_records ? ` · ${ss.orphan_records} orphaned` : ''}</div>
-                    {isOpen && <Review session={ss} />}
+                    {isOpen && open?.view === 'held' && <Review session={ss} />}
+                    {isOpen && open?.view === 'failed' && <Failed session={ss} />}
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span className={`${u.tag} ${st.tone === 'ok' ? u.tagOk : st.tone === 'warn' ? u.tagWarn : st.tone === 'bad' ? u.tagBad : u.tagDim}`}>{st.label}</span>
-                    {ss.status === 'needs_review' && <button type="button" className={s.quiet} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen(isOpen ? null : String(ss.id))}>{isOpen ? 'Close' : 'Review held rows'}</button>}
+                    {ss.status === 'needs_review' && <button type="button" className={s.quiet} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => toggle('held')}>{isOpen && open?.view === 'held' ? 'Close' : 'Review held rows'}</button>}
+                    {ss.failed_records > 0 && <button type="button" className={s.quiet} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => toggle('failed')}>{isOpen && open?.view === 'failed' ? 'Close' : `${ss.failed_records} failed`}</button>}
+                    {ss.successful_records > 0 && <Link href="/agents/gtm/companies" className={s.side}>see rows →</Link>}
                   </div>
                 </div>
               );

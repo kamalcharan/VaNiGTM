@@ -79,3 +79,31 @@ export function useTeach() {
 
   return { submitUrl, submitText, remove, isBusy: url.isPending || text.isPending || del.isPending };
 }
+
+/* ── What VaNi knows: the graph as a list (ingestion-skill.knowledge, REAL) ── */
+
+export interface KgNode {
+  id: string;
+  label: string;
+  name: string;
+  description: string | null;
+  properties: Record<string, unknown>;
+  updated_at: string;
+  /** The source it was read from; null when it came from the conversation. */
+  source_id: string | null;
+  source_name: string | null;
+  source_type: string | null;
+}
+export interface Knowledge { nodes: KgNode[]; filtered_total: number; labels: { label: string; count: number }[]; total: number; }
+
+/** Kinds in the order a person reads them, with plain words. */
+export const KIND_LABELS: Record<string, string> = {
+  Product: 'What you sell', Feature: 'Capabilities', ICP: 'Who you sell to', UseCase: 'Use cases', PainPoint: 'Problems you solve',
+  Differentiator: 'Why you', Team: 'Team', Competitor: 'Competitors', CaseStudy: 'Proof', Metric: 'Numbers', Industry: 'Industries', Pricing: 'Pricing',
+};
+
+/** `reading` = a source is still being read; the graph is re-read while it is, and once more after. */
+export const useKnowledgeGraph = (label: string | null, reading: boolean) =>
+  useSkillQuery<Knowledge>('ingestion-skill', 'knowledge', { limit: 300, ...(label ? { label } : {}) }, {
+    refetchInterval: reading ? 4000 : false,
+  });

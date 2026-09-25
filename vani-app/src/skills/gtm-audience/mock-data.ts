@@ -68,6 +68,8 @@ export function toHotRow(r: RecordRow): HotRow {
 
 /** Fields the ETL's company processor accepts as mapping targets. */
 export const COMPANY_FIELDS = ['name', 'website', 'domain', 'email', 'phone', 'city', 'state', 'country', 'industry_raw', 'employees_band'] as const;
+/** Fields the ETL's contact processor accepts per person slot (`person.N.<field>`). */
+export const PERSON_FIELDS = ['full_name', 'job_title', 'email', 'mobile', 'linkedin_url'] as const;
 
 export interface HeadersInfo {
   file_id: number | string;
@@ -341,6 +343,8 @@ export interface StagedRow {
   row_number: number;
   processing_status: 'pending' | 'success' | 'failed' | 'duplicate' | 'conflict' | 'orphan' | string;
   mapped_data: Record<string, unknown>;
+  /** The row exactly as the file had it. */
+  raw_data?: Record<string, unknown> | null;
   error_messages: string[] | null;
   field_diff: FieldDiff | null;
   campaign_locked: boolean;

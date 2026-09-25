@@ -5,10 +5,10 @@ const org: SkillModule = {
   name: 'Organization',
   routes: [
     { id: 'dashboard', label: 'Dashboard', href: '/dashboard', group: 'organization', icon: '▦', status: 'live' },
-    { id: 'knowledge', label: 'Knowledge', href: '/knowledge', group: 'organization', icon: '▤', status: 'planned',
-      summary: 'Documents and facts the org has taught VaNi, with provenance for each one.' },
-    { id: 'kg', label: 'Knowledge Graph', href: '/kg', group: 'organization', icon: '⁂', status: 'planned',
-      summary: 'Entities and relationships across the org. Deferred by the platform spec until knowledge matures.' },
+    // "Knowledge" and "Knowledge Graph" sat here as planned entries until
+    // 2026-09-25. Knowledge is now real — smart-profile's /smart-profile/
+    // knowledge (sources + what VaNi learned, by kind). A graph explorer is
+    // still not being built; the old paths redirect (next.config.ts).
   ],
 };
 export default org;

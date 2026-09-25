@@ -372,6 +372,25 @@ modes. Approve, then integration begins.
 
 ## 4b. Integration log
 
+- **2026-09-25 (third pass)** — Charan: "is there any issue in knowledge /
+  knowledge graph UX? is there anything stopping import / import dashboard?
+  these are repeating but you are not building." Two surfaces, both menu
+  items now, both on real backends:
+  - **Knowledge** — `/smart-profile/knowledge` (BRAIN menu, beside Offers).
+    What VaNi has READ (sources, Teach VaNi) and what it KNOWS — every
+    `gt_kg_nodes` row by kind, with the source it was read from, via the new
+    `ingestion-skill.knowledge` (VaNiGTM, with three db tests). A list, not a
+    graph explorer: that ruling stands. The org catalog's planned "Knowledge"
+    and "Knowledge Graph" entries are gone; `/knowledge` and `/kg` redirect.
+  - **Import a list** — `/agents/gtm/import` (GTM workspace, beside Build the
+    audience). Upload → mapping → land, with person slots
+    (`person.N.full_name / job_title / email / mobile / linkedin_url`) so a
+    directory with representatives lands companies AND people; past loads
+    with held rows (per-field decision) and failed rows (each with the
+    reason and the row as the file had it). Station 2 of G1 keeps the same
+    box and links here. Demo data stays out (rule 9d).
+  Still gated on the VaNiGTM deploy and the nginx `/api/v1/etl/` location.
+
 - **2026-09-25 (later)** — Charan: "knowledge still blank · import screens not
   visible · from where does the user pick data and create research · where
   does the user see the list imported". Four answers, all code:

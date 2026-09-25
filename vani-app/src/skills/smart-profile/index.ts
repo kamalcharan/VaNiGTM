@@ -36,6 +36,17 @@ const smartProfile: SkillModule = {
       status: 'live',
       summary: 'What you sell, in the shape agents score against. VaNi drafts; you confirm.',
     },
+    // The BRAIN's memory, checkable: what VaNi has read and what it learned.
+    // A list, not a graph explorer — that stays off the roadmap.
+    {
+      id: 'knowledge',
+      label: 'Knowledge',
+      href: '/smart-profile/knowledge',
+      group: 'organization',
+      icon: '◫',
+      status: 'live',
+      summary: 'What VaNi has read, and what it learned from it — by kind, with the source. Teach it more here.',
+    },
   ],
 };
 
