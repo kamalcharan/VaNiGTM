@@ -1147,6 +1147,12 @@ stages, held with no company anchor, never dropped. The list is title-sliced
 list; "current" is not — the headline decides, and it disagrees with the
 column ~10% of the time. **Ask the vendor to keep the profile URL in the
 export**: it is the only stable person key; name + company is not one.
+**The matcher is built and measured** (`src/etl/company-matcher.ts`, 11
+tests): on the 100-person sample, code resolves 61 of 68 reconcilable rows
+with 0 wrong, 1 gap, 6 none. The whole ICP structure — people table, link
+table, a generic `gt_cleanup_gap` register that is Haiku's ONLY work queue,
+personas, suppression — is PROPOSED in
+`documents/design-notes-icp-data-structure.md` and waits on approval.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
