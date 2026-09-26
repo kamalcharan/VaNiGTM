@@ -38,6 +38,14 @@ export interface SkillRoute {
   badge?: string;
   /** Agent role codes required to see this. Empty means any member. */
   roles?: string[];
+  /**
+   * Only an admin tenant (vn_tenants.is_admin) sees this route. Logged
+   * platform change, 2026-09-26: the common pool is cross-tenant data that
+   * only Vikuna's own tenant may read or feed, and a destination the server
+   * refuses with a 403 should not sit in everyone's sidebar. The shell that
+   * renders a catalog filters on it; the server still gates every call.
+   */
+  adminOnly?: boolean;
   /** Shown on the not-yet screen so a planned route still explains itself. */
   summary?: string;
 }

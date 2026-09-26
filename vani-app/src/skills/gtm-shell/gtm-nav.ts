@@ -25,7 +25,13 @@ const gtmWorkspace: SkillModule = {
     { id: 'gtm-audience', label: 'Build the audience',   href: '/agents/gtm/audience', group: 'workspace',    icon: '◎', status: 'live',
       summary: 'Hot list → find → qualify → people. A list worth a message, in about ten minutes.' },
     { id: 'gtm-import',   label: 'Import a list',        href: '/agents/gtm/import',   group: 'workspace',    icon: '⤓', status: 'live',
-      summary: 'Bring a spreadsheet of companies and people. Mapped before anything lands; clashes held for your decision; every past load with its held and failed rows.' },
+      summary: 'Say what the file is to you, upload it, confirm what VaNi found and the mapping, and it lands. Clashes are held for your decision.' },
+    { id: 'gtm-imports',  label: 'Imports',              href: '/agents/gtm/imports',  group: 'workspace',    icon: '▤', status: 'live',
+      summary: 'Every import, row by row: what landed, what was already here, what needs your call, what failed and why. Reprocess, retry, or clear staging. A reference surface.' },
+    // Cross-tenant data, admin only: the sidebar entry is filtered by the
+    // shell and the server refuses the call for anyone else.
+    { id: 'gtm-pool',     label: 'Common pool',          href: '/agents/gtm/pool',     group: 'workspace',    icon: '⛁', status: 'live', adminOnly: true,
+      summary: 'The shared directory data every tenant draws on — one row per record per delivery, never merged silently. Vikuna feeds it; tenants read it through the hot list.' },
     { id: 'gtm-motion',   label: 'Put them in motion',   href: '/agents/gtm/motion',   group: 'workspace',    icon: '➤', status: 'live',
       summary: 'Segment → story → cadence → send. Sending stays locked until a consent model exists.' },
     { id: 'gtm-companies', label: 'Companies',           href: '/agents/gtm/companies', group: 'workspace',   icon: '▣', status: 'live',

@@ -64,6 +64,12 @@ export interface VaniTenant {
    * runner corrects itself against the lane the moment it loads.
    */
   onboarding_complete?: boolean;
+  /**
+   * vn_tenants.is_admin, from /api/v1/auth/me. An admin tenant is Vikuna
+   * itself: it may feed the common pool and read it. The server re-checks
+   * the JWT on every such call; this only decides what the console offers.
+   */
+  is_admin?: boolean;
 }
 
 interface MeResponse {

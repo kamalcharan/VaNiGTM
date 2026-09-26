@@ -79,9 +79,40 @@ const PLATFORM_ROUTES: Record<string, (params: Record<string, unknown>) => Platf
     path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/process`,
   }),
   'etl.sessions': () => ({ method: 'GET', path: '/api/v1/etl/sessions?type=company' }),
+  'etl.status': (p) => ({
+    method: 'GET',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/status`,
+  }),
   'etl.records': (p) => ({
     method: 'GET',
-    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/records?status=${encodeURIComponent(String(p.status ?? 'all'))}&limit=${Number(p.limit ?? 50)}`,
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/records?status=${encodeURIComponent(String(p.status ?? 'all'))}&limit=${Number(p.limit ?? 50)}&page=${Number(p.page ?? 1)}`,
+  }),
+  // Tags describe a DELIVERY (gt_load_tags) and are picked at import time; a
+  // platform tag (is_platform) is visible to every tenant, so the server
+  // only lets an admin tenant create one.
+  'etl.tags': () => ({ method: 'GET', path: '/api/v1/etl/tags' }),
+  'etl.create_tag': (p) => ({
+    method: 'POST',
+    path: '/api/v1/etl/tags',
+    body: { label: p.label, is_platform: p.is_platform === true },
+  }),
+  // The dashboard's maintenance verbs, all on an owned session.
+  'etl.reprocess': (p) => ({
+    method: 'POST',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/reprocess`,
+  }),
+  'etl.patch_record': (p) => ({
+    method: 'PATCH',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/records/${encodeURIComponent(String(p.record_id))}`,
+    body: { mapped_data: p.mapped_data },
+  }),
+  'etl.sync_stats': (p) => ({
+    method: 'POST',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/sync-stats`,
+  }),
+  'etl.delete_staging': (p) => ({
+    method: 'DELETE',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/staging`,
   }),
   'etl.resolve_conflicts': (p) => ({
     method: 'POST',

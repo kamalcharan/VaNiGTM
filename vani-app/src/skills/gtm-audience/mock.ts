@@ -13,8 +13,8 @@
 import { GTM_JOURNEY_STATE } from '@/skills/gtm-shell/mock';
 import {
   BRIEF_FIXTURES, BUDGET_TOTAL, HOT_ROWS, UPLOAD_RESULT, UPLOAD_ROWS,
-  type BatchStatus, type Brief, type BriefContacts, type BriefList, type Budget, type Decision, type HotRow, type ImportSession,
-  type LandingResult, type Promoted, type RecordRow, type ResearchQueued, type StagedRow,
+  type BatchStatus, type Brief, type BriefContacts, type BriefList, type Budget, type Decision, type HotRow, type ImportSession, type ImportTag,
+  type LandingResult, type Promoted, type RecordRow, type ResearchQueued, type SourceLoad, type StagedRow,
 } from './mock-data';
 
 export type AudienceStep = 'bring' | 'find' | 'qualify' | 'people';
@@ -31,24 +31,59 @@ export interface Known { id: string; name: string; ref: string; city: string; si
 const KNOWN = new Map<string, Known>();
 export const knownCompany = (id: string) => KNOWN.get(id);
 
-/** One held row per mock import: Sunridge is already here with a different
- *  city and no website; the file proposes both. */
-const HELD: StagedRow[] = [];
-/** One failed row per mock import: no name anywhere on the row. */
-const FAILED: StagedRow[] = [];
-function seedHeld() {
-  HELD.length = 0;
-  FAILED.length = 0;
-  FAILED.push({ id: 'st-9', row_number: 9, processing_status: 'failed', campaign_locked: false, conflict_kind: null, field_diff: null,
-    mapped_data: { city: 'Salem', website: 'valley-care.example' }, raw_data: { 'Hospital Name': '', City: 'Salem', Website: 'valley-care.example', 'Beds (approx)': 90 },
-    error_messages: ['company.name is required — the column mapped to it was empty on this row'] });
-  HELD.push({ id: 'st-7', row_number: 7, processing_status: 'conflict', campaign_locked: false, conflict_kind: 'existing', error_messages: null,
-    mapped_data: { name: 'Sunridge Multispeciality Hospital', city: 'Pune (Hinjewadi)', website: 'sunridge-hospital.example' },
-    field_diff: {
-      city: { existing: 'Pune', incoming: 'Pune (Hinjewadi)', recommended: 'keep', reason: 'What you already hold is at least as fresh (0.81 vs 0.74).' },
-      website: { existing: null, incoming: 'sunridge-hospital.example', recommended: 'take', reason: 'Filling a hole loses nothing.' },
-    } });
+/**
+ * Staging, per session — what the dashboard reads row by row. One mock import
+ * yields: two rows added (Lotus Valley, Cedar Ridge), two already held
+ * (Sunridge, Harbour — the pool had them), one HELD because it would change
+ * Sunridge's city and website, and one FAILED because the name column was
+ * empty on that row. Same shapes the real ki_import_staging rows carry.
+ */
+const STAGING = new Map<string, StagedRow[]>();
+const HELD_ROW = (): StagedRow => ({ id: 'st-7', row_number: 7, processing_status: 'conflict', campaign_locked: false, conflict_kind: 'existing', error_messages: null,
+  mapped_data: { company: { name: 'Sunridge Multispeciality Hospital', city: 'Pune (Hinjewadi)', website: 'sunridge-hospital.example' }, people: [] },
+  raw_data: { 'Hospital Name': 'Sunridge Multispeciality Hospital', City: 'Pune (Hinjewadi)', Website: 'sunridge-hospital.example', 'Beds (approx)': 420 },
+  field_diff: { city: { existing: 'Pune', incoming: 'Pune (Hinjewadi)', recommended: 'keep', reason: 'Yours is 21 days fresher and the file adds a district, not a new city.' },
+    website: { existing: null, incoming: 'sunridge-hospital.example', recommended: 'take', reason: 'You hold nothing; the file supplies a value that validated.' } } });
+const FAILED_ROW = (): StagedRow => ({ id: 'st-9', row_number: 9, processing_status: 'failed', campaign_locked: false, conflict_kind: null, field_diff: null,
+  mapped_data: { company: { city: 'Salem', website: 'valley-care.example' }, people: [] }, raw_data: { 'Hospital Name': '', City: 'Salem', Website: 'valley-care.example', 'Beds (approx)': 90 },
+  error_messages: ['company.name is required — the column mapped to it was empty on this row'] });
+function seedStaging(sessionId: string) {
+  const rows: StagedRow[] = [
+    { id: `${sessionId}-1`, row_number: 1, processing_status: 'success', campaign_locked: false, conflict_kind: null, field_diff: null, error_messages: null, created_record_id: 'lotus', processed_at: new Date().toISOString(),
+      mapped_data: { company: { name: 'Lotus Valley Hospital', city: 'Coimbatore', employees_band: '310' }, people: [{ full_name: 'R. Iyer', job_title: 'Head of Procurement' }] }, raw_data: { 'Hospital Name': 'Lotus Valley Hospital', City: 'Coimbatore', Website: '', 'Beds (approx)': 310 } },
+    { id: `${sessionId}-2`, row_number: 2, processing_status: 'success', campaign_locked: false, conflict_kind: null, field_diff: null, error_messages: null, created_record_id: 'cedar', processed_at: new Date().toISOString(),
+      mapped_data: { company: { name: 'Cedar Ridge Medical College', city: 'Mysuru', website: 'cedarridge.example', domain_normalized: 'cedarridge.example', employees_band: '700' }, people: [] }, raw_data: { 'Hospital Name': 'Cedar Ridge Medical College', City: 'Mysuru', Website: 'cedarridge.example', 'Beds (approx)': 700 } },
+    { id: `${sessionId}-3`, row_number: 3, processing_status: 'duplicate', campaign_locked: false, conflict_kind: null, field_diff: null, error_messages: null, processed_at: new Date().toISOString(),
+      mapped_data: { company: { name: 'Harbour View Hospital', city: 'Visakhapatnam' }, people: [] }, raw_data: { 'Hospital Name': 'Harbour View Hospital', City: 'Visakhapatnam', Website: 'harbour.example', 'Beds (approx)': 250 } },
+    HELD_ROW(), FAILED_ROW(),
+  ];
+  STAGING.set(sessionId, rows);
+  return rows;
 }
+const heldOf = (sid: string) => (STAGING.get(sid) ?? []).filter((r) => r.processing_status === 'conflict');
+function recount(ss: ImportSession) {
+  const rows = STAGING.get(String(ss.id)) ?? [];
+  ss.successful_records = rows.filter((r) => r.processing_status === 'success').length;
+  ss.duplicate_records = rows.filter((r) => r.processing_status === 'duplicate').length;
+  ss.failed_records = rows.filter((r) => r.processing_status === 'failed').length;
+  ss.processed_records = rows.filter((r) => r.processing_status !== 'pending').length;
+  const held = rows.filter((r) => r.processing_status === 'conflict').length;
+  const pending = rows.filter((r) => r.processing_status === 'pending').length;
+  ss.status = pending ? 'staged' : held ? 'needs_review' : ss.failed_records ? 'completed_with_errors' : 'completed';
+}
+
+/** Tags, as the real GET /etl/tags returns them: platform ones first. */
+const TAGS: ImportTag[] = [
+  { id: 11, label: 'FTCCI Telangana', slug: 'ftcci-telangana', is_platform: true },
+  { id: 21, label: 'Lead data', slug: 'lead-data', is_platform: false },
+  { id: 22, label: 'Pilot Pharma', slug: 'pilot-pharma', is_platform: false },
+];
+
+/** The pool's deliveries — what an admin sees on /agents/gtm/pool. */
+const POOL_LOADS: SourceLoad[] = [
+  { id: '1', label: 'Deccan hospital directory · 2026', region: 'Telangana', state_code: 'TS', as_of: '2026-03-31', row_count: 6, status: 'active', loaded_at: '2026-09-02T09:14:00Z', is_pool: true, source_code: 'directory', source_name: 'Directory', source_kind: 'directory', tier: 50, records: 4, with_domain: 4, duplicates: 0, avg_completeness: '0.780', avg_validity: '1.000', tags: [{ id: 11, label: 'FTCCI Telangana', is_platform: true }] },
+  { id: '2', label: 'Western supplier list', region: 'Karnataka', state_code: 'KA', as_of: null, row_count: 3, status: 'active', loaded_at: '2026-08-21T12:40:00Z', is_pool: true, source_code: 'directory', source_name: 'Directory', source_kind: 'directory', tier: 50, records: 2, with_domain: 2, duplicates: 0, avg_completeness: '0.610', avg_validity: '0.900', tags: [] },
+];
 
 interface Ruling { decision: Decision; note: string | null; at: string; }
 
@@ -159,6 +194,18 @@ export const AUDIENCE_MOCK_READS: Record<string, (p: Record<string, unknown>) =>
   'prospect-skill.get_records': (p) => {
     const q = String(p.search ?? '').trim().toLowerCase();
     const research = String(p.research ?? '');
+    if (p.scope === 'pool') {
+      // The pool: one row per record per delivery, no ref, no research.
+      let pr = HOT_ROWS.filter((h) => h.source === 'pool').map((h, i) => ({ ...toRecord(h), ref: `D-${100 + i}`, relationship: null, research_status: null, source_label: i < 4 ? 'Deccan hospital directory · 2026' : 'Western supplier list', tags: i < 4 ? [{ id: 11, label: 'FTCCI Telangana', inherited: true }] : [] }));
+      if (q) pr = pr.filter((x) => [x.name, x.city, x.domain_normalized, x.industry_raw].some((v) => v?.toLowerCase().includes(q)));
+      if (p.domain === 'none') pr = pr.filter((x) => !x.domain_normalized); if (p.domain === 'has') pr = pr.filter((x) => !!x.domain_normalized);
+      if (p.only_duplicates) pr = pr.filter((x) => x.duplicate);
+      if (p.industry) pr = pr.filter((x) => x.industry_raw === p.industry);
+      const total = HOT_ROWS.filter((h) => h.source === 'pool').length;
+      return { scope: 'pool', records: pr, total: pr.length, page: 1, limit: 50, recipe: 'record-list',
+        stats: { total, loads: POOL_LOADS.length, customers: 0, resolved: 0, avg_completeness: '0.724', avg_validity: '0.967', with_rejected_fields: 1, with_domain: total, undated: 2, duplicates: 0, inactive: 0 },
+        facets: { industries: [{ value: 'Hospitals', count: total }], tags: [{ id: 11, label: 'FTCCI Telangana', count: 4 }], clusters: [], segments: [], research: {}, with_domain: total, without_domain: 0 } };
+    }
     let r = records();
     if (q) r = r.filter((x) => [x.name, x.city, x.domain_normalized, x.industry_raw].some((v) => v?.toLowerCase().includes(q)));
     if (research === 'none') r = r.filter((x) => !x.research_status);
@@ -176,11 +223,35 @@ export const AUDIENCE_MOCK_READS: Record<string, (p: Record<string, unknown>) =>
     return { prospect: { id: rec.id, ref: rec.ref, name: rec.name, domain_normalized: rec.domain_normalized, website: rec.domain_normalized ? `https://${rec.domain_normalized}` : null, email: null, phone: null, city: rec.city, state_code: null, country: 'IN', industry_raw: rec.industry_raw, employees_band: rec.employees_band, relationship: rec.relationship, source: h.source === 'pool' ? 'pool' : 'upload', is_active: true, created_at: new Date().toISOString(), load_label: rec.source_label, load_as_of: null, source_code: h.source === 'pool' ? 'DIRECTORY' : null },
       people, tags: [], brief: b, offers: [{ offer_key: 'contract-audit', name: 'Contract audit', commitment: 'entry' }, { offer_key: 'ledgerline-platform', name: 'Ledgerline platform', commitment: 'project' }], source_row: h.source === 'mine' ? { 'Hospital Name': h.name, City: h.city, Website: rec.domain_normalized ?? '', 'Beds (approx)': h.size } : {}, recipe: 'prospect-profile' };
   },
-  'etl.headers': () => ({ file_id: 'mock-file', filename: UPLOAD_RESULT.file, headers: ['Hospital Name', 'City', 'Website', 'Beds (approx)'],
-    sample_rows: [{ 'Hospital Name': 'Lotus Valley Hospital', City: 'Coimbatore', Website: '', 'Beds (approx)': 310 }, { 'Hospital Name': 'Cedar Ridge Medical College', City: 'Mysuru', Website: 'cedarridge.example', 'Beds (approx)': 700 }],
-    total_rows: 4, suggested_mapping: { 'Hospital Name': 'company.name', City: 'company.city', Website: 'company.website', 'Beds (approx)': 'company.employees_band' }, extraction_plan: null }),
+  'etl.headers': () => ({ file_id: 'mock-file', filename: UPLOAD_RESULT.file, headers: ['Hospital Name', 'City', 'Website', 'Beds (approx)', 'Procurement contact'],
+    sample_rows: [{ 'Hospital Name': 'Lotus Valley Hospital', City: 'Coimbatore', Website: '', 'Beds (approx)': 310, 'Procurement contact': 'R. Iyer' }, { 'Hospital Name': 'Cedar Ridge Medical College', City: 'Mysuru', Website: 'cedarridge.example', 'Beds (approx)': 700, 'Procurement contact': '' }],
+    total_rows: UPLOAD_RESULT.rows, suggested_mapping: { 'Hospital Name': 'name', City: 'city', Website: 'website', 'Procurement contact': 'full_name' },
+    // The detector's findings WITH reasons, so the person can disagree.
+    extraction_plan: { confidence: 'high', notes: ['One column reads as a person at the company; it lands in People, attached to the row\'s company.'],
+      entities: [{ kind: 'company', columns: { 'Hospital Name': 'name', City: 'city', Website: 'website' }, reasons: ['"Hospital Name" holds organisation names; "Website" carries hostnames on 3 of 4 rows.'], per_row: 1 },
+        { kind: 'person', columns: { 'Procurement contact': 'full_name' }, reasons: ['"Procurement contact" holds personal names on 2 of 4 rows.'], per_row: 1 }],
+      unresolved_columns: [{ header: 'Beds (approx)', sample: '310', reason: 'A number with no header VaNi recognises — could be employees, could be capacity.' }] },
+    row_estimates: { company: UPLOAD_RESULT.rows, person: 2 } }),
+  'etl.tags': () => ({ tags: [...TAGS] }),
   'etl.sessions': () => ({ sessions: S.sessions }),
-  'etl.records': (p) => { const st = String(p.status ?? 'all'); const rows = st === 'conflict' ? HELD : st === 'failed' ? FAILED : [...HELD, ...FAILED]; return { records: rows, total: rows.length, page: 1, limit: 100, total_pages: 1 }; },
+  'etl.status': (p) => { const ss = S.sessions.find((x) => String(x.id) === String(p.session_id)); if (!ss) throw new Error('Session not found');
+    return { session: ss, errors: (STAGING.get(String(ss.id)) ?? []).filter((r) => r.processing_status === 'failed').map((r) => ({ row_number: r.row_number, error_messages: r.error_messages ?? [], mapped_data: r.mapped_data })) }; },
+  'etl.records': (p) => {
+    const st = String(p.status ?? 'all'); const all = STAGING.get(String(p.session_id)) ?? [];
+    if (!S.sessions.some((x) => String(x.id) === String(p.session_id))) throw new Error('Session not found');
+    const rows = st === 'all' ? all : all.filter((r) => r.processing_status === st);
+    const limit = Number(p.limit ?? 50), page = Math.max(1, Number(p.page ?? 1));
+    return { records: rows.slice((page - 1) * limit, page * limit), total: rows.length, page, limit, total_pages: Math.max(1, Math.ceil(rows.length / limit)) };
+  },
+  // REAL on the API: the deliveries behind either surface.
+  'prospect-skill.get_loads': (p) => {
+    const scope = p.scope === 'pool' ? 'pool' : 'mine';
+    const loads: SourceLoad[] = scope === 'pool' ? POOL_LOADS : S.sessions.filter((x) => x.destination !== 'universe_companies').map((x) => ({
+      id: String(x.load_id), label: x.original_filename ?? `import #${x.tenant_seq}`, region: null, state_code: null, as_of: x.load_as_of ?? null, row_count: x.total_records, status: 'active', loaded_at: x.created_at, is_pool: false,
+      source_code: 'upload', source_name: 'Upload', source_kind: 'upload', tier: 50, records: x.successful_records, with_domain: Math.min(x.successful_records, 1), duplicates: 0, avg_completeness: '0.720', avg_validity: '1.000', tags: TAGS.filter((t) => (x.tag_ids ?? []).includes(t.id)).map((t) => ({ id: t.id, label: t.label, is_platform: t.is_platform })) }));
+    const active = loads.filter((l) => l.status === 'active').length;
+    return { scope, loads, total: loads.length, detail: loads.length ? `${loads.length} ${loads.length === 1 ? 'delivery' : 'deliveries'}, ${active} active.` : scope === 'pool' ? 'The pool has had no deliveries yet. An admin tenant feeds it by importing a directory as a common-pool dataset.' : 'Nothing imported yet. Every list you bring lands as a delivery here.', recipe: 'load-list' };
+  },
   // REAL on the API: research-skill, in its own shapes.
   'research-skill.get_budget': (): Budget => ({ limit: BUDGET_TOTAL * 14_000, used: S.cohort.length * 14_000, remaining: (BUDGET_TOTAL - S.cohort.length) * 14_000, capped: true, tracked: true, cost_per_company: 14_000, affordable_companies: BUDGET_TOTAL - S.cohort.length }),
   'research-skill.batch_status': () => batchStatus(),
@@ -205,20 +276,66 @@ export const AUDIENCE_MOCK_WRITES: Record<string, (p: Record<string, unknown>) =
   'gtm.advance': (p) => { S.reached.add(p.to as AudienceStep | 'done'); return state(); },
   'gtm.restart': () => { S.reached = new Set(['bring']); return state(); },
   // The ETL steps, REAL on the API (mock mode only).
-  'etl.upload': (p) => ({ file_id: 'mock-file', filename: String(p.filename ?? UPLOAD_RESULT.file), size: 18_204, import_type: 'company' }),
-  'etl.create_session': () => ({ session_id: 'mock-session', status: 'staged', total_records: UPLOAD_RESULT.rows, import_type: 'company' }),
-  'etl.process': (): LandingResult => {
-    S.uploaded = true; seedHeld();
+  'etl.upload': (p) => {
+    // The same bytes twice is refused, as the API does (409 ALREADY_IMPORTED).
+    if (/again|dup/i.test(String(p.filename ?? ''))) throw new Error('This exact file has already been imported as "hospitals-q3.xlsx". Nothing in it has changed, so there is nothing new to import. Upload an updated file, or retire the earlier load if you need to import it again.');
+    return { file_id: 'mock-file', filename: String(p.filename ?? UPLOAD_RESULT.file), size: 18_204, import_type: 'company' };
+  },
+  'etl.create_tag': (p) => {
+    const label = String(p.label ?? '').trim(); if (!label) throw new Error('label is required');
+    const ex = TAGS.find((t) => t.label.toLowerCase() === label.toLowerCase()); if (ex) return { tag: ex, existing: true };
+    const t: ImportTag = { id: 100 + TAGS.length, label, slug: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'), is_platform: p.is_platform === true }; TAGS.push(t); return { tag: t };
+  },
+  'etl.create_session': (p) => {
     const id = `mock-session-${S.sessions.length + 1}`;
-    S.sessions.unshift({ id, import_type: 'company', status: 'needs_review', total_records: UPLOAD_RESULT.rows, processed_records: UPLOAD_RESULT.rows, successful_records: UPLOAD_RESULT.added, failed_records: 1, duplicate_records: UPLOAD_RESULT.merged - 1, orphan_records: 0, original_filename: UPLOAD_RESULT.file, created_at: new Date().toISOString(), tenant_seq: S.sessions.length + 1 });
-    return { session_id: id, status: 'needs_review', processed: UPLOAD_RESULT.rows, successful: UPLOAD_RESULT.added, failed: 1, duplicate: UPLOAD_RESULT.merged - 1, conflict: 1, campaign_locked: 0, orphans: 0, duration_ms: 412 };
+    const pool = p.destination === 'universe_companies' || p.relationship === 'dataset';
+    S.sessions.unshift({ id, import_type: 'company', status: 'staged', total_records: UPLOAD_RESULT.rows + 1, processed_records: 0, successful_records: 0, failed_records: 0, duplicate_records: 0, orphan_records: 0,
+      original_filename: String(p.load_label ?? UPLOAD_RESULT.file), created_at: new Date().toISOString(), tenant_seq: S.sessions.length + 1, destination: pool ? 'universe_companies' : 'prospects', relationship: String(p.relationship ?? 'contacts'),
+      load_id: 500 + S.sessions.length, load_as_of: (p.load_as_of as string | null) ?? null, tag_ids: (p.tag_ids as number[]) ?? [] });
+    return { session_id: id, status: 'staged', total_records: UPLOAD_RESULT.rows + 1, import_type: 'company' };
+  },
+  'etl.process': (p): LandingResult => {
+    const ss = S.sessions.find((x) => String(x.id) === String(p.session_id)); if (!ss) throw new Error('Session not found');
+    if (!['staged', 'completed_with_errors', 'needs_review'].includes(ss.status)) throw new Error(`Session is "${ss.status}", expected one of staged, completed_with_errors, needs_review`);
+    const first = !STAGING.has(String(ss.id));
+    const rows = first ? seedStaging(String(ss.id)) : STAGING.get(String(ss.id))!;
+    // A re-run lands whatever is pending (a retried or edited row); the failed row fails again unless it was edited to carry a name.
+    let landed = 0;
+    for (const r of rows) if (r.processing_status === 'pending') { const co = (r.mapped_data.company as Record<string, unknown> | undefined) ?? {}; if (co.name) { r.processing_status = 'success'; r.error_messages = null; landed++; } else { r.processing_status = 'failed'; r.error_messages = ['company.name is required — the column mapped to it was empty on this row']; } r.processed_at = new Date().toISOString(); }
+    if (first && ss.destination !== 'universe_companies') S.uploaded = true;
+    if (first && ss.destination === 'universe_companies') POOL_LOADS.unshift({ id: String(ss.load_id), label: ss.original_filename ?? 'delivery', region: null, state_code: null, as_of: ss.load_as_of ?? null, row_count: ss.total_records, status: 'active', loaded_at: ss.created_at, is_pool: true, source_code: 'upload', source_name: 'Upload', source_kind: 'upload', tier: 50, records: 2, with_domain: 1, duplicates: 0, avg_completeness: '0.700', avg_validity: '1.000', tags: TAGS.filter((t) => (ss.tag_ids ?? []).includes(t.id)).map((t) => ({ id: t.id, label: t.label, is_platform: t.is_platform })) });
+    recount(ss); ss.processing_completed_at = new Date().toISOString();
+    const succ = first ? rows.filter((r) => r.processing_status === 'success').length : landed;
+    return { session_id: ss.id, status: ss.status, processed: rows.length, successful: succ, failed: ss.failed_records, duplicate: first ? ss.duplicate_records : 0, conflict: first ? heldOf(String(ss.id)).length : 0, campaign_locked: 0, orphans: 0, duration_ms: 412,
+      landed: { companies: succ, people: first ? 1 : 0, channels: 0 } };
   },
   'etl.resolve_conflicts': (p) => {
-    const before = HELD.length;
-    if (p.accept_recommended) HELD.length = 0;
-    else for (const d of (p.decisions as { staging_id: string }[]) ?? []) { const i = HELD.findIndex((h) => String(h.id) === String(d.staging_id)); if (i >= 0) HELD.splice(i, 1); }
-    const s = S.sessions[0]; if (s && HELD.length === 0) s.status = 'completed';
-    return { applied: before - HELD.length, skipped: 0, conflicts_remaining: HELD.length };
+    const ss = S.sessions.find((x) => String(x.id) === String(p.session_id)); if (!ss) throw new Error('Session not found');
+    const rows = STAGING.get(String(ss.id)) ?? []; const before = heldOf(String(ss.id)).length;
+    const settle = (r: StagedRow) => { r.processing_status = 'success'; r.field_diff = null; r.processed_at = new Date().toISOString(); };
+    if (p.accept_recommended) rows.filter((r) => r.processing_status === 'conflict' && !r.campaign_locked).forEach(settle);
+    else for (const d of (p.decisions as { staging_id: string }[]) ?? []) { const r = rows.find((h) => String(h.id) === String(d.staging_id) && h.processing_status === 'conflict'); if (r) settle(r); }
+    recount(ss);
+    return { applied: before - heldOf(String(ss.id)).length, skipped: 0, conflicts_remaining: heldOf(String(ss.id)).length };
+  },
+  'etl.reprocess': (p) => {
+    const ss = S.sessions.find((x) => String(x.id) === String(p.session_id)); if (!ss) throw new Error('Session not found');
+    const rows = (STAGING.get(String(ss.id)) ?? []).filter((r) => r.processing_status === 'failed');
+    rows.forEach((r) => { r.processing_status = 'pending'; r.error_messages = null; r.processed_at = null; });
+    if (rows.length) { ss.status = 'staged'; ss.failed_records = 0; }
+    return rows.length ? { message: `Reset ${rows.length} failed record(s) to pending.`, reprocessed: rows.length } : { message: 'No failed records to reprocess', reprocessed: 0 };
+  },
+  'etl.patch_record': (p) => {
+    const ss = S.sessions.find((x) => String(x.id) === String(p.session_id)); if (!ss) throw new Error('Session not found');
+    const r = (STAGING.get(String(ss.id)) ?? []).find((x) => String(x.id) === String(p.record_id)); if (!r) throw new Error('Record not found');
+    r.mapped_data = (p.mapped_data as Record<string, unknown>) ?? r.mapped_data; r.processing_status = 'pending'; r.error_messages = null; r.processed_at = null;
+    ss.status = 'staged'; recount(ss); return { record: r };
+  },
+  'etl.sync_stats': (p) => { const ss = S.sessions.find((x) => String(x.id) === String(p.session_id)); if (!ss) throw new Error('Session not found'); recount(ss); return { session: ss }; },
+  'etl.delete_staging': (p) => {
+    const ss = S.sessions.find((x) => String(x.id) === String(p.session_id)); if (!ss) throw new Error('Session not found');
+    if (ss.status === 'processing') throw new Error('Cannot delete staging for a session that is still processing');
+    const n = (STAGING.get(String(ss.id)) ?? []).length; STAGING.set(String(ss.id), []); return { message: 'Staging data deleted', deleted_records: n };
   },
   'research-skill.start_research': (p): ResearchQueued => {
     const ids = ((p.prospect_ids as (string | number)[]) ?? []).map(String);

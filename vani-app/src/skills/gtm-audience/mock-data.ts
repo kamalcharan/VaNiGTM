@@ -67,9 +67,66 @@ export function toHotRow(r: RecordRow): HotRow {
 }
 
 /** Fields the ETL's company processor accepts as mapping targets. */
-export const COMPANY_FIELDS = ['name', 'website', 'domain', 'email', 'phone', 'city', 'state', 'country', 'industry_raw', 'employees_band'] as const;
-/** Fields the ETL's contact processor accepts per person slot (`person.N.<field>`). */
-export const PERSON_FIELDS = ['full_name', 'job_title', 'email', 'mobile', 'linkedin_url'] as const;
+/**
+ * Every target a column can be assigned to, with the label the person reads.
+ * The value is a QUALIFIED key — `company.city`, `person.2.full_name` — so the
+ * backend needs no knowledge of the file's headers: whatever is picked here is
+ * what staging obeys, and a format nobody anticipated still imports.
+ */
+export const COMPANY_TARGETS: [string, string][] = [
+  ['company.name', 'Company name'],
+  ['company.website', 'Website'],
+  ['company.domain', 'Domain'],
+  ['company.email', 'Company email'],
+  ['company.phone', 'Company phone'],
+  ['company.address_1', 'Address line 1'],
+  ['company.address_2', 'Address line 2'],
+  ['company.city', 'City'],
+  ['company.state', 'State'],
+  ['company.pin', 'PIN / postcode'],
+  ['company.country', 'Country'],
+  ['company.industry_raw', 'Industry'],
+  ['company.employees_band', 'Employees'],
+  ['company.revenue_band', 'Revenue'],
+  ['company.year_founded', 'Year founded'],
+  ['company.linkedin_url', 'Company LinkedIn'],
+  ['company.description', 'Description'],
+];
+/** Per person slot (`person.N.<field>`), up to five representatives per row. */
+export const PERSON_TARGETS: [string, string][] = [
+  ['full_name', 'Name'],
+  ['first_name', 'First name'],
+  ['last_name', 'Last name'],
+  ['job_title', 'Job title'],
+  ['email', 'Email'],
+  ['mobile', 'Phone / mobile'],
+  ['linkedin_url', 'LinkedIn'],
+  ['location', 'Location'],
+];
+export const PERSON_SLOTS = [1, 2, 3, 4, 5] as const;
+
+/**
+ * What the TENANT says a file is to them. No file can state it, so it is
+ * declared and never inferred; it is orthogonal to the ENTITIES (companies,
+ * people) the detector finds in the columns. 'dataset' is the common pool
+ * and needs an admin tenant — the server re-checks the JWT.
+ */
+export type Relationship = 'contacts' | 'customers' | 'dataset';
+
+export interface DetectedEntity {
+  kind: 'company' | 'person';
+  columns: Record<string, string>;
+  reasons: string[];
+  per_row: number;
+}
+
+/** What the detector found in the file — shown with its reasons, so a person can disagree. */
+export interface ExtractionPlan {
+  entities: DetectedEntity[];
+  unresolved_columns: { header: string; sample: string | null; reason: string }[];
+  confidence: 'high' | 'low';
+  notes: string[];
+}
 
 export interface HeadersInfo {
   file_id: number | string;
@@ -78,8 +135,13 @@ export interface HeadersInfo {
   sample_rows: Record<string, unknown>[];
   total_rows: number;
   suggested_mapping: Record<string, string>;
-  extraction_plan: unknown;
+  extraction_plan: ExtractionPlan | null;
+  /** Rows per entity kind the plan expects to yield. */
+  row_estimates?: Record<string, number>;
 }
+
+/** A tag describes a DELIVERY; a platform tag is visible to every tenant. */
+export interface ImportTag { id: number; label: string; slug?: string; is_platform: boolean; }
 
 export interface LandingResult {
   session_id: number | string;
@@ -92,7 +154,32 @@ export interface LandingResult {
   campaign_locked: number;
   orphans: number;
   duration_ms: number;
+  landed?: { companies: number; people: number; channels: number };
 }
+
+/** One delivery (gt_source_loads) — prospect-skill.get_loads. */
+export interface SourceLoad {
+  id: string;
+  label: string;
+  region: string | null;
+  state_code: string | null;
+  as_of: string | null;
+  row_count: number | null;
+  status: 'active' | 'retired' | 'failed' | string;
+  loaded_at: string;
+  is_pool: boolean;
+  source_code: string;
+  source_name: string;
+  source_kind: 'directory' | 'provider' | 'upload' | string;
+  tier: number;
+  records: number;
+  with_domain: number;
+  duplicates: number;
+  avg_completeness: string | number | null;
+  avg_validity: string | number | null;
+  tags: { id: number; label: string; is_platform: boolean }[];
+}
+export interface LoadList { scope: 'mine' | 'pool'; loads: SourceLoad[]; total: number; detail: string; }
 
 export interface HotRow {
   id: string;
@@ -333,6 +420,17 @@ export interface ImportSession {
   original_filename: string | null;
   created_at: string;
   tenant_seq: number;
+  /** Where the company rows went (197) and what the tenant said the file was (200). */
+  destination?: 'prospects' | 'universe_companies' | string | null;
+  relationship?: Relationship | string | null;
+  load_id?: number | string | null;
+  staging_completed_at?: string | null;
+  processing_started_at?: string | null;
+  processing_completed_at?: string | null;
+  error_summary?: string | null;
+  /** Mock-only bookkeeping — the API keeps these on the load, not the session. */
+  load_as_of?: string | null;
+  tag_ids?: number[];
 }
 
 export interface FieldDiff { [field: string]: { existing: unknown; incoming: unknown; recommended: 'take' | 'keep'; reason?: string } }
@@ -342,11 +440,16 @@ export interface StagedRow {
   id: number | string;
   row_number: number;
   processing_status: 'pending' | 'success' | 'failed' | 'duplicate' | 'conflict' | 'orphan' | string;
+  /** { company: {...}, people: [...] } for a GTM import — dotted paths, not a flat row. */
   mapped_data: Record<string, unknown>;
   /** The row exactly as the file had it. */
   raw_data?: Record<string, unknown> | null;
   error_messages: string[] | null;
+  warnings?: string[] | null;
+  created_record_id?: string | null;
+  processed_at?: string | null;
   field_diff: FieldDiff | null;
   campaign_locked: boolean;
   conflict_kind: 'existing' | 'in_file' | null;
 }
+export interface StagedPage { records: StagedRow[]; page: number; limit: number; total: number; total_pages: number; }

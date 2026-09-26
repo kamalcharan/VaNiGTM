@@ -10,13 +10,13 @@
  */
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RequireSession } from '@/platform/shell/RequireSession';
 import { Shell } from '@/platform/shell/Shell';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/platform/feedback';
-import { installSkillTransport } from '@/lib/transport';
+import { installSkillTransport, IS_LIVE } from '@/lib/transport';
 import { GTM_SKILLS } from './gtm-nav';
 import s from './gtm-shell.module.css';
 import { PreviewBadge } from './PreviewBadge';
@@ -30,6 +30,14 @@ export default function GtmShell({ children }: { children: ReactNode }) {
   const [qc] = useState(
     () => new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } }),
   );
+  // Admin-only routes (the common pool) are dropped from the catalog for a
+  // tenant that is not Vikuna's own. In mock mode there is no session, so
+  // everything shows — the mock is for looking at screens.
+  const isAdmin = !IS_LIVE || tenant?.is_admin === true;
+  const skills = useMemo(
+    () => (isAdmin ? GTM_SKILLS : GTM_SKILLS.map((sk) => ({ ...sk, routes: sk.routes.filter((r) => !r.adminOnly) }))),
+    [isAdmin],
+  );
 
   async function handleSignOut() {
     await logout();
@@ -42,7 +50,7 @@ export default function GtmShell({ children }: { children: ReactNode }) {
     <QueryClientProvider client={qc}>
       <RequireSession>
         <Shell
-          skills={GTM_SKILLS}
+          skills={skills}
           org={tenant?.name || 'Vikuna Technologies'}
           slug={tenant?.slug || 'vikuna'}
           onSignOut={handleSignOut}

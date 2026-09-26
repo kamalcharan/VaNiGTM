@@ -15,7 +15,7 @@ import { useAudienceWrites, useHotList } from '../useAudience';
 import type { HotList, HotRow } from '../mock-data';
 import s from '../audience.module.css';
 import { ImportsPanel } from './ImportsPanel';
-import { ImportBox } from './ImportBox';
+import { ImportWizard } from './ImportWizard';
 
 function SourceChip({ src }: { src: HotList['sources'][number] }) {
   const cls = src.state === 'connected' ? (src.id === 'mine' ? s.chipMine : s.chipPool) : src.state === 'not_connected' && src.id === 'pool' ? s.chipBad : '';
@@ -50,7 +50,7 @@ export function BringStep() {
   // The import is NOT inside the hot-list boundary: a hot list that cannot be
   // read must not hide the one road that adds to it. The boundary reports its
   // own failure above; the import box stays usable below it.
-  const importBox = <><ImportBox onLanded={() => void q.refetch()} /><ImportsPanel /><p className={s.hint} style={{ marginTop: 10 }}>The whole import — every past load, held rows, failed rows — is also at <Link href="/agents/gtm/import">Import a list</Link>.</p></>;
+  const importBox = <><div className={s.up}><div className={s.upHead}><b>Add your own list</b><span className={s.hint}>the same import as <Link href="/agents/gtm/import">Import a list</Link>, in place</span></div><div style={{ marginTop: 12 }}><ImportWizard onLanded={() => void q.refetch()} /></div></div><ImportsPanel /><p className={s.hint} style={{ marginTop: 10 }}>Every load row by row — what landed, what was held, what failed — is under <Link href="/agents/gtm/imports">Imports</Link>.</p></>;
   return (
     <div className={s.card}>
       <div className={s.eyebrow}>// BUILD THE AUDIENCE · 1 OF 4</div>

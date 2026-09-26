@@ -32,7 +32,9 @@ const REAL = new Set([
   'prospect-skill.get_records', 'prospect-skill.get_prospect',
   'research-skill.start_research', 'research-skill.batch_status', 'research-skill.get_briefs', 'research-skill.decide_brief',
   'research-skill.get_budget', 'research-skill.get_offers',
+  'prospect-skill.get_loads',
   'etl.upload', 'etl.headers', 'etl.create_session', 'etl.process', 'etl.sessions', 'etl.records', 'etl.resolve_conflicts',
+  'etl.status', 'etl.tags', 'etl.create_tag', 'etl.reprocess', 'etl.patch_record', 'etl.sync_stats', 'etl.delete_staging',
 ]);
 
 export const PREVIEW_FUNCTIONS: Record<string, Handler> = Object.fromEntries(

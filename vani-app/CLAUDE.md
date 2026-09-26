@@ -295,6 +295,14 @@ integration contract.
   use. Approved by Charan; rationale and consumers in
   `docs/gtm-ux-poa.md` §2.4b. Lands in GTM Sprint 2 with Vara's landing moved
   onto it in the same change.
+- **2026-09-26 — `SkillRoute.adminOnly`.** One optional boolean on the route
+  declaration. The common pool is cross-tenant data only Vikuna's own tenant
+  (`vn_tenants.is_admin`) may read or feed, and a destination the server
+  answers with a 403 should not sit in every tenant's sidebar. The shell that
+  renders a catalog filters on it (GtmShell does; the console shell has no
+  admin-only route yet); the server still gates every call. Charan asked for
+  the common pool as an admin surface; this is the smallest platform change
+  that lets a skill declare one.
 
 ---
 
