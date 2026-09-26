@@ -13,6 +13,8 @@ const LINKS: [string, string, string][] = [
 ];
 interface Failover { run_id: string; agent: string; asked_at: string; failover_model: string | null; vps_error: string | null; question: string | null; source: KbSource; }
 const FAILOVERS: Failover[] = [];
+/** A read finished: status, yield and the timestamp the server's trigger would stamp. */
+function finish(src: KbSource, count: number, learned = count) { src.status = 'complete'; src.node_count = count; src.updated_at = new Date().toISOString(); learn(src, learned); }
 /** What a read of a site or a deck yields in mock mode — fictional, Ledgerline. */
 const LEARNED: [string, string, string][] = [
   ['Product', 'Ledgerline', 'Contract software for hospitals: every vendor contract, renewal and SLA in one place.'],
@@ -37,8 +39,15 @@ function learn(src: KbSource, count: number) {
   }
 }
 export const KNOWLEDGE_MOCK_READS: Record<string, (p: Record<string, unknown>) => unknown> = {
-  'llm-provider-skill.pending_failovers': () => ({ runs: FAILOVERS.map(({ source: _s, ...r }) => r),
-    detail: FAILOVERS.length ? `${FAILOVERS.length} run${FAILOVERS.length === 1 ? '' : 's'} waiting on a decision.` : 'Nothing waiting. Either the platform model is answering, or HAIKU_DEFAULT is true and escalation is automatic.' }),
+  'llm-provider-skill.pending_failovers': () => {
+    const runs = FAILOVERS.map(({ source, ...r }) => {
+      const superseded = source.status === 'complete' && source.updated_at > r.asked_at;
+      return { ...r, source: { id: source.id, name: source.display_name, status: source.status, updated_at: source.updated_at }, superseded,
+        superseded_detail: superseded ? `${source.display_name} was read successfully after this run parked. Approving would pay to read it again; declining loses nothing.` : null };
+    });
+    const stale = runs.filter((r) => r.superseded).length;
+    return { runs, detail: runs.length ? `${runs.length} run${runs.length === 1 ? '' : 's'} waiting on a decision.${stale ? ` ${stale} of them ${stale === 1 ? 'is' : 'are'} already done by a later read.` : ''}` : 'Nothing waiting. Either the platform model is answering, or HAIKU_DEFAULT is true and escalation is automatic.' };
+  },
   'ingestion-skill.list_sources': () => ({ sources: [...SOURCES].reverse(), total: SOURCES.length, recipe: 'source-list' }),
   'ingestion-skill.knowledge': (p) => {
     const label = String(p.label ?? '').trim() || null;
@@ -77,14 +86,14 @@ export const KNOWLEDGE_MOCK_WRITES: Record<string, (p: Record<string, unknown>) 
     const i = FAILOVERS.findIndex((f) => f.run_id === String(p.run_id));
     if (i < 0) return { ok: false, reason: 'NOT_WAITING', detail: `Run ${String(p.run_id)} is not waiting on a failover decision.` };
     const [f] = FAILOVERS.splice(i, 1);
-    if (p.approve === true) { f.source.status = 'pending'; f.source.error_msg = null; setTimeout(() => { f.source.status = 'complete'; f.source.node_count = 5; learn(f.source, 5); }, 2500); return { ok: true, approved: true, event_id: `evt-${f.run_id}`, detail: 'Re-emitted with allow_failover: true.' }; }
+    if (p.approve === true) { f.source.status = 'pending'; f.source.error_msg = null; setTimeout(() => finish(f.source, 5), 2500); return { ok: true, approved: true, event_id: `evt-${f.run_id}`, detail: 'Re-emitted with allow_failover: true.' }; }
     return { ok: true, approved: false, detail: 'Run failed with the real cause; nothing spent.' };
   },
   'ingestion-skill.submit_url': (p) => {
     const url = String(p.url ?? '').trim(); if (!url) throw new Error('MISSING_FIELDS: url is required');
     const href = /^https?:\/\//i.test(url) ? url : `https://${url}`; const host = new URL(href).hostname;
     const ex = SOURCES.find((s) => s.source_type === 'url' && s.display_name === host);
-    if (ex) { ex.status = 'pending'; ex.error_msg = null; setTimeout(() => { ex.status = 'complete'; ex.node_count = 7; learn(ex, 7); }, 3000); return { source_id: ex.id, url: href }; }
+    if (ex) { ex.status = 'pending'; ex.error_msg = null; setTimeout(() => finish(ex, 7), 3000); return { source_id: ex.id, url: href }; }
     const s: KbSource = { id: `src-${++n}`, source_type: 'url', display_name: host, url: href, status: 'pending', chunk_count: 0, node_count: 0, error_msg: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
     SOURCES.push(s);
     // A host with "fail" in it rehearses the parked-run path: the platform
@@ -93,13 +102,13 @@ export const KNOWLEDGE_MOCK_WRITES: Record<string, (p: Record<string, unknown>) 
     if (/fail/.test(host)) {
       setTimeout(() => { s.status = 'error'; s.error_msg = 'LLM_FAILOVER_NEEDS_APPROVAL: LLM_VPS_ERROR: the platform LLM returned 500 Internal Server Error — {"error":{"code":500,"message":"Context size has been exceeded.","type":"server_error"}}';
         FAILOVERS.push({ run_id: String(200 + FAILOVERS.length), agent: 'ingestion-skill', asked_at: new Date().toISOString(), failover_model: 'claude-haiku-4-5', vps_error: 'LLM_VPS_ERROR: 500 {"message":"Context size has been exceeded."}', question: `Retry ${host} on claude-haiku-4-5? This spends Vikuna's key.`, source: s }); }, 2500);
-    } else setTimeout(() => { s.status = 'complete'; s.node_count = 7; learn(s, 7); }, 3000);
+    } else setTimeout(() => finish(s, 7), 3000);
     return { source_id: s.id, url: href };
   },
   'ingestion-skill.submit_text': (p) => {
     const text = String(p.text ?? '').trim(); if (text.length < 40) throw new Error('TEXT_TOO_SHORT: Provide at least 40 characters of context');
     const s: KbSource = { id: `src-${++n}`, source_type: 'txt', display_name: String(p.title ?? '').trim() || 'Pasted context', status: 'pending', chunk_count: 0, node_count: 0, error_msg: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    SOURCES.push(s); setTimeout(() => { s.status = 'complete'; s.node_count = 3; learn(s, 8); }, 3000);
+    SOURCES.push(s); setTimeout(() => finish(s, 3, 8), 3000);
     return { source_id: s.id };
   },
   'ingestion-skill.delete_source': (p) => { const i = SOURCES.findIndex((s) => s.id === String(p.source_id)); if (i < 0) throw new Error('SOURCE_NOT_FOUND'); SOURCES.splice(i, 1); return { deleted: true }; },

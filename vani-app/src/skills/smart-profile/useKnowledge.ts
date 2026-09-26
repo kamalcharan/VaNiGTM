@@ -130,6 +130,11 @@ export interface PendingFailover {
   /** The server's own words — "cannot reach" and "context size exceeded" are different outages. */
   vps_error: string | null;
   question: string | null;
+  /** The source this run was reading, when its event named one. */
+  source: { id: string; name: string; status: string; updated_at: string } | null;
+  /** That source completed AFTER this run parked — a later read did the work, so approving pays to redo it. */
+  superseded: boolean;
+  superseded_detail: string | null;
 }
 export interface PendingFailovers { runs: PendingFailover[]; detail: string; }
 

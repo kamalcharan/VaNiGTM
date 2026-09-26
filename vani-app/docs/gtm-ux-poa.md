@@ -372,6 +372,20 @@ modes. Approve, then integration begins.
 
 ## 4b. Integration log
 
+- **2026-09-26 (after the first Haiku read)** — Charan, on the row reading
+  "read · 103 entries · 26-Sep-2026": "instead we can say — smart profile is
+  completed (maybe %ge also) and user can click and check." A finished read
+  now reports what it DID: `Smart Profile updated · 72% complete · 103
+  entries · date · Open the Smart Profile →` (`KnowledgeSection`, the
+  percentage from `useProfileRead`, omitted rather than guessed when the
+  profile read has none). The profile is re-scored by a separate run, so the
+  section re-asks for the score when a read finishes and once more 12s later.
+  Same screenshot, second finding: run 124 sat in "Waiting on your decision"
+  under a source that had since been read successfully. The queue now shows
+  such runs as **already read** and leads with Decline —
+  `pending_failovers` returns `source` + `superseded` (VaNiGTM, four db
+  tests). The mock rehearses it: teach `fail.example`, then Read again.
+
 - **2026-09-25 (third pass)** — Charan: "is there any issue in knowledge /
   knowledge graph UX? is there anything stopping import / import dashboard?
   these are repeating but you are not building." Two surfaces, both menu

@@ -144,7 +144,7 @@ export default function SmartProfileView() {
 
   return (
     <div className={s.page}>
-      <header className={s.head}>
+      <header className={s.head} id="smart-profile-top">
         <span className={s.eyebrow}>Smart Profile</span>
         <h1 className={s.title}>What VaNi knows about you</h1>
         <p className={s.lede}>

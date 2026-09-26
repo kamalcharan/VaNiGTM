@@ -188,6 +188,8 @@
 .rowName { font-size: 0.88rem; color: var(--tx); }
 
 .rowDetail { font-size: 0.78rem; line-height: 1.5; color: var(--tx3); }
+.rowLink { color: var(--gold); text-decoration: none; border-bottom: 1px solid transparent; }
+.rowLink:hover { border-bottom-color: var(--gold); }
 
 .list { margin-top: 12px; }
 

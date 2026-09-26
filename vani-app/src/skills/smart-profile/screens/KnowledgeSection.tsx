@@ -10,12 +10,14 @@
  * The empty state is the first impression for most tenants and carries the
  * action, not a shrug.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import { DataBoundary, SkeletonRows, useToast } from '@/platform/feedback';
 import { formatDate } from '@/lib/format';
 import s from '../smart-profile.module.css';
 import { isReading, useSourcesRead, useTeach, type KbSource } from '../useKnowledge';
+import { useProfileRead } from '../useSmartProfile';
 import { ReadingProgress } from './ReadingProgress';
 
 const KIND: Record<string, string> = {
@@ -24,7 +26,16 @@ const KIND: Record<string, string> = {
 
 const MIN_TEXT = 40; // the server's own floor (TEXT_TOO_SHORT)
 
-function statusOf(src: KbSource): { text: string; tone: 'reading' | 'ok' | 'bad' } {
+/**
+ * A finished read is reported as what it DID — the Smart Profile is built or
+ * updated, and how complete it now is — not as a count of graph entries.
+ * Charan, 2026-09-26: "instead of 'read · 103 entries' say the Smart Profile
+ * is completed, maybe the percentage, and the user can click and check."
+ * The entry count stays, smaller, because it is the honest yield of the page.
+ * `score` is the profile's completion score when the profile read has it;
+ * without it the line still says the profile was updated, never a number.
+ */
+function statusOf(src: KbSource, score: number | undefined): { text: string; tone: 'reading' | 'ok' | 'bad' } {
   if (src.status === 'error') {
     const parked = /LLM_FAILOVER_NEEDS_APPROVAL/.test(src.error_msg ?? '');
     return { text: `failed — ${src.error_msg || 'no reason recorded'}${parked ? ' · waiting on your decision below' : ''}`, tone: 'bad' };
@@ -32,12 +43,31 @@ function statusOf(src: KbSource): { text: string; tone: 'reading' | 'ok' | 'bad'
   if (src.status === 'pending') return { text: 'queued', tone: 'reading' };
   if (src.status === 'processing') return { text: 'reading…', tone: 'reading' };
   const n = src.node_count ?? 0;
-  return { text: n ? `read · ${n} ${n === 1 ? 'entry' : 'entries'}` : 'read · nothing usable found', tone: n ? 'ok' : 'bad' };
+  if (!n) return { text: 'read · nothing usable found', tone: 'bad' };
+  const pct = typeof score === 'number' ? ` · ${Math.round(score)}% complete` : '';
+  return { text: `Smart Profile updated${pct} · ${n} ${n === 1 ? 'entry' : 'entries'}`, tone: 'ok' };
 }
 
 export function KnowledgeSection({ n, compact }: { n?: number; compact?: boolean }) {
   const q = useSourcesRead();
+  const profile = useProfileRead();
+  const score = profile.data?.data?.completion_score;
   const { submitUrl, submitText, remove, isBusy } = useTeach();
+  // When the last read finishes, the profile is re-scored by a SEPARATE run
+  // (KNOWLEDGE_UPDATED → profile recalc), so the score is asked for again at
+  // once and once more after it has had time to land. Without this the row
+  // would say "updated" beside a number from before the read.
+  const qc = useQueryClient();
+  const reading = !!q.data?.data?.some(isReading);
+  const wasReading = useRef(false);
+  useEffect(() => {
+    const finished = wasReading.current && !reading;
+    wasReading.current = reading;
+    if (!finished) return;
+    void qc.invalidateQueries({ queryKey: ['smart-profile'] });
+    const t = setTimeout(() => { void qc.invalidateQueries({ queryKey: ['smart-profile'] }); }, 12_000);
+    return () => clearTimeout(t);
+  }, [reading, qc]);
   const { showToast } = useToast();
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<'url' | 'text'>('url');
@@ -142,7 +172,7 @@ export function KnowledgeSection({ n, compact }: { n?: number; compact?: boolean
           {(d: KbSource[]) => (
             <ul className={s.rows}>
               {d.map((src) => {
-                const st = statusOf(src);
+                const st = statusOf(src, score);
                 return (
                   <li key={src.id} className={s.srcRow}>
                     <div className={s.row}>
@@ -152,6 +182,9 @@ export function KnowledgeSection({ n, compact }: { n?: number; compact?: boolean
                       </span>
                       <span className={`${s.rowDetail} ${st.tone === 'bad' ? s.srcBad : st.tone === 'reading' ? s.srcReading : ''}`}>
                         {st.text} · {formatDate(src.updated_at ?? src.created_at)}
+                        {st.tone === 'ok' && (compact
+                          ? <> · <Link href="/smart-profile" className={s.rowLink}>Open the Smart Profile →</Link></>
+                          : <> · <a href="#smart-profile-top" className={s.rowLink}>check the sections above ↑</a></>)}
                       </span>
                     </div>
                     {src.status === 'error' && src.source_type === 'url' && src.url && (

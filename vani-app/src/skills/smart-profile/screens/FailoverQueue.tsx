@@ -14,6 +14,11 @@
  *
  * Rendered only when something is waiting: an empty queue on the Knowledge
  * page is the normal state, not a state to announce.
+ *
+ * A run the server marks SUPERSEDED — its source was read successfully after
+ * it parked — says so, and Decline is the offered answer: approving would pay
+ * to redo work the page above already shows as done. (2026-09-26: run 124
+ * sat under "vikuna.io · read · 103 entries" asking whether to spend money.)
  */
 import { useEffect } from 'react';
 import { formatDateTime } from '@/lib/format';
@@ -47,18 +52,33 @@ export function FailoverQueue({ signal }: { signal: string }) {
       <div className={s.sectionBody}>
         <ul className={s.rows}>
           {runs.map((r) => {
-            const h = hint(r.vps_error);
+            const h = r.superseded ? null : hint(r.vps_error);
+            const btn = { cursor: 'pointer', font: 'inherit', fontSize: 12, padding: '6px 12px' } as const;
             return (
-              <li key={r.run_id} className={s.srcRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+              <li key={r.run_id} className={s.srcRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8, opacity: r.superseded ? 0.75 : 1 }}>
                 <div className={s.row}>
-                  <span className={s.rowName}>run {r.run_id}<span className={s.rowTagMuted}>{r.agent}</span></span>
+                  <span className={s.rowName}>
+                    {r.source ? r.source.name : `run ${r.run_id}`}
+                    <span className={s.rowTagMuted}>{r.source ? `run ${r.run_id} · ${r.agent}` : r.agent}</span>
+                    {r.superseded && <span className={`${u.tag} ${u.tagOk}`} style={{ marginLeft: 8 }}>already read</span>}
+                  </span>
                   <span className={s.rowDetail}>asked {formatDateTime(r.asked_at)}{r.failover_model ? ` · failover to ${r.failover_model}` : ''}</span>
                 </div>
+                {r.superseded && r.superseded_detail && <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--tx2)' }}>{r.superseded_detail}</div>}
                 {r.vps_error && <div className={s.srcBad} style={{ fontSize: 12.5, fontFamily: 'var(--mono)', wordBreak: 'break-word' }}>{r.vps_error}</div>}
                 {h && <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--tx2)' }}>{h}</div>}
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" className={`${u.tag} ${u.tagOk}`} style={{ cursor: 'pointer', font: 'inherit', fontSize: 12, padding: '6px 12px' }} disabled={busy} onClick={() => void resolve(r.run_id, true)}>Approve — retry on {r.failover_model ?? 'the failover model'}</button>
-                  <button type="button" className={`${u.tag} ${u.tagDim}`} style={{ cursor: 'pointer', font: 'inherit', fontSize: 12, padding: '6px 12px' }} disabled={busy} onClick={() => void resolve(r.run_id, false)}>Decline — fail it, spend nothing</button>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {r.superseded ? (
+                    <>
+                      <button type="button" className={`${u.tag} ${u.tagOk}`} style={btn} disabled={busy} onClick={() => void resolve(r.run_id, false)}>Decline — already done, spend nothing</button>
+                      <button type="button" className={`${u.tag} ${u.tagDim}`} style={btn} disabled={busy} onClick={() => void resolve(r.run_id, true)}>Approve anyway — read it again on {r.failover_model ?? 'the failover model'}</button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className={`${u.tag} ${u.tagOk}`} style={btn} disabled={busy} onClick={() => void resolve(r.run_id, true)}>Approve — retry on {r.failover_model ?? 'the failover model'}</button>
+                      <button type="button" className={`${u.tag} ${u.tagDim}`} style={btn} disabled={busy} onClick={() => void resolve(r.run_id, false)}>Decline — fail it, spend nothing</button>
+                    </>
+                  )}
                 </div>
               </li>
             );
