@@ -1026,6 +1026,49 @@ which needs pgvector — the ETL path does not); `npm run db:seed`; set
 `vn_tenants.is_admin = true` on the seeded tenant; run the API with
 `JWT_SECRET` and `TENANT_SECRET_KEY` set; sign in; drive `/api/v1/etl/*`.
 
+### EVERYTHING enters through staging, then the pool (user ruling, 2026-09-26)
+
+Charan: "we put everything in staging — as-is condition — then run the
+cleanup … tomorrow even if we are using apollo or something, everything
+should sit in staging and then moved to pool DB."
+
+So there is ONE road into the common pool, and it has three stops:
+
+```
+source  ──►  STAGING (as delivered, raw kept)  ──►  CLEANUP  ──►  POOL
+file / directory / exhibitor list / Apollo / any provider / any connector
+```
+
+- **Staging always succeeds.** A file with headers nobody recognises, a
+  provider payload, a list with no domains: it is staged as delivered, with
+  `raw_data` intact and a declared kind. Mapping is the FIRST cleanup step,
+  not a gate before staging. The wizard's "map company.name before landing"
+  is a gate on LANDING, never on staging.
+- **A provider pull is a load, and its records are staging rows.** The Apollo
+  connector, when built, writes `gt_source_loads` + `ki_import_staging`
+  exactly as a file upload does. It never writes `gt_universe_company_sources`
+  directly. Same for every connector after it. The pool has exactly one
+  writer: `landing.ts`.
+- **Cleanup is a re-runnable worker job over staged rows**, never code inside
+  the landing: normalise · domain off a corporate email · name-to-domain
+  (SearXNG + LLM check) · liveness · crawl for description and industry ·
+  flag shared identifiers · attach a child file to its parent by name key.
+  Each step's output is a NEW source row under a `cleanup` source with its
+  own tier, so raw stays raw and the merge weighs the two. **Not started:
+  the `cleanup` source puts model-derived text in the pool for the first time
+  and needs Charan's explicit go.**
+- **Why:** staging is the audit trail and the replay point. A bad rule is
+  fixed and re-run over the same rows; a bad delivery is retired at the load.
+  Neither is possible if a connector lands straight into the pool.
+
+Sources on hand and how they fit: FTCCI (chamber directory, landed and
+measured above) · analytica Lab India Hyderabad exhibitor + product lists
+(given by the organiser to members — legitimate; 327 exhibitors, 229 product
+lines on 64 of them, no domain/address/people; a vertical list whose industry
+is the load's default) · the two consumer email lists and the "B2B"
+registrant-dump sample (rejected: see the session notes — people, not
+companies, and no provenance).
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type

@@ -433,6 +433,12 @@ better source, and late-merge alias resolution.
 
 ## 8. Decisions
 
+0. **One road in (user ruling, 2026-09-26).** Every source — upload, directory,
+   exhibitor list, Apollo, any connector — is staged as delivered, cleaned by a
+   re-runnable job, and only then landed. Connectors write loads and staging
+   rows; `landing.ts` is the pool's only writer. Full statement in
+   `CLAUDE.md` § "EVERYTHING enters through staging".
+
 1. ~~Does onboarding end at prospects?~~ **Answered 2026-07-27: no.**
    Onboarding ends at step 3 (ideal customer + target industries). Prospect
    discovery and campaigns live in the product. See §1.
