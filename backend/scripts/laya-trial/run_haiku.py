@@ -14,7 +14,14 @@ MODEL = "claude-haiku-4-5"
 IN_PER_M, OUT_PER_M = 1.00, 5.00          # USD per million tokens
 
 files = sys.argv[1:] or ["ftcci-sample.jsonl", "provider-sample.jsonl"]
+import os
+missing = [fn for fn in files if not os.path.exists(fn)]
+if missing:
+    raise SystemExit(f"missing sample file(s): {', '.join(missing)} — copy them into this folder "
+                     "(they are gitignored data; see README.md)")
 rows = [json.loads(l) for fn in files for l in open(fn, encoding="utf-8") if l.strip()]
+if not os.environ.get("ANTHROPIC_API_KEY"):
+    raise SystemExit('ANTHROPIC_API_KEY is not set. PowerShell: $env:ANTHROPIC_API_KEY = "sk-ant-..." on its own line, then rerun.')
 client = anthropic.Anthropic()
 out = open("haiku-answers.jsonl", "w", encoding="utf-8")
 tin = tout = 0

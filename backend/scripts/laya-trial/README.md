@@ -37,13 +37,30 @@ Both files are data and are gitignored. Bring them to the laptop by hand.
 
 ## Run it
 
+Copy `ftcci-sample.jsonl` and `provider-sample.jsonl` into this folder first
+(they are gitignored, so a checkout does not have them).
+
+PowerShell (`VAR=value cmd` is bash syntax and PowerShell rejects it — lesson
+9 in CLAUDE.md):
+
+```powershell
+cd backend\scripts\laya-trial
+pip install laya anthropic
+
+python run_laya.py                        # → laya-answers.jsonl, prints ms/row
+$env:ANTHROPIC_API_KEY = "sk-ant-..."     # set once per shell; never paste a key into chat
+python run_haiku.py                       # → haiku-answers.jsonl, prints $ (well under $1)
+python score.py                           # → the numbers below + review.csv
+```
+
+bash / zsh (Apple Silicon: `pip install laya-mlx` as well, auto-detected):
+
 ```bash
 cd backend/scripts/laya-trial
-pip install laya anthropic            # Apple Silicon: pip install laya-mlx as well (auto-detected)
-
-python run_laya.py                    # → laya-answers.jsonl, prints ms/row
-ANTHROPIC_API_KEY=... python run_haiku.py    # → haiku-answers.jsonl, prints $ (well under $1)
-python score.py                       # → the numbers below + review.csv
+pip install laya anthropic
+python run_laya.py
+ANTHROPIC_API_KEY=sk-ant-... python run_haiku.py
+python score.py
 ```
 
 `make_sample.py` regenerates the FTCCI sample from any database that has the

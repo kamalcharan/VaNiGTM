@@ -23,6 +23,11 @@ except ImportError:
 # multilingual: 1,024-token window and Indian-English business strings are
 # closer to its training mix than the English checkpoint's.
 
+import os
+missing = [fn for fn in files if not os.path.exists(fn)]
+if missing:
+    raise SystemExit(f"missing sample file(s): {', '.join(missing)} — copy them into this folder "
+                     "(they are gitignored data; see README.md)")
 rows = [json.loads(l) for fn in files for l in open(fn, encoding="utf-8") if l.strip()]
 print(f"{backend}: {len(rows)} rows")
 
