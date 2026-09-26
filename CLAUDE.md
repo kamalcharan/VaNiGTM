@@ -899,6 +899,19 @@ It keeps the **densest** ratio seen, never the friendliest: a budget built on
 prose at 6 chars/token is overrun by the next block of JSON at 2.5, and
 optimism here is paid for with a 500.
 
+**The cold-start guess is 3 chars/token, not 4 (changed 2026-09-26).** The
+vikuna.io crawl failed with "Context size has been exceeded" on a server whose
+window matched `LLM_CONTEXT_TOKENS`. The worker restarts on every deploy and
+every env change; its first big call is the profile drafter filling the whole
+window at the guess; qwen3 on crawl text runs nearer 3; so the first call after
+every restart overran by a quarter — and a 500 carries no usage, so the
+calibration never got the sample that would have fixed it. Two changes:
+`LLM_CHARS_PER_TOKEN` (default 3) is the guess, and **a refusal is a
+measurement** — `noteContextOverflow` records that the model's ratio is below
+chars ÷ room, so the retry is built smaller instead of repeating the prompt.
+Setting `LLM_CONTEXT_TOKENS=8192` on a server that runs 8192 changes nothing;
+it was never the window that was wrong, it was the guess.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type

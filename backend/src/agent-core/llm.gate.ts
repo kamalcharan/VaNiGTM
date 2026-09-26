@@ -148,7 +148,23 @@ export async function withLlmSlot<T>(
  */
 const observed = new Map<string, { minRatio: number; samples: number }>();
 
-const DEFAULT_CHARS_PER_TOKEN = 4;
+/**
+ * The cold-start guess, before any call has reported its count.
+ *
+ * It was 4, and 4 is what cost the vikuna.io crawl (2026-09-25): the worker
+ * restarts on every deploy and every env change, the FIRST call after a
+ * restart is the profile drafter filling the whole window at 4 chars/token,
+ * and qwen3's tokenizer on crawl text — URLs, page markers, punctuation —
+ * runs nearer 3. So the first big call after every restart was over the
+ * window by a quarter, the server said "Context size has been exceeded", and
+ * a 500 carries no usage, so the calibration never got the sample that would
+ * have corrected it. A trap that re-arms itself on every restart.
+ *
+ * 3 is pessimistic for English prose and about right for what agents actually
+ * send. Pessimism here costs a shorter first prompt; optimism costs a 500.
+ * `LLM_CHARS_PER_TOKEN` overrides it for a model known to be looser or denser.
+ */
+const DEFAULT_CHARS_PER_TOKEN = Math.max(1, Number(process.env.LLM_CHARS_PER_TOKEN) || 3);
 
 export function noteObservedTokens(model: string, chars: number, promptTokens: number): void {
   // A zero or missing count means the server did not report usage — learning
@@ -163,6 +179,25 @@ export function noteObservedTokens(model: string, chars: number, promptTokens: n
     minRatio: prev ? Math.min(prev.minRatio, ratio) : ratio,
     samples: (prev?.samples ?? 0) + 1,
   });
+}
+
+/**
+ * The server refused a prompt as too large. That is a measurement too: the
+ * prompt's real token count was above the room it had, so the model's ratio
+ * is BELOW chars ÷ room. Record that bound (with a margin) so the next call is
+ * built smaller instead of failing the same way — without it, a 500 teaches
+ * nothing and the run loops on the same oversized prompt after every retry.
+ * Platform only: a tenant's own window is unknown, so no bound can be derived.
+ */
+export function noteContextOverflow(model: string, chars: number, reservedOutputTokens: number): void {
+  if (!model || chars <= 0 || PLATFORM_CONTEXT <= 0) return;
+  const room = PLATFORM_CONTEXT - OVERHEAD_TOKENS - Math.max(0, reservedOutputTokens);
+  if (room <= 0) return;
+  const bound = (chars / room) * 0.9;
+  if (!Number.isFinite(bound) || bound < 1) return;
+  const prev = observed.get(model);
+  if (prev && prev.minRatio <= bound) return;    // already budgeting tighter than this bound
+  observed.set(model, { minRatio: bound, samples: Math.max(prev?.samples ?? 0, 3) });
 }
 
 /** Chars per token for this model: the densest ratio seen, or the heuristic. */

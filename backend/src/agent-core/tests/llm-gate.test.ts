@@ -8,7 +8,7 @@
 
 import {
   withLlmSlot, checkContext, contextError, estimateTokens, charBudgetFor,
-  charsPerToken, noteObservedTokens, __resetLanes, __resetCalibration,
+  charsPerToken, noteObservedTokens, noteContextOverflow, __resetLanes, __resetCalibration,
 } from '../llm.gate';
 
 const URL_A = 'http://llm.example/v1';
@@ -95,7 +95,7 @@ describe('the context budget', () => {
     // 8192 - 200 overhead = 7992 usable. A 7000-token prompt fits alone and
     // does not fit with 1000 reserved for the answer — the arithmetic the
     // server's 500 was hiding.
-    const prompt = 'x'.repeat(7000 * 4);
+    const prompt = 'x'.repeat(7000 * 3);
     expect(checkContext('platform', prompt, 500)?.fits).toBe(true);
     expect(checkContext('platform', prompt, 1000)?.fits).toBe(false);
   });
@@ -107,7 +107,7 @@ describe('the context budget', () => {
   });
 
   it('names the numbers and says nothing was sent', () => {
-    const c = checkContext('platform', 'x'.repeat(40000), 1000)!;
+    const c = checkContext('platform', 'x'.repeat(30000), 1000)!;
     const msg = contextError(c, 'this call to qwen3:8b').message;
     expect(msg).toMatch(/LLM_CONTEXT_TOO_LARGE/);
     expect(msg).toMatch(/10000 prompt tokens/);
@@ -120,8 +120,8 @@ describe('the context budget', () => {
 
   it('estimates, and says so rather than pretending to count', () => {
     expect(estimateTokens('')).toBe(0);
-    expect(estimateTokens('abcd')).toBe(1);
-    expect(estimateTokens('abcde')).toBe(2);
+    expect(estimateTokens('abc')).toBe(1);
+    expect(estimateTokens('abcd')).toBe(2);
   });
 });
 
@@ -131,8 +131,11 @@ describe('learning the real token count from the model', () => {
   // exact string we sent. These cover learning from it rather than guessing.
 
   it('starts on the heuristic and does not pretend otherwise', () => {
-    expect(charsPerToken('qwen3:8b')).toBe(4);
-    expect(estimateTokens('abcd', 'qwen3:8b')).toBe(1);
+    // 3, not 4: the cold-start guess is pessimistic on purpose — see the
+    // constant. A worker restarts on every deploy, and its first big call
+    // must not be the one that overruns.
+    expect(charsPerToken('qwen3:8b')).toBe(3);
+    expect(estimateTokens('abc', 'qwen3:8b')).toBe(1);
   });
 
   it('uses the model\'s own count once it has enough samples', () => {
@@ -153,22 +156,22 @@ describe('learning the real token count from the model', () => {
 
   it('will not adopt a generous ratio off one sample', () => {
     noteObservedTokens('m', 8000, 1000);   // 8 chars/token, one call
-    expect(charsPerToken('m')).toBe(4);    // still the heuristic
+    expect(charsPerToken('m')).toBe(3);    // still the heuristic
   });
 
   it('ignores a server that reports no usage', () => {
     noteObservedTokens('m', 6000, 0);
     noteObservedTokens('m', 0, 500);
-    expect(charsPerToken('m')).toBe(4);
+    expect(charsPerToken('m')).toBe(3);
   });
 });
 
 describe('the budget as the authority on what gets built', () => {
   it('says how much variable content still fits', () => {
     // 8192 - 200 overhead - 1200 output = 6792 tokens, minus a 1000-char
-    // system prompt (250 tokens) = 6542 tokens = 26168 chars.
+    // system prompt (334 tokens at 3 chars/token) = 6458 tokens = 19374 chars.
     const room = charBudgetFor(undefined, 1200, 'x'.repeat(1000));
-    expect(room).toBe(26168);
+    expect(room).toBe(19374);
   });
 
   it('shrinks as the model turns out to be denser than the heuristic', () => {
@@ -193,5 +196,41 @@ describe('the budget as the authority on what gets built', () => {
     expect(checkContext('platform', prompt, 1200)?.fits).toBe(true);
     const oneMore = system + 'y'.repeat(room + 40);
     expect(checkContext('platform', oneMore, 1200)?.fits).toBe(false);
+  });
+});
+
+describe('learning from a refusal', () => {
+  // The vikuna.io crawl, 2026-09-25: the server said "Context size has been
+  // exceeded", the 500 carried no usage, nothing was learned, and the retry
+  // sent the same prompt. A refusal is a measurement too.
+
+  it('a context overflow tightens the ratio so the next call is smaller', () => {
+    const before = charBudgetFor('q', 1200, 'x'.repeat(1000));
+    // The whole budget was sent and refused: the real ratio is below what we
+    // used, so the bound must land under 3.
+    noteContextOverflow('q', before + 1000, 1200);
+    expect(charsPerToken('q')).toBeLessThan(3);
+    expect(charBudgetFor('q', 1200, 'x'.repeat(1000))).toBeLessThan(before);
+  });
+
+  it('the refused prompt no longer passes the gate', () => {
+    const system = 'x'.repeat(1000);
+    const room = charBudgetFor('q', 1200, system);
+    const prompt = system + 'y'.repeat(room);
+    expect(checkContext('platform', prompt, 1200, 'q')?.fits).toBe(true);
+    noteContextOverflow('q', prompt.length, 1200);
+    expect(checkContext('platform', prompt, 1200, 'q')?.fits).toBe(false);
+  });
+
+  it('never loosens a ratio the model has already taught tighter', () => {
+    for (let i = 0; i < 3; i++) noteObservedTokens('q', 2000, 1000);   // measured: 2 chars/token
+    noteContextOverflow('q', 20000, 1200);                             // bound would be ~2.65
+    expect(charsPerToken('q')).toBeCloseTo(2);
+  });
+
+  it('ignores a refusal it cannot bound', () => {
+    noteContextOverflow('', 5000, 1200);
+    noteContextOverflow('q', 0, 1200);
+    expect(charsPerToken('q')).toBe(3);
   });
 });

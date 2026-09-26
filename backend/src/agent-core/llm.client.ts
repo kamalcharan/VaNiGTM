@@ -43,7 +43,9 @@ import type { Pool } from 'pg';
 import { createTenantDb } from '../db';
 import { appendStep } from './agent.runner';
 import { resolveProvider, type ResolvedProvider } from './llm.provider';
-import { withLlmSlot, checkContext, contextError, noteObservedTokens } from './llm.gate';
+import { withLlmSlot, checkContext, contextError, noteObservedTokens, noteContextOverflow, estimateTokens, charsPerToken } from './llm.gate';
+
+const charsPerTokenLabel = (model?: string) => charsPerToken(model).toFixed(2);
 
 /* ── LLM config ─────────────────────────────────────────────────── */
 
@@ -314,10 +316,17 @@ async function callEndpoint(
     // Our own estimate, appended when the server blames context. Without it
     // the log says the window was exceeded and never says by what, so the next
     // person guesses — which is how this one cost two sessions.
-    const ours = /context size/i.test(detail)
-      ? ` [our estimate: ~${Math.ceil(wholePrompt.length / 4)} prompt tokens `
-        + `+ ${maxTokens} reserved for the answer; if that fits the configured window, `
-        + `the server is splitting it across concurrent requests]`
+    const overflow = /context size/i.test(detail);
+    // The refusal is a measurement: the next call from this process is built
+    // to a tighter ratio, so a retry does not repeat the same oversized prompt.
+    if (overflow && provider.posture === 'platform') {
+      noteContextOverflow(provider.model, wholePrompt.length, maxTokens);
+    }
+    const ours = overflow
+      ? ` [our estimate: ~${estimateTokens(wholePrompt, provider.model)} prompt tokens `
+        + `+ ${maxTokens} reserved for the answer; the gate now budgets this model at `
+        + `${charsPerTokenLabel(provider.model)} chars/token, so the next call is smaller. `
+        + `If the estimate fits the configured window, LLM_CONTEXT_TOKENS is larger than the server's real window]`
       : '';
     throw new Error(
       `${errored}: ${who} returned ${response.status} ${response.statusText} — ${detail.slice(0, 300)}${ours}`,
