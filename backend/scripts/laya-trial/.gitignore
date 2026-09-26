@@ -1,0 +1,4 @@
+# Samples and answers are DATA. They never enter the repo.
+*.jsonl
+*.csv
+__pycache__/
