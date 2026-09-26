@@ -81,6 +81,12 @@ Both record surfaces, one function. scope 'mine' = the tenant's prospects; scope
 - Returns: { scope, records: [{ id, ref, name, relationship, domain_normalized, city, state_code, industry_raw, industry_canonical, industry_sub, employees_band, completeness, validity, freshness, duplicate, resolved, is_active, source_label, raw, tags, research_status, researched, research_decided, research_offer, researched_at }], total, page, limit, stats, facets: { industries, tags, clusters, segments, research, with_domain, without_domain }, recipe: 'record-list' }
 
 
+### get_loads
+The DELIVERIES behind either surface — one row per `gt_source_loads` row, with its publisher (`gt_data_sources`), region, `as_of`, status, the tags applied to the delivery, and what of it is live in `gt_record_view` (records, with_domain, duplicates, avg completeness / validity). scope 'mine' = the tenant's own uploads; scope 'pool' = common-pool deliveries (admin only — same gate as get_records).
+- Parameters: scope? ('mine' | 'pool', default 'mine')
+- Returns: { scope, loads: [{ id, label, region, state_code, as_of, row_count, status, loaded_at, is_pool, source_code, source_name, source_kind, tier, records, with_domain, duplicates, avg_completeness, avg_validity, tags[{id,label,is_platform}] }], total, detail }
+- A load's `records` is counted the way the list counts: active rows, this tenant, this environment. The ETL session that produced it is `GET /api/v1/etl/sessions` (which returns `load_id`), joined client-side.
+
 ### get_prospect
 One company in full: every mapped field, every column the source file carried, the people at it, its tags, and its account brief. Backs the dossier page `/prospects/<ref>` — the research is returned here rather than from a second call, because a page that renders the company and pops the research in a moment later is two screens pretending to be one.
 - Parameters: prospect_id (optional, number) OR ref (optional, string — PROS-0042). One is required; raw PKs are never in a URL.

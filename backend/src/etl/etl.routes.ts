@@ -470,6 +470,9 @@ export function createEtlRouter(pool: Pool): Router {
         `SELECT s.id, s.import_type, s.status, s.total_records, s.processed_records,
                 s.successful_records, s.failed_records, s.duplicate_records,
                 s.orphan_records,
+                -- Where it landed and what the tenant said it was (197, 200):
+                -- the console joins a session to its delivery through load_id.
+                s.load_id, s.destination, s.relationship,
                 f.original_filename, s.created_at, s.staging_completed_at,
                 s.processing_started_at, s.processing_completed_at,
                 -- Strictly per-tenant: all rows here belong to this tenant, so numbers are clean

@@ -13,6 +13,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { get_records } from '../functions/get-records';
+import { get_loads } from '../functions/get-loads';
 import { tag_prospects } from '../functions/tag-prospects';
 import { build_cohort } from '../functions/build-cohort';
 import { save_segment } from '../functions/save-segment';
@@ -1023,5 +1024,62 @@ maybe('reclassifying does not disturb research already done', () => {
     expect(found.name).toBe('Untouched name');
     expect(found.note).toBe('the original note');
     expect(found.definition).toEqual({ industry_sub: 'pharma', domain: 'has' });
+  });
+});
+
+maybe('get_loads — the deliveries behind a surface', () => {
+  const POOL_LOAD = 900;
+  const B_LOAD = 901;
+  beforeAll(async () => {
+    // A common-pool delivery with no rows yet, and another tenant's upload.
+    await pool.query(
+      `INSERT INTO gt_source_loads (id,source_id,label,region,as_of,tenant_id)
+       VALUES ($1,1,'FTCCI Warangal','Warangal','2026-03-01',NULL),
+              ($2,1,'Their list',NULL,NULL,$3)
+       ON CONFLICT (id) DO NOTHING`, [POOL_LOAD, B_LOAD, B]);
+  });
+
+  it('valid: lists this tenant\'s deliveries with publisher, live rows, quality and the delivery tag', async () => {
+    const r = await get_loads({}, ctxFor(A));
+    expect(r.scope).toBe('mine');
+    expect(r.loads.map((l) => l.label)).toEqual(['FTCCI Telangana']);
+    const l = r.loads[0];
+    expect(l.source_code).toBe('upload');
+    expect(l.is_pool).toBe(false);
+    expect(l.status).toBe('active');
+    // Four prospects landed from load 1 for A; two share a domain.
+    expect(l.records).toBe(4);
+    expect(l.with_domain).toBe(3);
+    expect(l.duplicates).toBe(2);
+    expect(Number(l.avg_completeness)).toBeCloseTo(0.65, 2);
+    expect(l.tags).toEqual([{ id: 11, label: 'FTCCI Telangana', is_platform: true }]);
+    expect(r.detail).toMatch(/1 delivery, 1 active/);
+  });
+
+  it('empty: a tenant with nothing imported gets zero and the next action', async () => {
+    const r = await get_loads({}, ctxFor(D));
+    expect(r.loads).toEqual([]);
+    expect(r.detail).toMatch(/Nothing imported yet/);
+  });
+
+  it('wrong tenant: B sees only B\'s own upload, never A\'s', async () => {
+    const r = await get_loads({}, ctxFor(B));
+    expect(r.loads.map((l) => l.label)).toEqual(['Their list']);
+    expect(r.loads[0].records).toBe(0);
+  });
+
+  it('refuses the pool to a non-admin tenant', async () => {
+    await expect(get_loads({ scope: 'pool' }, ctxFor(A))).rejects.toThrow(/admin tenants only/i);
+  });
+
+  it('serves pool deliveries to an admin, and never a tenant\'s own upload among them', async () => {
+    const r = await get_loads({ scope: 'pool' }, ctxFor(B, true));
+    expect(r.scope).toBe('pool');
+    expect(r.loads.map((l) => l.label)).toEqual(['FTCCI Warangal']);
+    expect(r.loads[0].is_pool).toBe(true);
+    expect(r.loads[0].region).toBe('Warangal');
+    // The pool's fixture rows hang off load 1, which is tenant A's, so this
+    // delivery has no live rows yet — and says 0 rather than borrowing them.
+    expect(r.loads[0].records).toBe(0);
   });
 });
