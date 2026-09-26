@@ -6,7 +6,8 @@
 Writes haiku-answers.jsonl with the answers, latency and token usage, and
 prints the spend. 627 rows is well under a dollar.
 """
-import json, sys, time
+import json, os, sys, time
+os.chdir(os.path.dirname(os.path.abspath(__file__)))   # samples and answers live beside the scripts, not in the shell's cwd
 import anthropic
 from questions import haiku_prompt, HAIKU_SCHEMA
 
@@ -14,7 +15,6 @@ MODEL = "claude-haiku-4-5"
 IN_PER_M, OUT_PER_M = 1.00, 5.00          # USD per million tokens
 
 files = sys.argv[1:] or ["ftcci-sample.jsonl", "provider-sample.jsonl"]
-import os
 missing = [fn for fn in files if not os.path.exists(fn)]
 if missing:
     raise SystemExit(f"missing sample file(s): {', '.join(missing)} — copy them into this folder "

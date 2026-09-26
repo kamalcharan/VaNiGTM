@@ -9,7 +9,8 @@ with every disagreement plus a random 40 agreements, one row each, with an
 empty `truth` column for a person to fill. Agreement with Haiku is not truth;
 the hand-labelled rows are.
 """
-import csv, json, random
+import csv, json, os, random
+os.chdir(os.path.dirname(os.path.abspath(__file__)))   # samples and answers live beside the scripts, not in the shell's cwd
 from collections import Counter, defaultdict
 
 def load(fn):

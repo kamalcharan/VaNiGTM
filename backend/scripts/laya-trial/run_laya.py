@@ -7,7 +7,8 @@
 Writes laya-answers.jsonl: one line per row with the answers, the
 probabilities, and the wall time. Nothing is sent anywhere.
 """
-import json, sys, time
+import json, os, sys, time
+os.chdir(os.path.dirname(os.path.abspath(__file__)))   # samples and answers live beside the scripts, not in the shell's cwd
 from questions import state_for, laya_questions
 
 files = sys.argv[1:] or ["ftcci-sample.jsonl", "provider-sample.jsonl"]
@@ -23,7 +24,6 @@ except ImportError:
 # multilingual: 1,024-token window and Indian-English business strings are
 # closer to its training mix than the English checkpoint's.
 
-import os
 missing = [fn for fn in files if not os.path.exists(fn)]
 if missing:
     raise SystemExit(f"missing sample file(s): {', '.join(missing)} — copy them into this folder "
