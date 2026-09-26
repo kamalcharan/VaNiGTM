@@ -1086,7 +1086,13 @@ mailbox in `email`); the NACE codes and the traffic figure have no column
 and stay in `raw` until someone decides they deserve one. What the shape
 lacks is address/state/PIN, phone, revenue, year founded and people, so
 "needs enrichment" means those — enrich on demand for the companies a
-tenant qualifies, never the whole 25k up front.
+tenant qualifies, never the whole 25k up front. The provider also sells the
+same shape in labelled lists ("growth stage startups": 100 rows, all 1-10 or
+11-50 staff, median 2K visits/month, mostly online education). **A list
+label is the provider's claim about the list, not a fact about the company**
+— nothing in the rows evidences it — so it lands as a tag on the LOAD
+(`tag_ids` on the delivery), never as a column, and the console shows it as
+"tagged by <provider>".
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
