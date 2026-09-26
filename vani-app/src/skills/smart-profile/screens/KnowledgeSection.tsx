@@ -16,6 +16,7 @@ import { DataBoundary, SkeletonRows, useToast } from '@/platform/feedback';
 import { formatDate } from '@/lib/format';
 import s from '../smart-profile.module.css';
 import { isReading, useSourcesRead, useTeach, type KbSource } from '../useKnowledge';
+import { ReadingProgress } from './ReadingProgress';
 
 const KIND: Record<string, string> = {
   url: 'site', txt: 'pasted', gdrive: 'drive', pdf: 'document', docx: 'document', md: 'document',
@@ -164,6 +165,7 @@ export function KnowledgeSection({ n, compact }: { n?: number; compact?: boolean
                         Read again
                       </button>
                     )}
+                    {isReading(src) && <div style={{ gridColumn: '1 / -1' }}><ReadingProgress source={src} /></div>}
                     {!isReading(src) && (
                       <button
                         type="button"

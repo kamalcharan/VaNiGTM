@@ -51,8 +51,8 @@ export const KNOWLEDGE_MOCK_READS: Record<string, (p: Record<string, unknown>) =
     const s = SOURCES.find((x) => x.id === String(p.source_id)); if (!s) throw new Error('SOURCE_NOT_FOUND: No source with that id for this tenant');
     const done = s.status === 'complete';
     return { source: { ...s, run_status: done ? 'completed' : 'running', run_steps: done
-      ? [{ step_name: 'crawl', status: 'completed', output_summary: 'read 6 pages' }, { step_name: 'extract', status: 'completed' }, { step_name: 'kg_write', status: 'completed' }]
-      : [{ step_name: 'crawl', status: 'running' }] }, recipe: 'source-detail' };
+      ? [{ step_name: 'parse', status: 'ok' }, { step_name: 'parse_complete', status: 'ok', output_summary: '6 pages, 23,211 chars' }, { step_name: 'draft_profile', status: 'ok' }, { step_name: 'extract_complete', status: 'ok', output_summary: '7 nodes, 8 relationships' }, { step_name: 'complete', status: 'ok' }]
+      : (Date.now() - Number(s.id.split('-')[1] || 0)) > 0 && s.status === 'processing' ? [{ step_name: 'parse', status: 'ok' }, { step_name: 'parse_complete', status: 'ok', output_summary: '6 pages, 23,211 chars' }, { step_name: 'draft_profile', status: 'running' }] : [] }, recipe: 'source-detail' };
   },
 };
 export const KNOWLEDGE_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {
@@ -89,6 +89,7 @@ export const KNOWLEDGE_MOCK_WRITES: Record<string, (p: Record<string, unknown>) 
     SOURCES.push(s);
     // A host with "fail" in it rehearses the parked-run path: the platform
     // model overran its window, HAIKU_DEFAULT=false, a person must decide.
+    setTimeout(() => { if (s.status === 'pending') s.status = 'processing'; }, 900);
     if (/fail/.test(host)) {
       setTimeout(() => { s.status = 'error'; s.error_msg = 'LLM_FAILOVER_NEEDS_APPROVAL: LLM_VPS_ERROR: the platform LLM returned 500 Internal Server Error — {"error":{"code":500,"message":"Context size has been exceeded.","type":"server_error"}}';
         FAILOVERS.push({ run_id: String(200 + FAILOVERS.length), agent: 'ingestion-skill', asked_at: new Date().toISOString(), failover_model: 'claude-haiku-4-5', vps_error: 'LLM_VPS_ERROR: 500 {"message":"Context size has been exceeded."}', question: `Retry ${host} on claude-haiku-4-5? This spends Vikuna's key.`, source: s }); }, 2500);

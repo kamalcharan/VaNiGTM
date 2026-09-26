@@ -26,6 +26,7 @@ import u from '@/platform/shell/ui.module.css';
 import s from '../smart-profile.module.css';
 import g from '../knowledge-graph.module.css';
 import { NodeEditor } from './NodeEditor';
+import { ReadingProgress } from './ReadingProgress';
 import { isReading, useKnowledgeGraph, useSourcesRead, KIND_LABELS, RELATION_WORDS, type KgEdge, type KgNode, type Knowledge } from '../useKnowledge';
 
 /** Columns, left to right: what you sell → who → what hurts → why you → proof. */
@@ -70,7 +71,8 @@ function layout(nodes: KgNode[]): { placed: Placed[]; width: number; height: num
 
 export default function KnowledgeGraphScreen() {
   const sources = useSourcesRead();
-  const reading = !!sources.data?.data?.some(isReading);
+  const readingSources = (sources.data?.data ?? []).filter(isReading);
+  const reading = readingSources.length > 0;
   const q = useKnowledgeGraph(null, reading);
   const data = q.data?.data;
   const all = useMemo(() => data?.nodes ?? [], [data?.nodes]);
@@ -142,6 +144,8 @@ export default function KnowledgeGraphScreen() {
           <p className={s.lede}>What you sell, who it is for, what hurts them, why you, and the proof — and every relationship VaNi read between them. Pick a node to read its relationships as sentences, and correct or remove an entry there. The list of entries is under <Link href="/smart-profile/knowledge">Knowledge</Link>.</p>
         </div>
       </header>
+
+      {readingSources.map((src) => <ReadingProgress key={src.id} source={src} />)}
 
       <DataBoundary query={q} label="the graph" skeleton={<SkeletonRows rows={6} lines={2} />}
         isEmpty={(d: Knowledge | undefined) => !d?.nodes?.length}
