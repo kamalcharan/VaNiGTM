@@ -923,6 +923,18 @@ platform model, and `charBudgetFor` keeps `BUDGET_SLACK_TOKENS` (64) back for
 the caller's own wrapper text. Tested: a budget made without the model passes
 the check made with it.
 
+**Haiku as the platform model is an `.env` decision, not a code path (Charan,
+2026-09-26: "haiku should be handled from .env").** Anthropic serves the
+OpenAI-compatible shape `callEndpoint` already sends (bearer auth, one system
+message, `max_tokens`, `temperature`, `usage.prompt_tokens` back), so
+`LLM_PRIMARY_URL=https://api.anthropic.com/v1` + `LLM_PRIMARY_MODEL=
+claude-haiku-4-5` + `LLM_PRIMARY_KEY` is the whole switch; the block in
+`.env.example` has the four companion values (window, concurrency, speed).
+The one code change it needed: `/no_think` is appended only when the model
+name contains "qwen" — it is a qwen instruction, and Haiku would read it as
+text. `HAIKU_DEFAULT` and the failover path are unchanged and become a
+no-op when the primary is already Claude.
+
 **How slow the server is, measured (2026-09-26):** `3353 prompt + 330 answer
 tokens in 95.3s` from llm.dristiq.com. Every call logs that line; the timeout
 is derived from the measured speed with `LLM_PRIMARY_TIMEOUT_MS` as the floor.

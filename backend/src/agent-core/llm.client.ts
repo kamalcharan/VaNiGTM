@@ -244,10 +244,12 @@ async function callEndpoint(
   const { tenantId, pool, system, messages, maxTokens = 1000, temperature = 0.2 } = options;
 
   // Qwen3 thinking suppression: append /no_think unless already present.
-  // Platform-only — it is a qwen-ism, and a tenant's GPT or Claude endpoint
-  // would receive it as a literal instruction in the system prompt.
+  // Only when the model IS a qwen — it is a qwen-ism, and any other model
+  // (a tenant's GPT endpoint, or Haiku as the platform model via
+  // LLM_PRIMARY_URL=https://api.anthropic.com/v1) would receive it as a
+  // literal instruction in the system prompt.
   const systemContent =
-    provider.posture === 'platform' && !system.includes('/no_think')
+    /qwen/i.test(provider.model) && !system.includes('/no_think')
       ? `${system.trim()} /no_think`
       : system;
 
