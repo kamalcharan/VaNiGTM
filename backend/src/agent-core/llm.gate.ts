@@ -68,6 +68,9 @@ const BYOK_MAX = Math.max(1, parseInt(process.env.LLM_BYOK_MAX_CONCURRENT ?? '4'
  */
 const PLATFORM_CONTEXT = Math.max(0, parseInt(process.env.LLM_CONTEXT_TOKENS ?? '8192', 10) || 0);
 
+/** The platform window as configured (0 = unknown), for callers that size an answer reserve from it. */
+export function platformContextTokens(): number { return PLATFORM_CONTEXT; }
+
 /**
  * Headroom left for the chat template, role markers and the server's own
  * bookkeeping, which are inside the window and not inside our string.

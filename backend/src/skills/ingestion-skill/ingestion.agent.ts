@@ -387,7 +387,7 @@ export class IngestionAgent {
       // cheap DB writes, no LLM cost to re-earn on a rerun. Checkpoint
       // tracks per-chunk progress for observability (migration 191).
       const nodeIds = new Map<string, string>();
-      const { nodes, relations } = await extractFromChunks(
+      const { nodes, relations, truncatedChunks } = await extractFromChunks(
         pool, tenantId, runId, chunks,
         async ({ chunkIndex, chunksTotal, nodes: chunkNodes }) => {
           for (const node of chunkNodes) {
@@ -414,8 +414,15 @@ export class IngestionAgent {
       await appendStep(pool, runId, {
         step_name:      'extract_complete',
         action:         'LLM extraction finished',
-        output_summary: `${nodes.length} nodes, ${relations.length} relationships extracted — nodes written as they landed`,
-        status:         'ok',
+        output_summary: `${nodes.length} nodes, ${relations.length} relationships extracted — nodes written as they landed`
+          + (truncatedChunks.length
+            ? ` — INCOMPLETE: the answer for chunk${truncatedChunks.length === 1 ? '' : 's'} `
+              + `${truncatedChunks.map((i) => i + 1).join(', ')} of ${chunks.length} was cut off at `
+              + `${EXTRACT_MAX_TOKENS} tokens; entries after the cut are missing. Raise LLM_CONTEXT_TOKENS `
+              + `(the reserve is derived from it) and read the source again`
+            : ''),
+        // Rule 12: a partial extraction is labelled, not passed off as whole.
+        status:         truncatedChunks.length ? 'error' : 'ok',
       });
 
       // 6b. EDGES — what makes this a graph the deck Q&A, Lead Finder and

@@ -935,6 +935,18 @@ name contains "qwen" — it is a qwen instruction, and Haiku would read it as
 text. `HAIKU_DEFAULT` and the failover path are unchanged and become a
 no-op when the primary is already Claude.
 
+**A cut-off answer is a partial result, and it says so (2026-09-26).** The
+first Haiku run showed eight of fourteen extraction calls returning exactly
+800 tokens — the extractor's flat answer cap, chosen for an 8k window. The
+parser keeps only complete `<extract>` pairs, so everything after the cut was
+lost without a trace. Now: `LLMResult.truncated` (OpenAI `finish_reason ===
+'length'`, Anthropic `stop_reason === 'max_tokens'`) is read on every call and
+printed on the `[LLM]` line; `EXTRACT_MAX_TOKENS` is derived from the window
+(an eighth, 800–3,000); a run whose chunks were cut reports
+`extract_complete` with status `error` naming the chunks and the lever. Any
+caller that parses an answer checks `truncated` — a truncated list of facts
+looks exactly like a complete one.
+
 **How slow the server is, measured (2026-09-26):** `3353 prompt + 330 answer
 tokens in 95.3s` from llm.dristiq.com. Every call logs that line; the timeout
 is derived from the measured speed with `LLM_PRIMARY_TIMEOUT_MS` as the floor.

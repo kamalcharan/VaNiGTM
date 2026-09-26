@@ -93,6 +93,13 @@ export interface LLMResult {
   inputTokens: number;
   outputTokens: number;
   source: 'vps' | 'escalation';
+  /**
+   * The answer hit max_tokens and was cut off. A caller that parses the
+   * answer (the extractor's <extract> tags, the drafter's JSON) MUST treat
+   * this as a partial result and say so — a truncated list of facts looks
+   * exactly like a complete one (rule 12).
+   */
+  truncated: boolean;
 }
 
 interface DailyUsage { vps?: number; escalation?: number }
@@ -357,11 +364,12 @@ async function callEndpoint(
   }
 
   const data = await response.json() as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
     usage?:   { prompt_tokens?: number; completion_tokens?: number };
   };
 
   const text         = data.choices?.[0]?.message?.content ?? '';
+  const truncated    = data.choices?.[0]?.finish_reason === 'length';
   const inputTokens  = data.usage?.prompt_tokens     ?? 0;
   const outputTokens = data.usage?.completion_tokens ?? 0;
 
@@ -374,13 +382,14 @@ async function callEndpoint(
   const elapsedMs = Date.now() - startedAt;
   noteObservedSpeed(provider.model, outputTokens, elapsedMs);
   console.log(`[LLM] ${provider.model}: ${inputTokens} prompt + ${outputTokens} answer tokens in ${(elapsedMs / 1000).toFixed(1)}s `
-    + `(~${outputTokens ? (outputTokens / (elapsedMs / 1000)).toFixed(1) : '?'} tok/s generation)`);
+    + `(~${outputTokens ? (outputTokens / (elapsedMs / 1000)).toFixed(1) : '?'} tok/s generation)`
+    + (truncated ? ` · CUT OFF at max_tokens=${maxTokens} — the answer is incomplete` : ''));
 
   // Recorded on both postures. Metering is not capping: what a run cost is a
   // question a BYOK tenant will ask, and the only place to answer it is here.
   await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'vps');
 
-  return { text, inputTokens, outputTokens, source: 'vps' };
+  return { text, inputTokens, outputTokens, source: 'vps', truncated };
 }
 
 /* ── Failover: Claude API call ──────────────────────────────────────────── */
@@ -413,7 +422,7 @@ async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
 
   await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'escalation');
 
-  return { text, inputTokens, outputTokens, source: 'escalation' };
+  return { text, inputTokens, outputTokens, source: 'escalation', truncated: response.stop_reason === 'max_tokens' };
 }
 
 /* ── Failover visibility — rule 12: never silent ────────────────────────── */

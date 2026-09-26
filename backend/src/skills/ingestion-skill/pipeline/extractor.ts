@@ -21,11 +21,25 @@
  */
 
 import { callLLM } from '../../../agent-core/llm.client';
+import { platformContextTokens } from '../../../agent-core/llm.gate';
 import type { Pool } from 'pg';
 import type { Chunk } from './chunker';
 
-/** Reserved for the answer on every extraction call. */
-export const EXTRACT_MAX_TOKENS = 800;
+/**
+ * Reserved for the answer on every extraction call — DERIVED from the window.
+ *
+ * It was a flat 800, chosen for an 8k window. On Haiku (2026-09-26) eight of
+ * the first fourteen calls came back at exactly 800 tokens: the model had
+ * more entries to give and was cut off mid-list, and the parser below only
+ * keeps complete <extract> pairs, so every entry after the cut was lost
+ * without a trace. With a 100k window there is no reason to keep the answer
+ * that short. An eighth of the window, between 800 and 3,000.
+ */
+export const EXTRACT_MAX_TOKENS = (() => {
+  const window = platformContextTokens();
+  if (window <= 0) return 3000;
+  return Math.min(3000, Math.max(800, Math.floor(window / 8)));
+})();
 
 export interface SourcedChunk extends Chunk {
   /** URL of the page this chunk came from (null for pasted text / files). */
@@ -50,6 +64,8 @@ export interface ExtractedRelation {
 export interface ExtractionResult {
   nodes: ExtractedNode[];
   relations: ExtractedRelation[];
+  /** Chunks whose answer hit max_tokens: their entries are PARTIAL. Never silent. */
+  truncatedChunks: number[];
 }
 
 const RELATION_TYPES = new Set([
@@ -103,6 +119,7 @@ export async function extractFromChunks(
   const relations: ExtractedRelation[] = [];
   const seenNodes = new Set<string>();
   const seenRelations = new Set<string>();
+  const truncatedChunks: number[] = [];
 
   for (const [chunkIndex, chunk] of chunks.entries()) {
     const chunkNodes: ExtractedNode[] = [];
@@ -116,6 +133,14 @@ export async function extractFromChunks(
         messages:  [{ role: 'user', content: chunk.text }],
         maxTokens: EXTRACT_MAX_TOKENS,
       });
+      if (result.truncated) {
+        // What was parsed below is real; what came after the cut is gone.
+        // Recorded so the run step can say which chunks, and warned here so
+        // the worker's stdout says it next to the [LLM] line that caused it.
+        truncatedChunks.push(chunkIndex);
+        console.warn(`[Ingestion] chunk ${chunkIndex + 1}/${chunks.length}: extraction answer cut off at `
+          + `${EXTRACT_MAX_TOKENS} tokens — entries after the cut were not captured`);
+      }
 
       const nodeMatches = [...result.text.matchAll(/<extract>([\s\S]*?)<\/extract>/g)];
       for (const match of nodeMatches) {
@@ -186,5 +211,5 @@ export async function extractFromChunks(
     }
   }
 
-  return { nodes, relations };
+  return { nodes, relations, truncatedChunks };
 }
