@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
       { source: '/appearance', destination: '/settings/appearance', permanent: true },
       { source: '/model-provider', destination: '/settings/model', permanent: true },
       { source: '/knowledge', destination: '/smart-profile/knowledge', permanent: true },
-      { source: '/kg', destination: '/smart-profile/knowledge', permanent: true },
+      { source: '/kg', destination: '/smart-profile/knowledge-graph', permanent: true },
     ];
   },
 };

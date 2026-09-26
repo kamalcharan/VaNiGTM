@@ -6,9 +6,9 @@ const org: SkillModule = {
   routes: [
     { id: 'dashboard', label: 'Dashboard', href: '/dashboard', group: 'organization', icon: '▦', status: 'live' },
     // "Knowledge" and "Knowledge Graph" sat here as planned entries until
-    // 2026-09-25. Knowledge is now real — smart-profile's /smart-profile/
-    // knowledge (sources + what VaNi learned, by kind). A graph explorer is
-    // still not being built; the old paths redirect (next.config.ts).
+    // 2026-09-25/26. Both are real now, under smart-profile:
+    // /smart-profile/knowledge and /smart-profile/knowledge-graph. The old
+    // paths redirect (next.config.ts).
   ],
 };
 export default org;

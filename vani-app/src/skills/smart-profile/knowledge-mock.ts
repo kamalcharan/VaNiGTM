@@ -4,6 +4,13 @@ const SOURCES: KbSource[] = [];
 let n = 0;
 interface Node { id: string; label: string; name: string; description: string | null; properties: Record<string, unknown>; updated_at: string; source_id: string | null; source_name: string | null; source_type: string | null; }
 const NODES: Node[] = [];
+interface Edge { id: string; from_node_id: string; to_node_id: string; relationship: string; created_at: string; }
+const EDGES: Edge[] = [];
+const LINKS: [string, string, string][] = [
+  ['Ledgerline', 'TARGETS', 'Head of Procurement, 200–800 bed hospital'], ['Head of Procurement, 200–800 bed hospital', 'FEELS', 'Missed renewals'],
+  ['Head of Procurement, 200–800 bed hospital', 'FEELS', 'Unclaimed SLA penalties'], ['Ledgerline', 'SOLVES', 'Missed renewals'], ['Ledgerline', 'SOLVES', 'Unclaimed SLA penalties'],
+  ['Ledgerline', 'DIFFERENTIATES_FROM', 'ContractWorks'], ['Sunridge Multispeciality', 'PROVES', 'Two-week contract audit'], ['Two-week contract audit', 'ADDRESSES', 'Unclaimed SLA penalties'],
+];
 interface Failover { run_id: string; agent: string; asked_at: string; failover_model: string | null; vps_error: string | null; question: string | null; source: KbSource; }
 const FAILOVERS: Failover[] = [];
 /** What a read of a site or a deck yields in mock mode — fictional, Ledgerline. */
@@ -23,6 +30,11 @@ function learn(src: KbSource, count: number) {
     if (NODES.some((x) => x.label === label && x.name === name)) continue;
     NODES.push({ id: `kg-${NODES.length + 1}`, label, name, description, properties: {}, updated_at: new Date().toISOString(), source_id: src.id, source_name: src.display_name, source_type: src.source_type });
   }
+  for (const [from, rel, to] of LINKS) {
+    const a = NODES.find((x) => x.name === from), b = NODES.find((x) => x.name === to);
+    if (!a || !b || EDGES.some((e) => e.from_node_id === a.id && e.to_node_id === b.id && e.relationship === rel)) continue;
+    EDGES.push({ id: `e-${EDGES.length + 1}`, from_node_id: a.id, to_node_id: b.id, relationship: rel, created_at: new Date().toISOString() });
+  }
 }
 export const KNOWLEDGE_MOCK_READS: Record<string, (p: Record<string, unknown>) => unknown> = {
   'llm-provider-skill.pending_failovers': () => ({ runs: FAILOVERS.map(({ source: _s, ...r }) => r),
@@ -32,7 +44,7 @@ export const KNOWLEDGE_MOCK_READS: Record<string, (p: Record<string, unknown>) =
     const label = String(p.label ?? '').trim() || null;
     const nodes = label ? NODES.filter((x) => x.label === label) : NODES;
     const counts: Record<string, number> = {}; for (const x of NODES) counts[x.label] = (counts[x.label] ?? 0) + 1;
-    return { nodes, filtered_total: nodes.length, labels: Object.entries(counts).map(([l, c]) => ({ label: l, count: c })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)), total: NODES.length, recipe: 'knowledge-list' };
+    return { nodes, filtered_total: nodes.length, labels: Object.entries(counts).map(([l, c]) => ({ label: l, count: c })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)), edges: [...EDGES], total: NODES.length, recipe: 'knowledge-list' };
   },
   // The wizard polls one source for its run steps while the crawl runs.
   'ingestion-skill.get_source': (p) => {

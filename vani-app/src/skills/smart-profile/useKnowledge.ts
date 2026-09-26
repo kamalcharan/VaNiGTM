@@ -96,7 +96,14 @@ export interface KgNode {
   source_name: string | null;
   source_type: string | null;
 }
-export interface Knowledge { nodes: KgNode[]; filtered_total: number; labels: { label: string; count: number }[]; total: number; }
+export interface KgEdge { id: string; from_node_id: string; to_node_id: string; relationship: string; created_at: string; }
+export interface Knowledge { nodes: KgNode[]; filtered_total: number; labels: { label: string; count: number }[]; edges: KgEdge[]; total: number; }
+
+/** Relationship types as a verb phrase, so an edge reads as a sentence. */
+export const RELATION_WORDS: Record<string, string> = {
+  HAS_FEATURE: 'has the capability', TARGETS: 'targets', FEELS: 'feels', ADDRESSES: 'addresses', SOLVES: 'solves',
+  DIFFERENTIATES_FROM: 'differs from', BUILT_BY: 'is built by', PROVES: 'proves',
+};
 
 /** Kinds in the order a person reads them, with plain words. */
 export const KIND_LABELS: Record<string, string> = {

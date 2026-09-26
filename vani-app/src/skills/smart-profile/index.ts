@@ -47,6 +47,17 @@ const smartProfile: SkillModule = {
       status: 'live',
       summary: 'What VaNi has read, and what it learned from it — by kind, with the source. Teach it more here.',
     },
+    // The same graph, as a graph: how what it learned connects. Charan,
+    // 2026-09-26 — both surfaces were asked for; a list alone was not the ask.
+    {
+      id: 'knowledge-graph',
+      label: 'Knowledge Graph',
+      href: '/smart-profile/knowledge-graph',
+      group: 'organization',
+      icon: '⁂',
+      status: 'live',
+      summary: 'How what VaNi knows connects — product to buyer to pain to proof. Read-only; teach it to change it.',
+    },
   ],
 };
 

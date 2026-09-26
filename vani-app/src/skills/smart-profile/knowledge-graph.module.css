@@ -1,0 +1,40 @@
+/* Knowledge Graph — columns by kind, curves between them. Tokens only. */
+.stats { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+/* Side panel beside the canvas only when there is room for a 1180px drawing
+   plus the panel; otherwise below it, so the graph is never squeezed. */
+.split { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+@media (min-width: 1720px) { .split { grid-template-columns: minmax(0, 1fr) 280px; } }
+.canvasWrap { background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; overflow: auto; }
+/* Drawn at its natural size and scrolled, never shrunk: a graph scaled to fit a
+   half-width column is a strip nobody can read. */
+.canvas { display: block; max-width: none; }
+.colHead { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; fill: var(--tx3); }
+.colHeadDim { opacity: 0.4; }
+.arrow { fill: var(--line2); }
+.edge { fill: none; stroke: var(--line2); stroke-width: 1.4; transition: opacity 120ms, stroke 120ms; }
+.edgeOn { stroke: var(--ac); stroke-width: 2.2; }
+.edgeDim { opacity: 0.18; }
+.node { cursor: pointer; outline: none; transition: opacity 120ms; }
+.node rect { fill: var(--bg2); stroke: var(--line); stroke-width: 1; }
+.node:focus-visible rect { stroke: var(--ac); stroke-width: 2; }
+.nodeOn rect { stroke: var(--ac); }
+.nodePicked rect { stroke: var(--ac); stroke-width: 2; fill: var(--ac-dim); }
+.nodeDim { opacity: 0.35; }
+.nodeText { font-size: 13px; fill: var(--tx); font-family: var(--font-body, inherit); }
+/* A hint of kind on the left edge, via a stroke accent per column family. */
+.k_Product rect, .k_Feature rect, .k_Pricing rect { stroke-dasharray: none; }
+.k_Competitor rect { stroke: color-mix(in srgb, var(--color-danger) 55%, var(--line)); }
+.k_CaseStudy rect, .k_Metric rect { stroke: rgba(18,160,144,.6); }
+.side { background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; min-height: 120px; }
+.sideEmpty p { font-size: 13px; line-height: 1.6; color: var(--tx2); margin: 8px 0 12px; }
+.sideName { font-family: var(--display); font-size: 18px; font-weight: 700; letter-spacing: -0.3px; margin: 6px 0 4px; }
+.sideDesc { font-size: 13px; line-height: 1.6; color: var(--tx2); margin: 0; }
+.sideMeta { font-family: var(--mono); font-size: 10.5px; color: var(--tx3); margin-top: 8px; }
+.legend { display: flex; flex-direction: column; gap: 4px; }
+.legendRow { display: flex; gap: 8px; font-size: 12px; color: var(--tx2); align-items: baseline; }
+.legendRow code { font-family: var(--mono); font-size: 10px; color: var(--tx3); min-width: 150px; }
+.rels { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rel { display: flex; flex-direction: column; gap: 2px; }
+.relBtn { background: transparent; border: 0; padding: 0; text-align: left; font: inherit; font-size: 13.5px; color: var(--tx); cursor: pointer; line-height: 1.5; }
+.relBtn:hover { color: var(--ac-light); }
+.relMeta { font-family: var(--mono); font-size: 10.5px; color: var(--tx3); }

@@ -45,7 +45,7 @@ export default function KnowledgeScreen() {
         <div>
           <div className={s.eyebrow}>// SMART PROFILE · KNOWLEDGE</div>
           <h1 className={s.title}>What VaNi knows</h1>
-          <p className={s.lede}>Every source it has read, and everything it learned from them — by kind, with where it was read. The <Link href="/smart-profile">Smart Profile</Link> is the confirmed version of this; correct a wrong fact there, or teach VaNi the right thing here and it re-reads.</p>
+          <p className={s.lede}>Every source it has read, and everything it learned from them — by kind, with where it was read. How these connect is the <Link href="/smart-profile/knowledge-graph">Knowledge Graph</Link>. The <Link href="/smart-profile">Smart Profile</Link> is the confirmed version of this; correct a wrong fact there, or teach VaNi the right thing here and it re-reads.</p>
         </div>
       </header>
 
