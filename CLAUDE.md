@@ -1079,7 +1079,14 @@ forbid it, and that is the question to ask before buying.** The people half
 is tenant-scoped only (people never enter the pool), and nothing may be sent
 to them until the consent/suppression model exists. Neither half may be
 landed from the paste: the copy lost every separator (email glued to
-headline, city glued to mailbox) — ask for the CSV export.
+headline, city glued to mailbox) — ask for the CSV export. Charan can get
+~25k rows in the company shape. Of its seven fields, five land in typed
+columns today (name, domain, description, employees_band, city, plus one
+mailbox in `email`); the NACE codes and the traffic figure have no column
+and stay in `raw` until someone decides they deserve one. What the shape
+lacks is address/state/PIN, phone, revenue, year founded and people, so
+"needs enrichment" means those — enrich on demand for the companies a
+tenant qualifies, never the whole 25k up front.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
