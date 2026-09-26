@@ -944,8 +944,17 @@ it was never the window that was wrong, it was the guess.
 Do not start any of these. Push back if asked without an explicit decision:
 
 agent marketplace · per-agent pricing UI · marketing asset gallery or template
-library · knowledge graph as a product surface · unified namespace / resolver ·
+library · ~~knowledge graph as a product surface~~ · unified namespace / resolver ·
 any new agent framework (Hermes and similar — evaluated 2026-08, parked)
+
+~~knowledge graph as a product surface~~ — **SUPERSEDED 2026-09-26 (Charan):**
+"i was asking UX for knowledge and knowledge graph both". Both exist in
+vani-app under Smart Profile: `/smart-profile/knowledge` (sources, and every
+node by kind with its source) and `/smart-profile/knowledge-graph` (the
+relationships between them, drawn, and readable as sentences). Both read
+`ingestion-skill.knowledge`, which returns nodes and edges. What stays out is a
+free-form canvas editor; the graph is read, corrected by teaching, never
+hand-edited.
 
 ~~email sending · Storytelling / Campaigns / Follow-ups agents~~ —
 **SUPERSEDED 2026-09-22 (Charan).** A storytelling agent that composes per

@@ -51,6 +51,6 @@ Removes the source row only; what was learned (gt_kg_nodes) stays.
 - Returns: { deleted: true, source_id, recipe: 'confirmation' }
 
 ### knowledge
-What VaNi knows — every node in the tenant's knowledge graph, grouped by kind, each with the source it was read from where one is linked. A list, not a graph explorer (that stays off the roadmap).
+What VaNi knows — every node in the tenant's knowledge graph, each with the source it was read from where one is linked, plus every relationship between them. The Knowledge page lists the nodes; the Knowledge Graph page draws the edges.
 - Parameters: label (optional, string — one of Product / Feature / ICP / UseCase / PainPoint / Differentiator / Team / Competitor / CaseStudy / Metric / Industry / Pricing), limit (optional, number, default 200, max 500), offset (optional, number)
-- Returns: { nodes: [{ id, label, name, description, properties, updated_at, source_id, source_name, source_type }], filtered_total, labels: [{ label, count }], total, recipe: 'knowledge-list' }
+- Returns: { nodes: [{ id, label, name, description, properties, updated_at, source_id, source_name, source_type }], filtered_total, labels: [{ label, count }], edges: [{ id, from_node_id, to_node_id, relationship, created_at }], total, recipe: 'knowledge-list' }

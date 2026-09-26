@@ -62,6 +62,10 @@ CREATE TABLE IF NOT EXISTS gt_kg_nodes (id UUID PRIMARY KEY DEFAULT gen_random_u
   label VARCHAR(50) NOT NULL, name VARCHAR(200) NOT NULL, description TEXT, properties JSONB NOT NULL DEFAULT '{}'::jsonb,
   source_run_id BIGINT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, label, name));
+CREATE TABLE IF NOT EXISTS gt_kg_edges (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id UUID NOT NULL,
+  from_node_id UUID NOT NULL REFERENCES gt_kg_nodes(id) ON DELETE CASCADE, to_node_id UUID NOT NULL REFERENCES gt_kg_nodes(id) ON DELETE CASCADE,
+  relationship VARCHAR(60) NOT NULL, properties JSONB NOT NULL DEFAULT '{}'::jsonb, source_run_id BIGINT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (tenant_id, from_node_id, relationship, to_node_id));
 `;
 
 const ctxFor = (pool: Pool, tenant: string): SkillContext =>
@@ -145,6 +149,9 @@ const ctxFor = (pool: Pool, tenant: string): SkillContext =>
         ($1, 'Product', 'Ledgerline', 'Contract software for hospitals', $2),
         ($1, 'PainPoint', 'Missed renewals', 'Renewals slip because contracts live in spreadsheets', $2),
         ($1, 'Competitor', 'ContractWorks', NULL, NULL)`, [tenant, runId]);
+      await pool.query(`INSERT INTO gt_kg_edges (tenant_id, from_node_id, to_node_id, relationship)
+        SELECT $1, p.id, q.id, 'SOLVES' FROM gt_kg_nodes p, gt_kg_nodes q
+         WHERE p.tenant_id = $1 AND p.name = 'Ledgerline' AND q.tenant_id = $1 AND q.name = 'Missed renewals'`, [tenant]);
     };
 
     test('empty: a tenant with nothing learned sees no nodes and no labels', async () => {
@@ -163,6 +170,11 @@ const ctxFor = (pool: Pool, tenant: string): SkillContext =>
       expect(product.source_name).toBe('ledgerline.example');
       const competitor = r.nodes.find((n) => n.label === 'Competitor') as Record<string, unknown>;
       expect(competitor.source_name).toBeNull();   // conversation-written: no source, and that is shown, not hidden
+      // The relationship rides along, with both ends being nodes in the answer.
+      expect(r.edges).toHaveLength(1);
+      const e = r.edges[0] as Record<string, unknown>;
+      expect(e.relationship).toBe('SOLVES');
+      expect(r.nodes.map((n) => n.id)).toEqual(expect.arrayContaining([e.from_node_id, e.to_node_id]));
       const only = await knowledge({ label: 'PainPoint' }, ctxFor(pool, A));
       expect(only.nodes).toHaveLength(1);
       expect(only.filtered_total).toBe(1);
@@ -173,6 +185,7 @@ const ctxFor = (pool: Pool, tenant: string): SkillContext =>
       await seed(A);
       const r = await knowledge({}, ctxFor(pool, B));
       expect(r.nodes).toEqual([]);
+      expect(r.edges).toEqual([]);
       expect(r.total).toBe(0);
     });
   });
