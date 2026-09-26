@@ -75,6 +75,7 @@ export function toHotRow(r: RecordRow): HotRow {
  */
 export const COMPANY_TARGETS: [string, string][] = [
   ['company.name', 'Company name'],
+  ['company.source_record_id', "Source's own id (member no, record id)"],
   ['company.website', 'Website'],
   ['company.domain', 'Domain'],
   ['company.email', 'Company email'],
