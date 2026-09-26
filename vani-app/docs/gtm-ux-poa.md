@@ -372,6 +372,36 @@ modes. Approve, then integration begins.
 
 ## 4b. Integration log
 
+- **2026-09-26 (imports, the audit that was owed)** — Charan: "i tried
+  import — and it is missing many things from retired items, i dont think you
+  did proper audit … the complete thing is not moved." True. The 2026-09-25
+  import was a reduced box; the retired `/import` was a five-step wizard and
+  the retired `/import-dashboard` a full row-by-row surface, and neither had
+  been read end to end. Both are ported whole now, and the audit lives beside
+  the code: `gtm-imports/INTEGRATION.md` and `gtm-pool/INTEGRATION.md` list
+  every retired feature and where it is.
+  - **Import a list** (`/agents/gtm/import`, and station 1 of G1) — the
+    wizard: what the data is to you (my contacts / my customers / common
+    pool dataset, admin only) → upload → what VaNi found with its reasons,
+    unresolved columns, the delivery's as-of date and tags, the mapping with
+    the full target catalogue and a preview → landing → results with VaNi's
+    reading and the staged-but-not-landed case.
+  - **Imports** (`/agents/gtm/imports`, new reference surface) — sessions by
+    relationship, stat cards, VaNi's post-import reading with retry, held
+    rows with apply-all, the table by state with paging, recount, land
+    staged rows, delete staging behind an in-page confirmation, and the row
+    drawer: diagnostic, per-field keep/take, edit and re-queue, mapped and
+    raw data.
+  - **Common pool** (`/agents/gtm/pool`, admin only, nav filtered by the new
+    `adminOnly` route flag) — the shared source rows with stats, filters and
+    the raw row; the deliveries behind them (`prospect-skill.get_loads`,
+    new, admin-gated, four db tests); and the wizard in its pool posture to
+    add one.
+  - One backend delta beyond `get_loads`: `GET /etl/sessions` returns
+    `load_id`, `destination`, `relationship`. No schema change. Retiring a
+    delivery is deliberately not offered — the record view does not honour
+    `gt_source_loads.status`, which is a migration and Charan's call.
+
 - **2026-09-26 (after the first Haiku read)** — Charan, on the row reading
   "read · 103 entries · 26-Sep-2026": "instead we can say — smart profile is
   completed (maybe %ge also) and user can click and check." A finished read
