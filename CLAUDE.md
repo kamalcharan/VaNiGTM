@@ -1133,6 +1133,21 @@ Reading LinkedIn profiles ourselves stays out (terms, bans, litigation);
 people come from the company's own site, a bought dataset held outright, or
 a tenant's own provider key. LinkedIn and X remain ASSISTED channels.
 
+The people dataset comes in the professional-network shape (company string,
+name, title — headline), measured on a 100-row sample (2026-09-26): 66
+distinct company strings for 100 people, no domain on the person row, 3
+emails, 4 retired/ex/consultant, 6 blank headlines, 10 whose headline names
+a different employer or an abbreviation (RCF Ltd, FACT COCHIN, Essel Propack
+for EPL), and short ambiguous strings ("N", "JB", "Usha", "Toyota",
+"Vardhman"). So **person → company is a name match against the pool's
+`name_key`, with the headline's "at X" as a second candidate, and Haiku
+picks among pool candidates only when both fail**; an unmatched person still
+stages, held with no company anchor, never dropped. The list is title-sliced
+(48 VPs, 26 chief engineers, 11 CGMs), so persona is mostly given by the
+list; "current" is not — the headline decides, and it disagrees with the
+column ~10% of the time. **Ask the vendor to keep the profile URL in the
+export**: it is the only stable person key; name + company is not one.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type
