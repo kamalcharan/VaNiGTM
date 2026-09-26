@@ -1067,7 +1067,19 @@ measured above) · analytica Lab India Hyderabad exhibitor + product lists
 lines on 64 of them, no domain/address/people; a vertical list whose industry
 is the load's default) · the two consumer email lists and the "B2B"
 registrant-dump sample (rejected: see the session notes — people, not
-companies, and no provenance).
+companies, and no provenance) · an IT-companies sample in two shapes
+(2026-09-26): 100 professional-network people rows (name, title, headline,
+62 with a work email; 91 distinct companies, 9 rows where the "person" is
+the company itself, ~10 whose headline names a different employer than the
+company column, one company called "Software companies in Pune") and 27
+provider-enriched company records (domain 27/27, description, size band,
+NACE codes, city, generic mailboxes, monthly traffic). **The company half is
+pool-grade IF the provider's licence permits sharing across tenants — most
+forbid it, and that is the question to ask before buying.** The people half
+is tenant-scoped only (people never enter the pool), and nothing may be sent
+to them until the consent/suppression model exists. Neither half may be
+landed from the paste: the copy lost every separator (email glued to
+headline, city glued to mailbox) — ask for the CSV export.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
