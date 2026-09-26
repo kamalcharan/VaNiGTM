@@ -1093,7 +1093,11 @@ industry calls over 627 rows and its confidence did not predict its errors,
 so it cannot route its own hard cases; it was also slower than Haiku on a
 laptop CPU. Harness and numbers in `backend/scripts/laya-trial/`. The cheap
 lane is code (normalise, domain-from-email, liveness, hashing), not a smaller
-model. The provider also sells the
+model. The trial also measured two things about FTCCI itself: ~4% of member
+rows are individual practitioners (advocates, CAs) sitting in a companies-only
+pool, so cleanup needs an `is_individual` decision; and 41 of 377 domains do
+not match the name, but most are a brand or group site, so the cleanup
+question is `same | brand_or_group | unrelated`, not yes/no. The provider also sells the
 same shape in labelled lists ("growth stage startups": 100 rows, all 1-10 or
 11-50 staff, median 2K visits/month, mostly online education). **A list
 label is the provider's claim about the list, not a fact about the company**

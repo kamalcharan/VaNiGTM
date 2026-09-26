@@ -89,6 +89,7 @@ describe('domainFromEmail', () => {
     expect(domainFromEmail('rekha@vstind.com; padmavathy@vstind.com')).toBe('vstind.com');
     expect(domainFromEmail('someone@gmail.com')).toBeNull();
     expect(domainFromEmail('someone@yahoo.co.in; other@vsnl.net')).toBeNull();
+    expect(domainFromEmail('flexoconsultant@inbox.com')).toBeNull();   // mailbox provider, Laya trial 2026-09-26
     expect(domainFromEmail('info@gmail.com, sales@acme.in')).toBe('acme.in');
     expect(domainFromEmail(null)).toBeNull();
   });

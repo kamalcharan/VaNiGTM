@@ -17,6 +17,42 @@ cost $0.63 for the 627 rows. The NACE label is noisy (a provider's first code
 is often J62 for an edtech), which is why Haiku scores 64% and not 90%; both
 models were scored against the same label and Laya trails by 22 points.
 
+### Where Laya went wrong (read off the answer files)
+
+- **It anchors on one option.** 264 of 627 rows got `information_communication`
+  (Haiku: 66), including feed manufacturers, pharma and JK Agri Genetics at
+  ≥ 0.9 confidence. 90 of Haiku's 249 `manufacturing` calls came back as IT.
+  On FTCCI's prose business strings agreement was 27%; on provider rows with a
+  written description, 48%.
+- **It keyword-matches.** "Manufacture of Mining Equipments" → `mining` at
+  0.999. 45 manufacturers went to `mining` that way.
+- **`is_company` was the base rate.** Of the 32 disagreements, Laya called
+  persons companies at 0.99 (M NAGA JYOTHIRMAYEE, "M.S. DEVI, Advocate");
+  Haiku caught every one. 19 of the 500 FTCCI rows are individual
+  practitioners — advocates, CAs, a chartered engineer — which is a real
+  cleanup question for a companies-only pool, and only Haiku can answer it.
+- **`domain_match` disagreements ran 63:38 Laya-true / Haiku-false**, and
+  Laya's trues were the wrong ones: CHARBHAI BEEDI WORKS → elanefoods.com at
+  0.98, FLEXO CONSULTANT → inbox.com at 0.98 (a mailbox provider, now added to
+  `FREE_MAIL_DOMAINS`).
+
+### Two things the trial found about the DATA, independent of Laya
+
+- **~4% of FTCCI members are people, not companies.** They landed as company
+  rows. The cleanup needs an `is_individual` decision, and the pool's reader
+  should be able to exclude them.
+- **"Does the domain match" is three-valued, not yes/no.** Haiku flagged 41 of
+  377 FTCCI domains, but most are a BRAND or GROUP site rather than a wrong
+  one: Shri Kartikeya Pharma → ksm66ashwagandhaa.com (their product), Linkwell
+  → visiontek.co.in (their brand), Time Cap Pharma → natcopharma.co.in
+  (parent, read off an email), Tata Lockheed Martin → tataadvancedsystems.com
+  (group). Half came from the WEB field, half from an email. The cleanup
+  question is `same | brand_or_group | unrelated`, and only `unrelated` is a
+  defect.
+- Haiku's "misses" against the provider's NACE label are mostly the label:
+  15 rows the provider coded J62 that Haiku called `education` are edtech
+  platforms. Haiku's reading is the more useful one for ICP matching.
+
 **Decision: Haiku is the enrichment model for every question, classification
 included. Decision models are parked.** The cheap lane is code — normalise,
 domain-from-email, liveness, hashing, shared identifiers — not a smaller

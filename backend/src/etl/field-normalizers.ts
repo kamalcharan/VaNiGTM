@@ -102,6 +102,8 @@ export const FREE_MAIL_DOMAINS = new Set([
   'rediffmail.com', 'rediff.com', 'sify.com', 'indiatimes.com', 'in.com', 'zoho.com', 'zohomail.in',
   'vsnl.net', 'vsnl.com', 'vsnl.net.in', 'eth.net', 'sancharnet.in', 'dataone.in', 'bsnl.in', 'airtelmail.in', 'airtelbroadband.in',
   'satyam.net.in', 'touchtelindia.net', 'hathway.com', 'mtnl.net.in', 'bol.net.in', 'sbcglobal.net', 'comcast.net', 'verizon.net', 'att.net',
+  // found by the Laya trial (2026-09-26): FLEXO CONSULTANT landed with domain inbox.com
+  'inbox.com', 'mail.com', 'gmx.com', 'gmx.net', 'yandex.com', 'yandex.ru', 'fastmail.com', 'hey.com', 'tutanota.com',
 ]);
 
 /**
