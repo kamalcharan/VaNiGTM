@@ -23,9 +23,12 @@ rows = {}
 for fn in ("ftcci-sample.jsonl", "provider-sample.jsonl"):
     rows.update(load(fn))
 laya, haiku = load("laya-answers.jsonl"), load("haiku-answers.jsonl")
+for name, d, runner in (("laya-answers.jsonl", laya, "run_laya.py"), ("haiku-answers.jsonl", haiku, "run_haiku.py")):
+    if not d:
+        raise SystemExit(f"{name} is missing or empty — run `python {runner}` first")
 ids = [i for i in rows if i in laya and i in haiku]
 if not ids:
-    raise SystemExit("need both laya-answers.jsonl and haiku-answers.jsonl over the same rows")
+    raise SystemExit(f"no row ids in common: laya has {len(laya)}, haiku has {len(haiku)}; were they run on the same sample files?")
 
 print(f"{len(ids)} rows answered by both\n")
 for q in ("industry", "is_company", "domain_match"):
