@@ -15,6 +15,7 @@ import {
   normalizePersonName,
   normalizeCompanyName,
   normalizeDomain,
+  domainFromEmail,
   cleanValue,
   firstOf,
   scoreQuality,
@@ -69,6 +70,27 @@ describe('normalizeDomain', () => {
   it('rejects anything without a dot', () => {
     expect(normalizeDomain('acme')).toBeNull();
     expect(normalizeDomain('')).toBeNull();
+  });
+
+  // The 43 WEB values FTCCI ships that are not domains, and the two that
+  // are once the noise is stripped. The old check stored most of the junk.
+  it('takes the first of several sites and rejects a host that is not one', () => {
+    expect(normalizeDomain('www.apfta.in; www.tsfta.in')).toBe('apfta.in');
+    expect(normalizeDomain('www. Aurobindoreality.com')).toBe('aurobindoreality.com');
+    expect(normalizeDomain('www.vsthyd.com.')).toBe('vsthyd.com');
+    expect(normalizeDomain('www.ushainternationalcom')).toBeNull();
+    expect(normalizeDomain('www.vignesh pharma.com')).toBeNull();
+    expect(normalizeDomain('www.beko_technologies.com ')).toBeNull();
+  });
+});
+
+describe('domainFromEmail', () => {
+  it('reads the company domain off a corporate address and nothing off a mailbox provider', () => {
+    expect(domainFromEmail('rekha@vstind.com; padmavathy@vstind.com')).toBe('vstind.com');
+    expect(domainFromEmail('someone@gmail.com')).toBeNull();
+    expect(domainFromEmail('someone@yahoo.co.in; other@vsnl.net')).toBeNull();
+    expect(domainFromEmail('info@gmail.com, sales@acme.in')).toBe('acme.in');
+    expect(domainFromEmail(null)).toBeNull();
   });
 });
 

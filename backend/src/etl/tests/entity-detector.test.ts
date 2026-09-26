@@ -129,6 +129,36 @@ describe('repeated inline person blocks', () => {
   });
 });
 
+describe('FTCCI as delivered — the representatives are people, not noise', () => {
+  // The real 21 headers. The three reps per row are REP_BY1/POST1/PHONE1 and
+  // so on — index glued to the word, no separator. Before 2026-09-26 all nine
+  // came back "could not guess", so a directory of 2,913 companies with
+  // ~5,800 named people landed no people at all unless mapped by hand.
+  const FULL = [
+    'PANEL', 'Panel No', 'COMPANY', 'ADDRESS_1', 'ADDRESS_2', 'ADDRESS_3', 'PIN', 'PHONES', 'FAX', 'EMAIL', 'WEB', 'BUSINESS',
+    'REP_BY1', 'POST1', 'PHONE1', 'REP_BY2', 'POST2', 'PHONE2', 'REP_BY3', 'POST3', 'PHONE3',
+  ];
+
+  it('strips an index glued to the header', () => {
+    expect(deIndexHeader('REP_BY1')).toEqual({ base: 'REP BY', index: 1 });
+    expect(deIndexHeader('POST3')).toEqual({ base: 'POST', index: 3 });
+    expect(deIndexHeader('PHONE2')).toEqual({ base: 'PHONE', index: 2 });
+    // ADDRESS_1 still resolves literally before this fallback is ever tried.
+    expect(detectEntities(['COMPANY', 'ADDRESS_1', 'WEB']).entities.map((e) => e.kind)).toEqual(['company']);
+  });
+
+  it('finds the company AND three people per row, and leaves only the panel columns and FAX unresolved', () => {
+    const plan = detectEntities(FULL);
+    const company = plan.entities.find((e) => e.kind === 'company')!;
+    const person = plan.entities.find((e) => e.kind === 'person')!;
+    expect(company.columns).toMatchObject({ COMPANY: 'name', WEB: 'website', BUSINESS: 'industry_raw', EMAIL: 'email', PHONES: 'phone', ADDRESS_3: 'city', PIN: 'pin' });
+    expect(person.per_row).toBe(3);
+    expect(person.columns).toMatchObject({ REP_BY1: 'full_name', POST1: 'job_title', PHONE1: 'mobile', REP_BY3: 'full_name', POST3: 'job_title', PHONE3: 'mobile' });
+    expect(plan.unresolved_columns.map((u) => u.header).sort()).toEqual(['FAX', 'PANEL', 'Panel No']);
+    expect(estimateRows(plan, 2913)).toMatchObject({ company: 2913, person: 2913 * 3 });
+  });
+});
+
 describe('personBlocks — pulling repeated people out of one row', () => {
   // Detecting that a row carries three people is worth nothing if only the
   // first is extracted. This is where 2,913 rows become ~5,800 contacts.

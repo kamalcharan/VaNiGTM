@@ -67,16 +67,58 @@ export function cleanValue(
 }
 
 /** Strip scheme, www and path. FTCCI ships bare hosts ("www.acme.com"). */
+/**
+ * A host is a dotted chain of [a-z0-9-] labels ending in an alphabetic TLD.
+ * Anything else — a space inside ("vignesh pharma.com"), an underscore
+ * ("beko_technologies.com"), a missing dot ("ushainternationalcom") — is not
+ * a domain and must not be stored as one: FTCCI shipped 43 such values and
+ * the old check (`includes('.')`) let most of them through as valid.
+ */
+const HOST = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/;
+
 export function normalizeDomain(raw: unknown): string | null {
   const s = str(raw);
   if (!s) return null;
-  const host = s
-    .toLowerCase()
+  // A cell may hold several sites ("www.apfta.in; www.tsfta.in"). The first
+  // is the record's; the rest stay in the raw row.
+  const first = s.toLowerCase().split(/[;,|]/)[0].trim();
+  const host = first
     .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
+    .replace(/^www\.\s*/, '')
     .split(/[/?#]/)[0]
-    .trim();
-  return host.includes('.') ? host : null;
+    .trim()
+    .replace(/\.$/, '');
+  return HOST.test(host) ? host : null;
+}
+
+/**
+ * Mailbox providers and ISPs: an address there says nothing about the
+ * company. Kept as a list next to the code that reads it; the Indian ISP
+ * mailboxes are here because the lists we have seen are full of them.
+ */
+export const FREE_MAIL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.in', 'yahoo.in', 'yahoo.co.uk', 'ymail.com', 'rocketmail.com',
+  'hotmail.com', 'hotmail.co.uk', 'outlook.com', 'live.com', 'msn.com', 'aol.com', 'icloud.com', 'me.com', 'protonmail.com', 'proton.me',
+  'rediffmail.com', 'rediff.com', 'sify.com', 'indiatimes.com', 'in.com', 'zoho.com', 'zohomail.in',
+  'vsnl.net', 'vsnl.com', 'vsnl.net.in', 'eth.net', 'sancharnet.in', 'dataone.in', 'bsnl.in', 'airtelmail.in', 'airtelbroadband.in',
+  'satyam.net.in', 'touchtelindia.net', 'hathway.com', 'mtnl.net.in', 'bol.net.in', 'sbcglobal.net', 'comcast.net', 'verizon.net', 'att.net',
+]);
+
+/**
+ * The company's domain, read off a corporate email address when the file
+ * has no website for it. FTCCI: 518 of the 1,323 rows with no usable WEB
+ * value carry a corporate address. A free-mail or ISP address yields nothing.
+ */
+export function domainFromEmail(raw: unknown): string | null {
+  const s = str(raw);
+  if (!s) return null;
+  for (const part of s.toLowerCase().split(/[;,\s]+/)) {
+    const at = part.lastIndexOf('@');
+    if (at < 0) continue;
+    const host = normalizeDomain(part.slice(at + 1));
+    if (host && !FREE_MAIL_DOMAINS.has(host)) return host;
+  }
+  return null;
 }
 
 /**

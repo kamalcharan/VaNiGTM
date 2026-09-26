@@ -53,12 +53,20 @@ export const CONTACT_FIELD_MAP: Record<string, string> = {
   'FULL NAME': 'full_name',
   'CONTACT NAME': 'full_name',
   'PERSON NAME': 'full_name',
+  'CONTACT PERSON': 'full_name',
+  // Directories name their representatives this way: FTCCI ships REP_BY1..3
+  // with POST1..3 beside them.
+  'REP BY': 'full_name',
+  'REP': 'full_name',
+  'REPRESENTATIVE': 'full_name',
+  'REPRESENTED BY': 'full_name',
   'NAME': 'full_name',                       // AMBIGUOUS
   'TITLE': 'prefix',
   'SALUTATION': 'prefix',
 
   'JOB TITLE': 'job_title',
   'DESIGNATION': 'job_title',
+  'POST': 'job_title',
   'POSITION': 'job_title',
   'ROLE': 'job_title',
 

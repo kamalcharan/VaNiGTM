@@ -106,7 +106,7 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…248 (highest = 248)
+  migrations/         — 001…249 (highest = 249)
 frontend/            — ⚠️ RETIRED (2026-09-16). Still on disk, still builds,
                       NOT the product. The frontend is vikunawebsite/vani-app.
                       Kept for reference; do not add features here.
@@ -317,7 +317,7 @@ because a date format or a token convention is worth not re-deciding.
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **248**.
+  status: `npm run db:migrate -- --status`. Highest = **249**.
 - Discuss schema changes with the user first. Make migrations **idempotent
   and guarded** (IF NOT EXISTS; DO-block existence checks before copying
   from or altering legacy tables — vani_gtm_db was bootstrapped fresh and
@@ -972,6 +972,59 @@ to the source (`awaiting_input.event_id` → `gt_events.payload.source_id` →
 source reaching `complete` after the run's `started_at`. The console leads
 with Decline on those. The right answer for run 124 is Decline: nothing to
 gain, and approving would bill a second read.
+
+### FTCCI through the real pipeline, end to end (2026-09-26)
+
+The only legitimate dataset we hold (2,913 members, Oct 2023) had never been
+pushed through the ETL as a common-pool delivery on a database built from the
+migrations. Doing it — local Postgres, `db:migrate` + `db:seed`, the API on
+:3012, upload → headers → session (`destination: universe_companies`) →
+process → `get_records` / `get_loads` scope pool — found four defects that no
+reading had:
+
+1. **Every import that held a row reported "failed".** `landing.ts` sets the
+   session to `needs_review` when a row is held; the CHECK on
+   `ki_import_sessions.status` (104) never had that value — 200 and 201 only
+   widened the STAGING check. The final UPDATE raised, the route marked the
+   session `failed`, counters stayed 0, and the person was told the import
+   failed while 2,882 companies and 5,816 people had landed. **Migration 249**
+   adds the value. It is the fix; apply it before the next import.
+2. **Different companies on one website collapsed into one pool row.** The
+   pool's `source_record_id` was the dedup key, i.e. the domain, so the
+   ON CONFLICT upsert made sister companies overwrite each other: 17 vanished
+   and the pool reported zero shared identifiers because nothing was left to
+   share one — the exact opposite of the design ("flagged, never merged").
+   Now: the source's own id when mapped (`company.source_record_id`), else a
+   hash of the normalised row. Result: 2,912 rows, 137 flagged.
+3. **The detector could not see FTCCI's representatives.** `REP_BY1/POST1/
+   PHONE1` have the index glued to the word; the de-indexer required a word
+   boundary, so all nine came back "could not guess" — on the file the
+   detector was designed around. And once people were found, the un-numbered
+   `COMPANY` and `EMAIL` went to the person. Rule now: people found only in
+   numbered blocks ⇒ un-numbered ambiguous columns are the company's,
+   numbered ones the person's. 18 of 21 columns resolve; PANEL, Panel No and
+   FAX are left, honestly.
+4. **Domains.** `normalizeDomain` accepted "vignesh pharma.com" and
+   "apfta.in; www.tsfta.in" as hosts; it now takes the first host of a list
+   and rejects anything that is not one. And a corporate email is read for
+   the domain when the file has no website (`domain_source: 'email'`, in the
+   staged row): 1,559 → 2,063 rows with a domain, 489 of them from email.
+   `FREE_MAIL_DOMAINS` (mailbox providers and Indian ISPs) is the list that
+   stops gmail and vsnl becoming someone's company.
+
+What the file is, measured: 87% Hyderabad/Secunderabad, PIN prefix 50 on
+2,837 of 2,913, 2,151 distinct BUSINESS strings (2,041 seen once), 1,531 EMAIL
+cells with more than one address, 40% of all addresses on mailbox providers,
+1,350 PHONES cells with several numbers or notes, freshness `ageing` today and
+`stale` from 2026-10-26. The 14 rows held for review are one person named as
+a representative of two sister companies on a shared domain — a real question
+for a human, not a defect.
+
+Local run recipe: `service postgresql start`; `DB_PRIMARY=postgresql://root@
+localhost/<db>?host=/var/run/postgresql npm run db:migrate` (stops at 246,
+which needs pgvector — the ETL path does not); `npm run db:seed`; set
+`vn_tenants.is_admin = true` on the seeded tenant; run the API with
+`JWT_SECRET` and `TENANT_SECRET_KEY` set; sign in; drive `/api/v1/etl/*`.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the

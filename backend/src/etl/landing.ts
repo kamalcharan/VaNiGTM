@@ -34,6 +34,7 @@
  * handful of queries, not 2,913 round trips.
  */
 
+import { createHash } from 'crypto';
 import type { Pool, PoolClient } from 'pg';
 import { withTenantClient } from '../db/query';
 import { normalizePersonName, normalizeCompanyName } from './field-normalizers';
@@ -626,6 +627,16 @@ async function insertChannels(
   return channels.length;
 }
 
+/** A stable id for a row from a source that ships none: name, domain, PIN and city, normalised, hashed. */
+function stableRowId(c: any): string | null {
+  const nameKey = normalizeCompanyName(c?.name);
+  if (!nameKey) return null;
+  const pin = String(c?.pin ?? '').replace(/\D/g, '');
+  const city = String(c?.city ?? '').trim().toLowerCase();
+  const raw = `${nameKey}|${c?.domain_normalized ?? ''}|${pin}|${city}`;
+  return `h:${createHash('sha1').update(raw).digest('hex').slice(0, 24)}`;
+}
+
 /**
  * The pool keeps every source's own row, immutable. The golden record is
  * DERIVED from them (design note §3) — that resolution is the Phase B merge
@@ -636,10 +647,18 @@ async function insertChannels(
 async function upsertUniverseSource(
   client: PoolClient, c: any, row: StagedRow, loadRow: any, sourceAsOf: string | null,
 ): Promise<number> {
-  // Sources without a stable id get a hash of the row, per the design note.
+  // The source's own id when the file carries one; otherwise a hash of the
+  // normalised row, per the design note. NEVER the dedup/blocking key: that is
+  // the domain, and FTCCI has 31 rows sharing a website with another member —
+  // group companies and divisions that are different businesses. Keyed on the
+  // domain they upserted over each other, 17 companies vanished, and the pool
+  // reported zero shared identifiers because nothing was left to share one.
+  // Identical rows still collapse (same hash), which is the idempotency the
+  // design wants; different rows on one domain stay separate and FLAGGED.
   const recordId =
+    c.source_record_id ||
     row.mapped_data?.source_record_id ||
-    row.dedup_key ||
+    stableRowId(c) ||
     `row:${loadRow?.id}:${row.row_number}`;
 
   const r = await client.query(

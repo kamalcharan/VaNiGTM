@@ -28,6 +28,14 @@ export const COMPANY_FIELD_MAP: Record<string, string> = {
   'ORGANISATION': 'name',
   'ORGANIZATION': 'name',
   'NAME': 'name',
+  // The source's OWN id for the record, when it ships one. It is what makes a
+  // re-delivery idempotent (migration 195); without it the row is hashed.
+  'COMPANY ID': 'source_record_id',
+  'MEMBER ID': 'source_record_id',
+  'MEMBER NO': 'source_record_id',
+  'MEMBERSHIP NO': 'source_record_id',
+  'RECORD ID': 'source_record_id',
+  'SOURCE RECORD ID': 'source_record_id',
 
   'WEB': 'website',
   'WEBSITE': 'website',
@@ -68,7 +76,11 @@ export const COMPANY_FIELD_MAP: Record<string, string> = {
 
 export interface MappedCompany {
   name: string;
+  /** The source's own id for this record, when the file carries one. */
+  source_record_id?: string | null;
   domain_normalized: string | null;
+  /** Where the domain came from — 'email' means it was READ OFF a corporate address, not stated. */
+  domain_source?: 'domain' | 'website' | 'email' | null;
   website: string | null;
   email: string | null;
   phone: string | null;
@@ -108,6 +120,7 @@ import {
   firstOf,
   cleanValue,
   normalizeDomain,
+  domainFromEmail,
   normalizeCompanyName,
   normalizeStateCode,
   scoreQuality,
@@ -174,7 +187,12 @@ export function mapCompanyRow(
   const clean = (field: string, v: unknown): string | null => cleanValue(field, v, rejects);
 
   const website = str(g('website'));
-  const domain = normalizeDomain(g('domain')) ?? normalizeDomain(website);
+  const emailRaw = g('email');
+  const fromDomain = normalizeDomain(g('domain'));
+  const fromWebsite = fromDomain ? null : normalizeDomain(website);
+  const fromEmail = fromDomain || fromWebsite ? null : domainFromEmail(emailRaw);
+  const domain = fromDomain ?? fromWebsite ?? fromEmail;
+  const domainSource = fromDomain ? 'domain' : fromWebsite ? 'website' : fromEmail ? 'email' : null;
   const pin = str(g('pin'));
 
   const addressParts = [str(g('address_1')), str(g('address_2'))].filter(Boolean);
@@ -184,9 +202,11 @@ export function mapCompanyRow(
 
   const mapped: MappedCompany = {
     name: str(g('name')) ?? '',
+    source_record_id: str(g('source_record_id')),
     domain_normalized: domain,
+    domain_source: domainSource,
     website: website,
-    email: firstOf(g('email'), /[;,]/),
+    email: firstOf(emailRaw, /[;,]/),
     phone: firstOf(g('phone'), /[/\\,;]/),
     address_line: addressParts.length ? addressParts.join(', ') : null,
     city: str(g('city')),

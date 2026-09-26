@@ -113,7 +113,11 @@ export function deIndexHeader(header: string): { base: string; index: number } |
   // Underscores are word characters, so `\b` never fires inside `REP_2_EMAIL`.
   // Flatten the separators before matching.
   const flat = norm(header).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const m = flat.match(/^(.*?)\s?\b(\d{1,2})\b\s?(.*)$/);
+  // The index may be glued to the word: FTCCI's real headers are REP_BY1,
+  // POST1, PHONE1 — `\b` never fires between Y and 1, so they resolved to
+  // nothing and the three representatives per row were "columns VaNi could
+  // not guess" on the one file this pipeline was designed around.
+  const m = flat.match(/^(.*?[A-Z])\s?(\d{1,2})(?!\d)\s?(.*)$/) ?? flat.match(/^(.*?)\s?\b(\d{1,2})\b\s?(.*)$/);
   if (!m) return null;
   const base = `${m[1]} ${m[3]}`.replace(/\s+/g, ' ').trim();
   if (!base) return null;
@@ -139,12 +143,12 @@ export function detectEntities(
   // literal indexed header (`ADDRESS_1`) keeps its own meaning.
   const present = headers.map((h) => {
     const key = norm(h);
-    if (companyMap.has(key) || contactMap.has(key)) return { raw: h, key, index: 1 };
+    if (companyMap.has(key) || contactMap.has(key)) return { raw: h, key, index: 1, indexed: false };
     const deIndexed = deIndexHeader(h);
     if (deIndexed && (companyMap.has(deIndexed.base) || contactMap.has(deIndexed.base))) {
-      return { raw: h, key: deIndexed.base, index: deIndexed.index };
+      return { raw: h, key: deIndexed.base, index: deIndexed.index, indexed: true };
     }
-    return { raw: h, key, index: 1 };
+    return { raw: h, key, index: 1, indexed: false };
   });
 
   const companyHits = present.filter((h) => COMPANY_DISCRIMINATORS.has(h.key));
@@ -152,6 +156,16 @@ export function detectEntities(
 
   const hasCompany = companyHits.length > 0;
   const hasPerson = personHits.length > 0;
+
+  /**
+   * The people in this file exist ONLY as repeated, numbered blocks
+   * (REP_BY1..3). That is a company-first directory: one company per row,
+   * its representatives inline. In such a file an UN-numbered ambiguous
+   * column — COMPANY, EMAIL, PHONES — is the company's, and a NUMBERED one
+   * — PHONE2 — belongs to that person block. Without this rule FTCCI's own
+   * COMPANY and EMAIL columns came back "could belong to either".
+   */
+  const personOnlyInBlocks = hasPerson && personHits.every((h) => h.indexed);
 
   /** Does this file distinguish its company columns by prefixing them? */
   const usesCompanyPrefix = present.some((p) => p.key.startsWith('COMPANY '));
@@ -175,7 +189,7 @@ export function detectEntities(
   // field — i.e. how many people one source row carries.
   let personPerRow = 1;
 
-  for (const { raw, key, index } of present) {
+  for (const { raw, key, index, indexed } of present) {
     const inCompany = companyMap.has(key);
     const inContact = contactMap.has(key);
     const generic = GENERIC_HEADERS.has(key);
@@ -206,6 +220,14 @@ export function detectEntities(
     // Both entities present. An explicit COMPANY prefix is decisive; the
     // unprefixed twin then belongs to the person.
     if (key.startsWith('COMPANY ')) { toCompany(); continue; }
+
+    // Company-first with people in numbered blocks: the number decides.
+    if (personOnlyInBlocks) {
+      if (indexed) { toPerson(); continue; }
+      toCompany();
+      notes.push(`"${raw}" read as the company's — this file carries its people as numbered columns, and this one is not numbered.`);
+      continue;
+    }
 
     const prefixedTwinPresent = present.some((p) => p.key === `COMPANY ${key}`);
     if (prefixedTwinPresent) {

@@ -450,6 +450,35 @@ maybe()('landSession — the common pool', () => {
     expect((await pool!.query(`SELECT blocking_key FROM gt_universe_company_sources LIMIT 1`)).rows[0])
       .toHaveProperty('blocking_key', 'd:pool.com');
   });
+
+  // FTCCI: 31 members share a website with another member — group companies
+  // and divisions. They must land as separate source rows that SHARE a
+  // blocking key (flagged), never upsert over each other (17 vanished when
+  // the record id was the domain).
+  it('keeps two companies on one domain as two flagged rows, not one', async () => {
+    const rows = [
+      { mapped: { company: company({ name: 'TGV SRAAC Limited', domain_normalized: 'tgv.example', pin: '500001' }), people: [] }, dedup_key: 'd:tgv.example' },
+      { mapped: { company: company({ name: 'Sree Rayalaseema Hi-Strength Hypo Ltd', domain_normalized: 'tgv.example', pin: '518004' }), people: [] }, dedup_key: 'd:tgv.example' },
+    ];
+    const r = await stageAndLand(rows, { destination: 'universe_companies', relationship: 'dataset' });
+    expect(r.landed.companies).toBe(2);
+    const got = await pool!.query(
+      `SELECT name, source_record_id, blocking_key FROM gt_universe_company_sources WHERE blocking_key = 'd:tgv.example' ORDER BY name`);
+    expect(got.rows).toHaveLength(2);
+    expect((got.rows[0] as any).source_record_id).not.toBe((got.rows[1] as any).source_record_id);
+    expect((got.rows[0] as any).source_record_id).toMatch(/^h:/);
+    // A second delivery of the same two rows changes nothing.
+    await stageAndLand(rows, { destination: 'universe_companies', relationship: 'dataset' });
+    const again = await pool!.query(`SELECT COUNT(*)::int n FROM gt_universe_company_sources WHERE blocking_key = 'd:tgv.example'`);
+    expect((again.rows[0] as any).n).toBe(2);
+  });
+
+  it('uses the source\'s own id when the row carries one', async () => {
+    const rows = [{ mapped: { company: company({ name: 'Own Id Co', domain_normalized: 'ownid.example', source_record_id: 'A-3' }), people: [] }, dedup_key: 'd:ownid.example' }];
+    await stageAndLand(rows, { destination: 'universe_companies', relationship: 'dataset' });
+    const got = await pool!.query(`SELECT source_record_id FROM gt_universe_company_sources WHERE name = 'Own Id Co'`);
+    expect((got.rows[0] as any).source_record_id).toBe('A-3');
+  });
 });
 
 maybe()('landSession — at the real file size', () => {

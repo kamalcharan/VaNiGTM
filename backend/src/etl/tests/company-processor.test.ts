@@ -79,6 +79,25 @@ describe('mapCompanyRow — the shapes the real files use', () => {
   });
 });
 
+describe('domain read off the email when the file has no website', () => {
+  const mapping = { 'COMPANY': 'name', 'EMAIL': 'email', 'WEB': 'website', 'MEMBER NO': 'source_record_id' };
+  it('derives it from a corporate address and says so', () => {
+    const r = mapCompanyRow({ COMPANY: 'VST Industries', EMAIL: 'rekha@vstind.com; x@vstind.com', WEB: '' }, mapping);
+    expect(r.mapped.domain_normalized).toBe('vstind.com');
+    expect(r.mapped.domain_source).toBe('email');
+    expect(r.dedup_key).toBe('d:vstind.com');
+  });
+  it('never derives it from a mailbox provider, and prefers a stated website', () => {
+    expect(mapCompanyRow({ COMPANY: 'X', EMAIL: 'x@gmail.com', WEB: '' }, mapping).mapped.domain_normalized).toBeNull();
+    const r = mapCompanyRow({ COMPANY: 'X', EMAIL: 'x@other.com', WEB: 'www.stated.com' }, mapping);
+    expect(r.mapped.domain_normalized).toBe('stated.com');
+    expect(r.mapped.domain_source).toBe('website');
+  });
+  it('carries the source\'s own id when a column maps to it', () => {
+    expect(mapCompanyRow({ COMPANY: 'X', 'MEMBER NO': 'A-17' }, mapping).mapped.source_record_id).toBe('A-17');
+  });
+});
+
 describe('dedupKey', () => {
   it('prefers the domain', () => {
     const r = mapCompanyRow({ 'COMPANY': 'Acme Pvt Ltd', 'WEB': 'acme.com', 'PIN': '500003' });
