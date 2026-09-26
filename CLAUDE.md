@@ -912,6 +912,24 @@ chars ÷ room, so the retry is built smaller instead of repeating the prompt.
 Setting `LLM_CONTEXT_TOKENS=8192` on a server that runs 8192 changes nothing;
 it was never the window that was wrong, it was the guess.
 
+**The budget and the check must use the same ratio (2026-09-26, the same
+run).** Every prompt builder calls `charBudgetFor(undefined, …)` because the
+model is resolved per tenant later, inside `callLLM`; the check in `callLLM`
+knows the model. The drafter budgeted at the heuristic, the gate checked at
+the ratio it had just learned for qwen3-4b, and refused what the budget had
+allowed: `LLM_CONTEXT_TOO_LARGE` on a prompt the code had just trimmed to fit.
+`charsPerToken()` with no model now returns the densest ratio seen for ANY
+platform model, and `charBudgetFor` keeps `BUDGET_SLACK_TOKENS` (64) back for
+the caller's own wrapper text. Tested: a budget made without the model passes
+the check made with it.
+
+**How slow the server is, measured (2026-09-26):** `3353 prompt + 330 answer
+tokens in 95.3s` from llm.dristiq.com. Every call logs that line; the timeout
+is derived from the measured speed with `LLM_PRIMARY_TIMEOUT_MS` as the floor.
+A drafter call filling an 8k window takes minutes on that box. The lever is
+`LLM_CONTEXT_TOKENS` set lower (every prompt shrinks with it), or a faster
+server — not a longer timeout.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type

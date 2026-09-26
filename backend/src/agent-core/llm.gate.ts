@@ -73,6 +73,8 @@ const PLATFORM_CONTEXT = Math.max(0, parseInt(process.env.LLM_CONTEXT_TOKENS ?? 
  * bookkeeping, which are inside the window and not inside our string.
  */
 const OVERHEAD_TOKENS = 200;
+/** Kept back by charBudgetFor for the caller's own wrapper around the budgeted text. */
+export const BUDGET_SLACK_TOKENS = 64;
 
 interface Lane { running: number; waiting: Array<() => void>; limit: number }
 const lanes = new Map<string, Lane>();
@@ -227,13 +229,28 @@ export function tokensPerSec(model?: string): number {
   return o ? Math.min(o.minTps, DEFAULT_TOKENS_PER_SEC * 4) : DEFAULT_TOKENS_PER_SEC;
 }
 
-/** Chars per token for this model: the densest ratio seen, or the heuristic. */
+/** Never trust a learned ratio to be MORE generous than the heuristic without
+ *  evidence from several calls — one short prompt is not a calibration. */
+const effective = (o: { minRatio: number; samples: number }) =>
+  (o.samples >= 3 ? o.minRatio : Math.min(o.minRatio, DEFAULT_CHARS_PER_TOKEN));
+
+/**
+ * Chars per token: the densest ratio seen for this model, or the heuristic.
+ *
+ * With NO model — which is how every prompt builder calls it, because the
+ * model is resolved per tenant later, inside callLLM — it is the densest ratio
+ * seen for ANY platform model. That is what keeps the budget and the check in
+ * agreement: the vikuna.io run (2026-09-26) had the drafter budget its text at
+ * the heuristic while the gate checked the same call at the ratio it had just
+ * learned for qwen3-4b, and refused what the budget had allowed. A budget built
+ * on the densest known ratio can never hand out more than the check accepts.
+ */
 export function charsPerToken(model?: string): number {
   const o = model ? observed.get(model) : undefined;
-  if (!o) return DEFAULT_CHARS_PER_TOKEN;
-  // Never trust a learned ratio to be MORE generous than the heuristic without
-  // evidence from several calls — one short prompt is not a calibration.
-  return o.samples >= 3 ? o.minRatio : Math.min(o.minRatio, DEFAULT_CHARS_PER_TOKEN);
+  if (o) return effective(o);
+  let densest = DEFAULT_CHARS_PER_TOKEN;
+  for (const x of observed.values()) densest = Math.min(densest, effective(x));
+  return densest;
 }
 
 /** Tokens, using whatever this model has taught us so far. */
@@ -262,7 +279,9 @@ export function charBudgetFor(
   fixedText: string,
 ): number {
   if (PLATFORM_CONTEXT <= 0) return Number.MAX_SAFE_INTEGER;   // window unknown, do not cap
-  const usable = PLATFORM_CONTEXT - OVERHEAD_TOKENS - reserveOutputTokens;
+  // Slack for what the caller wraps around the text it budgets — a heading,
+  // a role line — which the check will count and the budget did not see.
+  const usable = PLATFORM_CONTEXT - OVERHEAD_TOKENS - reserveOutputTokens - BUDGET_SLACK_TOKENS;
   const left = usable - estimateTokens(fixedText, model);
   return left <= 0 ? 0 : Math.floor(left * charsPerToken(model));
 }
@@ -274,6 +293,8 @@ export interface ContextCheck {
   estimatedPromptTokens: number;
   reservedOutputTokens: number;
   budgetTokens: number;
+  /** The ratio the estimate was made at — learned, or the cold-start guess. */
+  charsPerToken: number;
   fits: boolean;
 }
 
@@ -294,6 +315,7 @@ export function checkContext(
     estimatedPromptTokens,
     reservedOutputTokens: maxTokens,
     budgetTokens,
+    charsPerToken: charsPerToken(model),
     // max_tokens is RESERVED inside the window, not added to it — a prompt
     // that fits on its own still fails when the space kept for the answer does
     // not. That is the arithmetic the 500 was hiding.
@@ -308,7 +330,7 @@ export function contextError(c: ContextCheck, label: string): Error {
     + `plus ${c.reservedOutputTokens} reserved for the answer, and the platform model's `
     + `window is ${c.budgetTokens} usable. Nothing was sent. Split the work into smaller `
     + `calls, ask for fewer output tokens, or raise LLM_CONTEXT_TOKENS if the server is `
-    + `configured for a larger window. (Prompt size is an estimate at 4 chars/token.)`,
+    + `configured for a larger window. (Prompt size is an estimate at ${c.charsPerToken.toFixed(2)} chars/token.)`,
   );
 }
 

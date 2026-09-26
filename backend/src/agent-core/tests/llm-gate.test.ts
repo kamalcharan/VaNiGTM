@@ -168,10 +168,10 @@ describe('learning the real token count from the model', () => {
 
 describe('the budget as the authority on what gets built', () => {
   it('says how much variable content still fits', () => {
-    // 8192 - 200 overhead - 1200 output = 6792 tokens, minus a 1000-char
-    // system prompt (334 tokens at 3 chars/token) = 6458 tokens = 19374 chars.
+    // 8192 - 200 overhead - 1200 output - 64 slack = 6728 tokens, minus a
+    // 1000-char system prompt (334 tokens at 3 chars/token) = 6394 = 19182 chars.
     const room = charBudgetFor(undefined, 1200, 'x'.repeat(1000));
-    expect(room).toBe(19374);
+    expect(room).toBe(19182);
   });
 
   it('shrinks as the model turns out to be denser than the heuristic', () => {
@@ -194,8 +194,28 @@ describe('the budget as the authority on what gets built', () => {
     const room = charBudgetFor(undefined, 1200, system);
     const prompt = system + 'y'.repeat(room);
     expect(checkContext('platform', prompt, 1200)?.fits).toBe(true);
-    const oneMore = system + 'y'.repeat(room + 40);
+    // The slack is for the caller's wrapper; past it, the check refuses.
+    const oneMore = system + 'y'.repeat(room + 64 * 3 + 40);
     expect(checkContext('platform', oneMore, 1200)?.fits).toBe(false);
+  });
+
+  it('a budget made without knowing the model passes the check made with it', () => {
+    // The vikuna.io run, 2026-09-26: the drafter budgeted at the heuristic,
+    // the gate checked at the ratio it had just learned for qwen3-4b, and
+    // refused what the budget allowed. The budget must build on the densest
+    // ratio any platform model has shown.
+    noteObservedTokens('qwen3-4b', 3000, 1500);          // 2 chars/token, one sample
+    const system = 'x'.repeat(1000);
+    const room = charBudgetFor(undefined, 1200, system);
+    const prompt = system + 'Website text:\n' + 'y'.repeat(room);
+    expect(checkContext('platform', prompt, 1200, 'qwen3-4b')?.fits).toBe(true);
+    expect(charsPerToken()).toBeCloseTo(2);
+  });
+
+  it('the refusal names the ratio it estimated at', () => {
+    noteObservedTokens('q', 2500, 1000);
+    const c = checkContext('platform', 'x'.repeat(40000), 1000, 'q')!;
+    expect(contextError(c, 'this call').message).toMatch(/2\.50 chars\/token/);
   });
 });
 
