@@ -43,9 +43,12 @@ import type { Pool } from 'pg';
 import { createTenantDb } from '../db';
 import { appendStep } from './agent.runner';
 import { resolveProvider, type ResolvedProvider } from './llm.provider';
-import { withLlmSlot, checkContext, contextError, noteObservedTokens, noteContextOverflow, estimateTokens, charsPerToken } from './llm.gate';
+import { withLlmSlot, checkContext, contextError, noteObservedTokens, noteContextOverflow, noteObservedSpeed, tokensPerSec, estimateTokens, charsPerToken } from './llm.gate';
 
 const charsPerTokenLabel = (model?: string) => charsPerToken(model).toFixed(2);
+
+/** Prompt processing is faster than generation; ~10× is a safe floor on CPU. */
+const PREFILL_FACTOR = 10;
 
 /* ── LLM config ─────────────────────────────────────────────────── */
 
@@ -287,6 +290,18 @@ async function callEndpoint(
   // actually was — its KV cache split five ways. Queueing is not degradation:
   // every call still happens, in order, and the worker's heartbeat keeps a
   // waiting run from being reclaimed.
+  // The timeout is DERIVED from the call, never just configured. A 4B model
+  // on the VPS produces ~12 tokens/s; a call reserving 1,200 answer tokens
+  // needs 100s for the answer alone, plus prefill — so a flat 60s
+  // (LLM_PRIMARY_TIMEOUT_MS) timed out the profile drafter every single
+  // time and read as "cannot reach". The configured value is the FLOOR; the
+  // ceiling is what this call needs at LLM_TOKENS_PER_SEC (default 10).
+  const promptTokens = estimateTokens(wholePrompt, provider.model);
+  const tps = tokensPerSec(provider.model);
+  const neededMs = Math.ceil(((promptTokens / (tps * PREFILL_FACTOR)) + (maxTokens / tps)) * 1000) + 15_000;
+  const timeoutMs = Math.max(provider.timeoutMs, neededMs);
+  const startedAt = Date.now();
+
   let response: Response;
   try {
     response = await withLlmSlot(
@@ -298,7 +313,7 @@ async function callEndpoint(
         body:    JSON.stringify(body),
         // The timeout starts when the call STARTS, not when it was queued —
         // otherwise the fifth run in the lane times out having never been sent.
-        signal:  AbortSignal.timeout(provider.timeoutMs),
+        signal:  AbortSignal.timeout(timeoutMs),
       }),
       (waitedMs, depth) => {
         // Visible, because a run that sits for two minutes with no explanation
@@ -308,7 +323,13 @@ async function callEndpoint(
       },
     );
   } catch (err) {
-    throw new Error(`${unreachable}: Cannot reach ${who} at ${provider.url} — ${String(err)}`);
+    const timedOut = /timeout|aborted/i.test(String(err));
+    const detail = timedOut
+      ? ` (waited ${Math.round((Date.now() - startedAt) / 1000)}s of ${Math.round(timeoutMs / 1000)}s allowed for ~${promptTokens} prompt `
+        + `+ ${maxTokens} answer tokens; the last measured speed of ${provider.model} was ${tps.toFixed(1)} tok/s. `
+        + `Either the server is down, or this prompt is too large for it to read in time — lower LLM_CONTEXT_TOKENS to shrink every prompt, or raise LLM_PRIMARY_TIMEOUT_MS)`
+      : '';
+    throw new Error(`${unreachable}: Cannot reach ${who} at ${provider.url} — ${String(err)}${detail}`);
   }
 
   if (!response.ok) {
@@ -346,6 +367,12 @@ async function callEndpoint(
   // That is the invocation the estimate was missing — no second call needed,
   // and every future budget on this model is measured rather than guessed.
   noteObservedTokens(provider.model, wholePrompt.length, inputTokens);
+  // And how long it took: the next timeout is derived from this, and the
+  // worker's stdout carries the one line that answers "how slow is dristiq".
+  const elapsedMs = Date.now() - startedAt;
+  noteObservedSpeed(provider.model, outputTokens, elapsedMs);
+  console.log(`[LLM] ${provider.model}: ${inputTokens} prompt + ${outputTokens} answer tokens in ${(elapsedMs / 1000).toFixed(1)}s `
+    + `(~${outputTokens ? (outputTokens / (elapsedMs / 1000)).toFixed(1) : '?'} tok/s generation)`);
 
   // Recorded on both postures. Metering is not capping: what a run cost is a
   // question a BYOK tenant will ask, and the only place to answer it is here.

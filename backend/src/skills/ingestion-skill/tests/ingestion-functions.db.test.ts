@@ -45,6 +45,9 @@ import { submit_url } from '../functions/submit-url';
 import { submit_text } from '../functions/submit-text';
 import { delete_source } from '../functions/delete-source';
 import { knowledge } from '../functions/knowledge';
+import { update_node } from '../functions/update-node';
+import { delete_node } from '../functions/delete-node';
+import { upsertNode } from '../../../agent-core/kg.store';
 
 const BASE = `
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -187,6 +190,61 @@ const ctxFor = (pool: Pool, tenant: string): SkillContext =>
       expect(r.nodes).toEqual([]);
       expect(r.edges).toEqual([]);
       expect(r.total).toBe(0);
+    });
+  });
+
+  describe('a person corrects the graph', () => {
+    const seed = async (tenant: string) => {
+      await pool.query(`INSERT INTO gt_kg_nodes (tenant_id, label, name, description) VALUES
+        ($1, 'Product', 'Ledgerline', 'Contract software for hospitals'),
+        ($1, 'PainPoint', 'Missed renewals', 'Renewals slip'),
+        ($1, 'PainPoint', 'Unclaimed penalties', 'Penalties never raised')`, [tenant]);
+      await pool.query(`INSERT INTO gt_kg_edges (tenant_id, from_node_id, to_node_id, relationship)
+        SELECT $1, p.id, q.id, 'SOLVES' FROM gt_kg_nodes p, gt_kg_nodes q
+         WHERE p.tenant_id = $1 AND p.name = 'Ledgerline' AND q.tenant_id = $1 AND q.name = 'Missed renewals'`, [tenant]);
+      const r = await pool.query(`SELECT id, name FROM gt_kg_nodes WHERE tenant_id = $1`, [tenant]);
+      return Object.fromEntries(r.rows.map((x: { id: string; name: string }) => [x.name, x.id])) as Record<string, string>;
+    };
+
+    test('valid: an edit is recorded as the person\'s, and a later read does not overwrite it', async () => {
+      const ids = await seed(A);
+      const r = await update_node({ node_id: ids['Ledgerline'], description: 'Contract software for 200–800 bed hospitals' }, ctxFor(pool, A));
+      expect((r.node as Record<string, unknown>).description).toBe('Contract software for 200–800 bed hospitals');
+      expect(((r.node as Record<string, unknown>).properties as Record<string, unknown>).human_edited).toBe(true);
+      // The extractor reads the page again and proposes the model's wording.
+      await upsertNode(pool, A, { label: 'Product', name: 'Ledgerline', description: 'Contract software for hospitals' });
+      const after = await pool.query(`SELECT description, properties FROM gt_kg_nodes WHERE id = $1`, [ids['Ledgerline']]);
+      expect(after.rows[0].description).toBe('Contract software for 200–800 bed hospitals');   // human wins
+      expect(after.rows[0].properties.model_description).toBe('Contract software for hospitals'); // model's kept, not lost
+    });
+
+    test('rename onto an existing entry of the same kind is refused', async () => {
+      const ids = await seed(A);
+      await expect(update_node({ node_id: ids['Missed renewals'], name: 'Unclaimed penalties' }, ctxFor(pool, A))).rejects.toThrow(/NAME_TAKEN/);
+      const ok = await update_node({ node_id: ids['Missed renewals'], name: 'Renewals missed' }, ctxFor(pool, A));
+      expect((ok.node as Record<string, unknown>).name).toBe('Renewals missed');
+    });
+
+    test('delete removes the entry and its relationships', async () => {
+      const ids = await seed(A);
+      const d = await delete_node({ node_id: ids['Missed renewals'] }, ctxFor(pool, A));
+      expect(d.edges_removed).toBe(1);
+      expect((await knowledge({}, ctxFor(pool, A))).edges).toEqual([]);
+      expect((await knowledge({}, ctxFor(pool, A))).total).toBe(2);
+    });
+
+    test('wrong tenant: B can neither edit nor delete A\'s entries', async () => {
+      const ids = await seed(A);
+      await expect(update_node({ node_id: ids['Ledgerline'], name: 'x' }, ctxFor(pool, B))).rejects.toThrow(/NODE_NOT_FOUND/);
+      await expect(delete_node({ node_id: ids['Ledgerline'] }, ctxFor(pool, B))).rejects.toThrow(/NODE_NOT_FOUND/);
+      expect((await knowledge({}, ctxFor(pool, A))).total).toBe(3);
+    });
+
+    test('refusals name the cause', async () => {
+      await expect(update_node({ node_id: '' }, ctxFor(pool, A))).rejects.toThrow(/MISSING_FIELDS/);
+      const ids = await seed(A);
+      await expect(update_node({ node_id: ids['Ledgerline'] }, ctxFor(pool, A))).rejects.toThrow(/MISSING_FIELDS/);
+      await expect(update_node({ node_id: ids['Ledgerline'], name: '  ' }, ctxFor(pool, A))).rejects.toThrow(/INVALID_NAME/);
     });
   });
 });

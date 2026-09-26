@@ -54,3 +54,13 @@ Removes the source row only; what was learned (gt_kg_nodes) stays.
 What VaNi knows — every node in the tenant's knowledge graph, each with the source it was read from where one is linked, plus every relationship between them. The Knowledge page lists the nodes; the Knowledge Graph page draws the edges.
 - Parameters: label (optional, string — one of Product / Feature / ICP / UseCase / PainPoint / Differentiator / Team / Competitor / CaseStudy / Metric / Industry / Pricing), limit (optional, number, default 200, max 500), offset (optional, number)
 - Returns: { nodes: [{ id, label, name, description, properties, updated_at, source_id, source_name, source_type }], filtered_total, labels: [{ label, count }], edges: [{ id, from_node_id, to_node_id, relationship, created_at }], total, recipe: 'knowledge-list' }
+
+### update_node
+A person corrects an entry: its name and/or description. The kind stays. Recorded as `properties.human_edited` with who and when; a later read of the same page keeps the human's description (kg.store honours the flag). A rename onto an existing entry of the same kind is refused (`NAME_TAKEN`).
+- Parameters: node_id (required, string), name (optional, string ≤200), description (optional, string)
+- Returns: { node: { id, label, name, description, properties, updated_at }, recipe: 'knowledge-node' }
+
+### delete_node
+Removes an entry and every relationship on it. A re-read of the page can bring it back — the removal corrects the graph, not the page.
+- Parameters: node_id (required, string)
+- Returns: { deleted: true, node_id, edges_removed, recipe: 'confirmation' }

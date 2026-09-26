@@ -200,6 +200,33 @@ export function noteContextOverflow(model: string, chars: number, reservedOutput
   observed.set(model, { minRatio: bound, samples: Math.max(prev?.samples ?? 0, 3) });
 }
 
+/* ── How fast the model actually answers ──────────────────────────────── */
+
+/**
+ * Tokens per second, learned the same way as the ratio: from calls that
+ * already happened. A timeout that is configured is a guess; one derived
+ * from the slowest generation speed this model has shown is a measurement.
+ * `LLM_TOKENS_PER_SEC` is the cold-start guess (qwen3-4b on the VPS: ~12).
+ */
+const DEFAULT_TOKENS_PER_SEC = Math.max(1, Number(process.env.LLM_TOKENS_PER_SEC) || 10);
+const speed = new Map<string, { minTps: number; samples: number }>();
+
+export function noteObservedSpeed(model: string, completionTokens: number, ms: number): void {
+  // Under 50 tokens the per-token time is dominated by prefill and latency,
+  // not generation — a bad sample, not a slow model.
+  if (!model || completionTokens < 50 || ms <= 0) return;
+  const tps = completionTokens / (ms / 1000);
+  if (!Number.isFinite(tps) || tps <= 0) return;
+  const prev = speed.get(model);
+  speed.set(model, { minTps: prev ? Math.min(prev.minTps, tps) : tps, samples: (prev?.samples ?? 0) + 1 });
+}
+
+/** The slowest generation speed seen for this model, or the guess. */
+export function tokensPerSec(model?: string): number {
+  const o = model ? speed.get(model) : undefined;
+  return o ? Math.min(o.minTps, DEFAULT_TOKENS_PER_SEC * 4) : DEFAULT_TOKENS_PER_SEC;
+}
+
 /** Chars per token for this model: the densest ratio seen, or the heuristic. */
 export function charsPerToken(model?: string): number {
   const o = model ? observed.get(model) : undefined;
@@ -241,7 +268,7 @@ export function charBudgetFor(
 }
 
 /** Test seam. */
-export function __resetCalibration(): void { observed.clear(); }
+export function __resetCalibration(): void { observed.clear(); speed.clear(); }
 
 export interface ContextCheck {
   estimatedPromptTokens: number;

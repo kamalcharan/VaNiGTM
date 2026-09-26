@@ -82,8 +82,16 @@ export async function upsertNode(
        VALUES
          ($tenant_id, $label, $name, $description, $properties::jsonb, $source_run_id)
      ON CONFLICT (tenant_id, label, name) DO UPDATE
-         SET description   = EXCLUDED.description,
-             properties    = gt_kg_nodes.properties || EXCLUDED.properties,
+         -- A description a person corrected (ingestion-skill.update_node)
+         -- is not overwritten by the next read of the same page. Human
+         -- edits always win; the model's version is still merged into
+         -- properties so nothing it read is lost.
+         SET description   = CASE WHEN (gt_kg_nodes.properties ->> 'human_edited') = 'true'
+                                  THEN gt_kg_nodes.description ELSE EXCLUDED.description END,
+             properties    = gt_kg_nodes.properties || EXCLUDED.properties
+                             || CASE WHEN (gt_kg_nodes.properties ->> 'human_edited') = 'true'
+                                     THEN jsonb_build_object('model_description', EXCLUDED.description)
+                                     ELSE '{}'::jsonb END,
              source_run_id = COALESCE(EXCLUDED.source_run_id, gt_kg_nodes.source_run_id),
              updated_at    = now()
      RETURNING id`,
