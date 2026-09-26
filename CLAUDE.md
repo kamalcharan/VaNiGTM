@@ -1105,6 +1105,21 @@ label is the provider's claim about the list, not a fact about the company**
 (`tag_ids` on the delivery), never as a column, and the console shows it as
 "tagged by <provider>".
 
+**The pool's sources are decided (Charan, 2026-09-26).** Own data only:
+~400k company records Charan already holds in the provider shape above, plus
+~200k bought outright from a vendor ("we pay him, that's it, no T&C"), plus
+member directories (FTCCI, exhibitor lists) and public registries. Apollo /
+Clay are tenant-key connectors for PEOPLE and stay tenant-scoped; their terms
+forbid redistribution, so they can never be the pool. Keep one line on the
+vendor's invoice saying the delivery is for unrestricted use — the pool's
+value is that it can be given to tenants, and that line is what makes it
+defensible. Before a 600k-row load: chunked upload + landing as a worker job
+(the path was measured at 2,913 rows in one request), dedup across lists,
+then Pass 1 (Haiku reads every description → our industry, offering, buyer,
+B2B/B2C, is_individual; ≈ $900 at 600k), then crawl and registry join on
+demand in tenant order, then the merge engine before the second delivery of
+any list.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type
