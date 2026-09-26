@@ -1120,6 +1120,19 @@ B2B/B2C, is_individual; ≈ $900 at 600k), then crawl and registry join on
 demand in tenant order, then the merge engine before the second delivery of
 any list.
 
+**Charan's stated priority (2026-09-26): "linkedin, twitter, persons in the
+company and their persona — those are the key."** Company LinkedIn / X URLs
+come off the site footer in the crawl pass and are pool fields. People are
+the asset and hit two standing rules at once — people are tenant-scoped, and
+there is no consent/suppression model — so two decisions are PENDING on
+Charan: (1) a platform-level people table keyed to pool companies (schema +
+posture change), (2) the consent/suppression model as the next schema
+decision, ahead of the merge engine. Persona is a Haiku classification of
+title + headline + company description against the ICP's buyer roles.
+Reading LinkedIn profiles ourselves stays out (terms, bans, litigation);
+people come from the company's own site, a bought dataset held outright, or
+a tenant's own provider key. LinkedIn and X remain ASSISTED channels.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type
