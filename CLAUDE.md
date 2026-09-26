@@ -954,6 +954,25 @@ A drafter call filling an 8k window takes minutes on that box. The lever is
 `LLM_CONTEXT_TOKENS` set lower (every prompt shrinks with it), or a faster
 server — not a longer timeout.
 
+**llm.dristiq.com serves qwen3-4b at `n_ctx: 4096` (read off its own 400,
+2026-09-26):** `request (4289 tokens) exceeds the available context size (4096
+tokens)`. So `LLM_CONTEXT_TOKENS=8192` was double that server's real window,
+and the "Context size has been exceeded" 500s were the server saying so. If
+that server is ever the primary again, set `LLM_CONTEXT_TOKENS=4096` — a
+window is a server fact, not a preference — and expect the profile drafter to
+trim hard. It is not the primary now; Haiku is, from `.env`.
+
+**A parked run whose source has since been read is SUPERSEDED, and the queue
+says so (2026-09-26).** Run 124 parked on that 400, the same page was then
+read successfully on Haiku, and the Knowledge page showed "vikuna.io · read ·
+103 entries" with a run underneath asking whether to pay for it.
+`llm-provider-skill.pending_failovers` now joins each run through its event
+to the source (`awaiting_input.event_id` → `gt_events.payload.source_id` →
+`gt_kb_sources`) and returns `source` + `superseded`, judged in SQL as the
+source reaching `complete` after the run's `started_at`. The console leads
+with Decline on those. The right answer for run 124 is Decline: nothing to
+gain, and approving would bill a second read.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type

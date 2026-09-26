@@ -46,8 +46,9 @@ retry-safe on the strength of the header alone.
 ### pending_failovers
 Runs stopped because the platform model did not answer and nobody has decided yet. Only ever non-empty with `HAIKU_DEFAULT=false`; with it true escalation is automatic and this is always empty.
 - Parameters: none
-- Returns: { runs: [{ run_id, agent, asked_at, failover_model, vps_error, question }], detail: string }
+- Returns: { runs: [{ run_id, agent, asked_at, failover_model, vps_error, question, source, superseded, superseded_detail }], detail: string }
 - `vps_error` is the server's own words. "Cannot reach" and "context size exceeded" are different outages and lead to different fixes.
+- `source` is `{ id, name, status, updated_at }` when the run's event named a `source_id` (URL_SUBMITTED, FILE_UPLOADED), else null. `superseded` is true when that source reached `complete` AFTER the run parked — a later read did the work, so approving pays to redo it and declining loses nothing. Judged in SQL against the same clock that stamped both rows. `detail` counts them.
 
 ### resolve_failover
 Answer one. Approving RE-EMITS the original event with `allow_failover: true` rather than resuming the old run — the agents are event-shaped and their claim logic already handles a re-run, and a separate row keeps "this cost money because a person said yes" answerable. Declining fails the run with the real cause and spends nothing.
