@@ -1086,7 +1086,14 @@ mailbox in `email`); the NACE codes and the traffic figure have no column
 and stay in `raw` until someone decides they deserve one. What the shape
 lacks is address/state/PIN, phone, revenue, year founded and people, so
 "needs enrichment" means those — enrich on demand for the companies a
-tenant qualifies, never the whole 25k up front. The provider also sells the
+tenant qualifies, never the whole 25k up front. **Enrichment runs on
+Haiku, and a "cheap classifier lane" was tested and rejected (2026-09-26):**
+Laya, an open-weight typed-decision model, agreed with Haiku on 31% of
+industry calls over 627 rows and its confidence did not predict its errors,
+so it cannot route its own hard cases; it was also slower than Haiku on a
+laptop CPU. Harness and numbers in `backend/scripts/laya-trial/`. The cheap
+lane is code (normalise, domain-from-email, liveness, hashing), not a smaller
+model. The provider also sells the
 same shape in labelled lists ("growth stage startups": 100 rows, all 1-10 or
 11-50 staff, median 2K visits/month, mostly online education). **A list
 label is the provider's claim about the list, not a fact about the company**

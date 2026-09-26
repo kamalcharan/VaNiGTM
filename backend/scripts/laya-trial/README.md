@@ -1,5 +1,29 @@
 # Laya trial — is a decision model good enough for the enrichment lane?
 
+**RESULT (run by Charan, 2026-09-26, Windows laptop CPU): NO.** 627 rows,
+Laya multilingual vs Haiku 4.5 on the same state and options:
+
+| question | Laya–Haiku agreement | Laya vs NACE label | Haiku vs NACE label |
+|---|---|---|---|
+| industry | 31% | 42% | 64% |
+| is_company | 95% (baseline: nearly every row IS a company) | | |
+| domain_match | 80% | | |
+
+Laya's confidence carries no signal: at threshold 0.8 it still disagrees
+with Haiku on 55% of the rows it keeps (62% at 0.5), so it cannot route its
+own hard cases. Latency on that CPU was 1.5 s/row against Haiku's 1.0 s over
+the network; the ms figures in Laya's README are GPU / Apple Silicon. Haiku
+cost $0.63 for the 627 rows. The NACE label is noisy (a provider's first code
+is often J62 for an edtech), which is why Haiku scores 64% and not 90%; both
+models were scored against the same label and Laya trails by 22 points.
+
+**Decision: Haiku is the enrichment model for every question, classification
+included. Decision models are parked.** The cheap lane is code — normalise,
+domain-from-email, liveness, hashing, shared identifiers — not a smaller
+model. Kept for the method: the harness re-runs against any other candidate
+in an afternoon.
+
+
 Charan, 2026-09-26: "we can run laya in the laptop and decide". This folder is
 that trial. It answers one question: **on our own rows, does Laya agree with
 Haiku often enough, and know when it does not, to take the classification
