@@ -8,6 +8,23 @@
 /* Drawn at its natural size and scrolled, never shrunk: a graph scaled to fit a
    half-width column is a strip nobody can read. */
 .canvas { display: block; max-width: none; }
+/* Fit: the drawing scales to the wrapper's width, capped so a small graph is not blown up. */
+.canvasFit { display: block; width: 100%; max-width: 1400px; height: auto; }
+.canvasEmpty { padding: 40px 20px; text-align: center; font-size: 13px; color: var(--tx3); }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 10px; }
+.search { position: relative; min-width: 260px; flex: 1; max-width: 420px; }
+.matches { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; right: 0; list-style: none; margin: 0; padding: 4px; background: var(--surf); border: 1px solid var(--line2); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.matches button { width: 100%; display: flex; justify-content: space-between; gap: 10px; background: transparent; border: 0; color: var(--tx); font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 6px; cursor: pointer; text-align: left; }
+.matches button:hover { background: var(--bg2); }
+.matches button span { font-family: var(--mono); font-size: 10px; color: var(--tx3); text-transform: uppercase; letter-spacing: 0.08em; }
+.seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 7px; overflow: hidden; }
+.seg button { background: transparent; border: 0; color: var(--tx3); padding: 7px 11px; font: inherit; font-size: 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line2); }
+.seg button[aria-pressed="true"] { background: var(--ac-dim); color: var(--ac-light); }
+.stats button { cursor: pointer; font: inherit; font-size: 11px; }
+.editedDot { fill: var(--ac); }
+.sideActions { display: flex; gap: 6px; margin-top: 10px; }
+.sideActions button { cursor: pointer; font: inherit; font-size: 11px; }
 .colHead { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; fill: var(--tx3); }
 .colHeadDim { opacity: 0.4; }
 .arrow { fill: var(--line2); }

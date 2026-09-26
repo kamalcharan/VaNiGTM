@@ -144,3 +144,25 @@ export function useResolveFailover() {
   });
   return { resolve: (run_id: string, approve: boolean) => m.mutate({ run_id, approve }), busy: m.isPending };
 }
+
+/* ── A person corrects the graph (ingestion-skill.update_node / delete_node, REAL) ── */
+
+export function useNodeWrites() {
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: ['skill', 'ingestion-skill'] });
+  const update = useSkillMutation<{ node: KgNode }>('ingestion-skill', 'update_node', {
+    successMessage: 'Saved. Your wording stays even when the page is read again.',
+    errorMessage: 'Could not save that change.',
+    onSuccess: refresh,
+  });
+  const remove = useSkillMutation<{ deleted: boolean; edges_removed: number }>('ingestion-skill', 'delete_node', {
+    successMessage: (r) => (r.edges_removed ? `Removed, with ${r.edges_removed} ${r.edges_removed === 1 ? 'relationship' : 'relationships'}.` : 'Removed.'),
+    errorMessage: 'Could not remove that entry.',
+    onSuccess: refresh,
+  });
+  return {
+    update: (node_id: string, patch: { name?: string; description?: string }) => update.mutate({ node_id, ...patch }),
+    remove: (node_id: string) => remove.mutate({ node_id }),
+    busy: update.isPending || remove.isPending,
+  };
+}

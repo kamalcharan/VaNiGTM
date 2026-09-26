@@ -10,3 +10,11 @@
 .nodeName { font-weight: 600; font-size: 13.5px; }
 .nodeDesc { font-size: 12.5px; line-height: 1.55; color: var(--tx2); margin-top: 3px; }
 .nodeMeta { font-family: var(--mono); font-size: 10.5px; color: var(--tx3); margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* Editing one entry — the Knowledge list and the graph's side panel share it. */
+.editor { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.editorRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.editorHint { font-size: 12px; line-height: 1.5; color: var(--tx3); margin: 0; }
+.nodeActions { display: flex; gap: 8px; margin-top: 6px; }
+.nodeAct { background: transparent; border: 0; padding: 0; color: var(--ac); font: inherit; font-size: 12px; cursor: pointer; }
+.nodeAct:hover { text-decoration: underline; }

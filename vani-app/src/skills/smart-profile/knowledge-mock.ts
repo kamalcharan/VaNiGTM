@@ -56,6 +56,23 @@ export const KNOWLEDGE_MOCK_READS: Record<string, (p: Record<string, unknown>) =
   },
 };
 export const KNOWLEDGE_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {
+  'ingestion-skill.update_node': (p) => {
+    const n = NODES.find((x) => x.id === String(p.node_id)); if (!n) throw new Error('NODE_NOT_FOUND: No such entry for this tenant');
+    const name = p.name === undefined ? undefined : String(p.name).trim();
+    const description = p.description === undefined ? undefined : String(p.description).trim();
+    if (name === undefined && description === undefined) throw new Error('MISSING_FIELDS: name or description is required');
+    if (name !== undefined && !name) throw new Error('INVALID_NAME: a node needs a name');
+    if (name !== undefined && NODES.some((x) => x.id !== n.id && x.label === n.label && x.name === name)) throw new Error(`NAME_TAKEN: another ${n.label} entry is already called "${name}" — remove one rather than merging them by rename`);
+    if (name !== undefined) n.name = name; if (description !== undefined) n.description = description;
+    n.properties = { ...n.properties, human_edited: true, edited_at: new Date().toISOString() }; n.updated_at = new Date().toISOString();
+    return { node: n, recipe: 'knowledge-node' };
+  },
+  'ingestion-skill.delete_node': (p) => {
+    const i = NODES.findIndex((x) => x.id === String(p.node_id)); if (i < 0) throw new Error('NODE_NOT_FOUND: No such entry for this tenant');
+    const id = NODES[i].id; NODES.splice(i, 1);
+    const before = EDGES.length; for (let j = EDGES.length - 1; j >= 0; j--) if (EDGES[j].from_node_id === id || EDGES[j].to_node_id === id) EDGES.splice(j, 1);
+    return { deleted: true, node_id: id, edges_removed: before - EDGES.length, recipe: 'confirmation' };
+  },
   'llm-provider-skill.resolve_failover': (p) => {
     const i = FAILOVERS.findIndex((f) => f.run_id === String(p.run_id));
     if (i < 0) return { ok: false, reason: 'NOT_WAITING', detail: `Run ${String(p.run_id)} is not waiting on a failover decision.` };

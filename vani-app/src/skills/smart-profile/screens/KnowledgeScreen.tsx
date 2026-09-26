@@ -22,12 +22,14 @@ import s from '../smart-profile.module.css';
 import k from '../knowledge.module.css';
 import { KnowledgeSection } from './KnowledgeSection';
 import { FailoverQueue } from './FailoverQueue';
+import { NodeEditor } from './NodeEditor';
 import { KIND_LABELS, isReading, useKnowledgeGraph, useSourcesRead, type Knowledge, type KgNode } from '../useKnowledge';
 
 const kind = (l: string) => KIND_LABELS[l] ?? l;
 
 export default function KnowledgeScreen() {
   const [label, setLabel] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const sources = useSourcesRead();
   const reading = !!sources.data?.data?.some(isReading);
   const q = useKnowledgeGraph(label, reading);
@@ -57,7 +59,7 @@ export default function KnowledgeScreen() {
         <header className={s.sectionHead}>
           <div className={s.sectionTitles}>
             <h2 className={s.sectionTitle}>What it learned</h2>
-            <p className={s.sectionWhat}>{total ? `${total} ${total === 1 ? 'entry' : 'entries'} across ${labels.length} ${labels.length === 1 ? 'kind' : 'kinds'}.` : 'Nothing yet.'} Each entry names the source it came from; one with no source came from the conversation.</p>
+            <p className={s.sectionWhat}>{total ? `${total} ${total === 1 ? 'entry' : 'entries'} across ${labels.length} ${labels.length === 1 ? 'kind' : 'kinds'}.` : 'Nothing yet.'} Each entry names the source it came from; one with no source came from the conversation. Correct any entry here — your wording stays when the page is read again.</p>
           </div>
         </header>
         <div className={s.sectionBody}>
@@ -82,12 +84,21 @@ export default function KnowledgeScreen() {
                       <ul className={k.nodes}>
                         {d.nodes.filter((n) => n.label === g).map((n: KgNode) => (
                           <li key={n.id} className={k.node}>
-                            <div className={k.nodeName}>{n.name}</div>
-                            {n.description && <div className={k.nodeDesc}>{n.description}</div>}
-                            <div className={k.nodeMeta}>
-                              {n.source_name ? <span title={n.source_type ?? ''}>read from {n.source_name}</span> : <span>from the conversation</span>}
-                              <span>· {formatDate(n.updated_at)}</span>
-                            </div>
+                            {editing === n.id ? <NodeEditor node={n} onDone={() => setEditing(null)} /> : (
+                              <>
+                                <div className={k.nodeName}>{n.name}</div>
+                                {n.description && <div className={k.nodeDesc}>{n.description}</div>}
+                                <div className={k.nodeMeta}>
+                                  {n.source_name ? <span title={n.source_type ?? ''}>read from {n.source_name}</span> : <span>from the conversation</span>}
+                                  <span>· {formatDate(n.updated_at)}</span>
+                                  {(n.properties as Record<string, unknown> | null)?.human_edited === true && <span>· corrected by a person</span>}
+                                </div>
+                                <div className={k.nodeActions}>
+                                  <button type="button" className={k.nodeAct} onClick={() => setEditing(n.id)}>Edit</button>
+                                  <Link href="/smart-profile/knowledge-graph" className={k.nodeAct}>In the graph →</Link>
+                                </div>
+                              </>
+                            )}
                           </li>
                         ))}
                       </ul>

@@ -150,7 +150,7 @@ export function KnowledgeSection({ n, compact }: { n?: number; compact?: boolean
                         <span className={s.rowTagMuted}>{KIND[src.source_type] ?? src.source_type}</span>
                       </span>
                       <span className={`${s.rowDetail} ${st.tone === 'bad' ? s.srcBad : st.tone === 'reading' ? s.srcReading : ''}`}>
-                        {st.text} · {formatDate(src.created_at)}
+                        {st.text} · {formatDate(src.updated_at ?? src.created_at)}
                       </span>
                     </div>
                     {src.status === 'error' && src.source_type === 'url' && src.url && (
