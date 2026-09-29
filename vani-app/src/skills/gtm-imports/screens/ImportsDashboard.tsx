@@ -79,7 +79,7 @@ function Drawer({ session, row, onClose }: { session: ImportSession; row: Staged
                 <label key={k}><span className={s.lbl}>{l}</span><input className={s.input} value={str(draft[k]) ?? ''} onChange={(e) => setDraft((d) => ({ ...d, [k]: e.target.value }))} /></label>
               ))}
             </div>
-            <p className={s.muted} style={{ fontSize: 12.5, lineHeight: 1.55, margin: '10px 0' }}>Saving resets this row to pending. Then land the staged rows from the toolbar and it is processed with the corrected values.</p>
+            <p className={s.muted} style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.55, margin: '10px 0' }}>Saving resets this row to pending. Then land the staged rows from the toolbar and it is processed with the corrected values.</p>
             <button type="button" className={s.primary} disabled={busy} onClick={async () => { const r = await patchRecord(session.id, row.id, { ...row.mapped_data, company: draft }); if (r) { setEdit(false); onClose(); } }}>{busy ? 'Saving…' : 'Save and re-queue'}</button>
           </div>
         ) : (
@@ -92,7 +92,7 @@ function Drawer({ session, row, onClose }: { session: ImportSession; row: Staged
 
         <div className={s.dSec}>
           <div className={s.dSecTitle}>Import status</div>
-          <div><span className={`${u.tag} ${u[st.cls]}`}>{st.label}</span>{row.processed_at && <span className={s.muted} style={{ fontSize: 12, marginLeft: 8 }}>{formatDateTime(row.processed_at)}</span>}</div>
+          <div><span className={`${u.tag} ${u[st.cls]}`}>{st.label}</span>{row.processed_at && <span className={s.muted} style={{ fontSize: 'var(--fs-md)', marginLeft: 8 }}>{formatDateTime(row.processed_at)}</span>}</div>
         </div>
 
         <div className={s.dSec}>
@@ -189,7 +189,7 @@ function SessionView({ session, load }: { session: ImportSession; load: SourceLo
         <div className={`${s.card} ${s.cardPad}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
           <div>
             <div className={s.bold} style={{ marginBottom: 3 }}>{heldCount} {heldCount === 1 ? 'row needs' : 'rows need'} your call</div>
-            <div className={s.muted} style={{ fontSize: 12.5, maxWidth: 620, lineHeight: 1.55 }}>These would change records you already hold. Nothing was overwritten. VaNi ranked each field by how fresh and how complete each side is — you decide. Contacts in a running campaign are never decided in bulk.</div>
+            <div className={s.muted} style={{ fontSize: 'var(--fs-ui)', maxWidth: 620, lineHeight: 1.55 }}>These would change records you already hold. Nothing was overwritten. VaNi ranked each field by how fresh and how complete each side is — you decide. Contacts in a running campaign are never decided in bulk.</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className={s.primary} disabled={resolving} onClick={() => void acceptRecommended(session.id)}>{resolving ? 'Applying…' : 'Apply recommended to all'}</button>

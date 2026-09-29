@@ -75,20 +75,20 @@
 }
 
 .eyebrow {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--color-primary);
 }
 
 .sealed {
   margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1px;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--color-success);
   padding: 3px 10px;
@@ -108,7 +108,7 @@
 }
 
 .subtitle {
-  font-size: 0.88rem;
+  font-size: var(--fs-lg);
   line-height: 1.55;
   color: var(--color-muted);
   margin: 0;
@@ -138,7 +138,7 @@
   border: none;
   padding: 4px 6px;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
   letter-spacing: 0.4px;
   color: var(--color-muted);
   cursor: pointer;

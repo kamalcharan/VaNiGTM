@@ -36,7 +36,7 @@ export function StoryStep() {
                       <div className={a.chips} style={{ margin: 0 }}>
                         <span className={`${a.chip} ${st.scope === 'asset' ? a.chipPool : a.chipMine}`}>{st.scope} · {st.kind_key}</span>
                         <span className={`${u.tag} ${st.status === 'approved' ? u.tagOk : u.tagWarn}`}>{st.status === 'approved' ? 'approved' : 'draft · unapproved'}</span>
-                        {st.status !== 'approved' && <button type="button" className={a.quiet} style={{ padding: '4px 10px', fontSize: 12 }} disabled={w.busy} onClick={() => void w.approve(st.story_id)}>Approve</button>}
+                        {st.status !== 'approved' && <button type="button" className={a.quiet} style={{ padding: '4px 10px', fontSize: 'var(--fs-md)' }} disabled={w.busy} onClick={() => void w.approve(st.story_id)}>Approve</button>}
                       </div>
                     </div>
                     {st.body.map((p, i) => <p key={i}>{p}</p>)}

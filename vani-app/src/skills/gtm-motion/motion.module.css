@@ -1,22 +1,22 @@
 /* G2 step content that G1's classes do not cover. Shared classes are imported
    from gtm-audience/audience.module.css — the second consumer that makes them
    candidates for platform/vdf. */
-.story { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-top: 12px; font-size: 14px; line-height: 1.65; }
+.story { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-top: 12px; font-size: var(--fs-lg); line-height: 1.65; }
 .storyHead { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
-.storyTitle { font-family: var(--display); font-weight: 600; font-size: 15px; }
+.storyTitle { font-family: var(--display); font-weight: 600; font-size: var(--fs-xl); }
 .story p { margin: 8px 0; color: var(--tx); }
-.trace { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--tx3); line-height: 1.7; }
+.trace { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: var(--fs-sm); color: var(--tx3); line-height: 1.7; }
 .trace b { color: var(--tx2); font-weight: 500; }
 .win { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; align-items: center; margin-top: 12px; }
-.winName { font-size: 13.5px; }
-.winName small { font-family: var(--mono); font-size: 11px; color: var(--tx3); margin-left: 6px; }
+.winName { font-size: var(--fs-lg); }
+.winName small { font-family: var(--mono); font-size: var(--fs-sm); color: var(--tx3); margin-left: 6px; }
 .slots { display: flex; gap: 4px; }
 .slots i { display: block; width: 26px; height: 8px; border-radius: 2px; background: var(--line); }
 .used { background: var(--warn) !important; }
 .plan { background: var(--ac) !important; }
-.w { font-family: var(--mono); font-size: 11px; color: var(--tx3); white-space: nowrap; }
+.w { font-family: var(--mono); font-size: var(--fs-sm); color: var(--tx3); white-space: nowrap; }
 .refused { color: var(--color-danger); }
 .lock { border: 1px solid var(--warn); background: color-mix(in srgb, var(--warn) 9%, transparent); border-radius: var(--r); padding: 20px 22px; margin-top: 16px; }
-.lockTag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--warn); }
+.lockTag { font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--warn); font-weight: var(--fw-label); }
 .lock h2 { font-family: var(--display); font-size: 18px; font-weight: 700; margin: 8px 0 6px; }
-.lock p { font-size: 13.5px; line-height: 1.65; color: var(--tx2); margin: 0; }
+.lock p { font-size: var(--fs-lg); line-height: 1.65; color: var(--tx2); margin: 0; }

@@ -16,8 +16,8 @@
 .label {
   display: block;
   font-size: var(--label-font-size);
-  font-weight: var(--label-font-weight);
-  letter-spacing: var(--label-letter-spacing);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--color-muted);
   margin-bottom: var(--label-margin-bottom);
@@ -185,7 +185,7 @@
   border: none;
   color: var(--color-muted);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--fs-lg);
   padding: 4px;
   transition: color 200ms;
   line-height: 1;
@@ -216,7 +216,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.6rem;
+  font-size: var(--fs-xs);
   font-family: var(--font-mono);
   letter-spacing: 0.05em;
   margin-top: -12px;
@@ -243,7 +243,7 @@
 /* ── Footer Link ────────────────────────────────────── */
 .footerLink {
   color: var(--color-muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-ui);
   text-decoration: none;
   transition: color 200ms;
 }
@@ -268,7 +268,7 @@
   border-radius: 20px;
   background: var(--glass);
   color: var(--color-muted);
-  font-size: 0.78rem;
+  font-size: var(--fs-ui);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
@@ -297,7 +297,7 @@
   border: 1px solid var(--glass-border);
   border-radius: 6px;
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -324,7 +324,7 @@
   border: none;
   border-radius: var(--btn-radius, 8px);
   color: var(--color-primary-fg);
-  font-size: 0.82rem;
+  font-size: var(--fs-ui);
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.15s;
@@ -346,7 +346,7 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--btn-radius, 8px);
   color: var(--color-fg);
-  font-size: 0.82rem;
+  font-size: var(--fs-ui);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;

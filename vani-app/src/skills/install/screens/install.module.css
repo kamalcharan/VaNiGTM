@@ -1,7 +1,7 @@
 /* Install — console theme only, no invented palette. */
 
 .lede {
-  font-size: 13px;
+  font-size: var(--fs-ui);
   color: var(--color-muted);
   line-height: 1.55;
   max-width: 780px;
@@ -38,7 +38,7 @@
   background: var(--color-bg);
   color: var(--gold);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   display: grid;
   place-items: center;
@@ -46,14 +46,14 @@
 
 .stepTitle {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   letter-spacing: -0.2px;
   margin: 0;
 }
 
 .note {
-  font-size: 12.5px;
+  font-size: var(--fs-ui);
   color: var(--color-muted);
   line-height: 1.6;
   margin: 0 0 14px;
@@ -62,7 +62,7 @@
 .note code,
 .emptyInline code {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: var(--fs-md);
   padding: 1px 5px;
   background: var(--color-bg);
   border: 1px solid var(--glass-border);
@@ -73,7 +73,7 @@
 
 .snippet {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   padding: 14px 16px;
   background: var(--color-bg);
@@ -97,7 +97,7 @@
 
 .domainName {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-md);
   color: var(--color-muted);
   letter-spacing: 0.04em;
   margin-bottom: 8px;
@@ -125,7 +125,7 @@
 .originName {
   flex: 1 1 auto;
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: var(--fs-ui);
   word-break: break-all;
 }
 
@@ -151,7 +151,7 @@
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-ui);
 }
 .input::placeholder {
   opacity: var(--input-placeholder-opacity);
@@ -192,7 +192,7 @@
   background: transparent;
   color: var(--color-muted);
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 .ghost:hover:not(:disabled) {
@@ -209,7 +209,7 @@
   align-items: center;
   margin-top: 12px;
   color: var(--gold);
-  font-size: 13px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   text-decoration: none;
 }
@@ -221,7 +221,7 @@
 
 .empty,
 .emptyInline {
-  font-size: 12.5px;
+  font-size: var(--fs-ui);
   color: var(--color-muted);
   line-height: 1.6;
   padding: 12px 14px;
@@ -251,18 +251,18 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  font-size: 13px;
+  font-size: var(--fs-ui);
   color: var(--color-text);
 }
 .checkFail span {
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: var(--fs-sm);
 }
 
 /* Only the first missing check is actionable; the rest are gated behind it. */
 .blockedNote {
   margin-left: 8px;
-  font-size: 11px;
+  font-size: var(--fs-sm);
   color: var(--color-muted);
   opacity: 0.7;
 }
@@ -275,7 +275,7 @@
 /* The server's explanation for a check that fails in a confusing way. */
 .checkDetail {
   margin: 5px 0 0 20px;
-  font-size: 12px;
+  font-size: var(--fs-md);
   color: var(--color-muted);
   line-height: 1.55;
   max-width: 62ch;

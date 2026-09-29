@@ -128,7 +128,7 @@ const shell: React.CSSProperties = {
   background: C.bg,
   color: C.text,
   fontFamily: 'system-ui, -apple-system, sans-serif',
-  fontSize: 14,
+  fontSize: 'var(--fs-lg)',
 };
 
 const bubble: React.CSSProperties = {
@@ -146,7 +146,7 @@ const chip: React.CSSProperties = {
   color: C.text,
   borderRadius: 999,
   padding: '7px 12px',
-  fontSize: 12.5,
+  fontSize: 'var(--fs-ui)',
   cursor: 'pointer',
   fontFamily: 'inherit',
 };
@@ -180,14 +180,14 @@ function OfferCard({ r }: { r: Offer }) {
           empty line reads as a broken card, and rule 9d says never invent what
           was not declared. */}
       {(r.one_liner || r.description) && (
-        <div style={{ fontSize: 12.5, color: C.soft, marginTop: 4, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 'var(--fs-ui)', color: C.soft, marginTop: 4, lineHeight: 1.5 }}>
           {r.description || r.one_liner}
         </div>
       )}
       {offerMeta(r).length > 0 && (
-        <div style={{ fontSize: 11.5, color: C.dim, marginTop: 6 }}>{offerMeta(r).join(' · ')}</div>
+        <div style={{ fontSize: 'var(--fs-md)', color: C.dim, marginTop: 6 }}>{offerMeta(r).join(' · ')}</div>
       )}
-      <div style={{ fontSize: 12, color: C.dim, marginTop: 6 }}>Applications open here soon</div>
+      <div style={{ fontSize: 'var(--fs-md)', color: C.dim, marginTop: 6 }}>Applications open here soon</div>
     </li>
   );
 }
@@ -356,14 +356,14 @@ export default function EmbedChatPage() {
           aria-hidden="true"
           style={{
             width: 28, height: 28, borderRadius: '50%', background: C.gold, color: C.bg,
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 'var(--fs-md)',
           }}
         >
           V
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600 }}>VaNi</div>
-          <div style={{ fontSize: 11, color: C.dim }}>{data ? data.tenant.name : 'Loading…'}</div>
+          <div style={{ fontSize: 'var(--fs-sm)', color: C.dim }}>{data ? data.tenant.name : 'Loading…'}</div>
         </div>
         <button
           type="button"
@@ -481,7 +481,7 @@ export default function EmbedChatPage() {
 
       <footer style={{ padding: '10px 16px', borderTop: `1px solid ${C.line}` }}>
         {textDown && (
-          <p style={{ fontSize: 11.5, color: C.dim, margin: '0 0 8px' }} role="status">
+          <p style={{ fontSize: 'var(--fs-md)', color: C.dim, margin: '0 0 8px' }} role="status">
             {textDown} The buttons above still work.
           </p>
         )}
@@ -506,7 +506,7 @@ export default function EmbedChatPage() {
             aria-label="Ask a question"
             style={{
               flex: 1, minWidth: 0, boxSizing: 'border-box', background: C.panel,
-              border: `1px solid ${C.line}`, borderRadius: 10, color: C.text, padding: '10px 12px', fontSize: 13,
+              border: `1px solid ${C.line}`, borderRadius: 10, color: C.text, padding: '10px 12px', fontSize: 'var(--fs-ui)',
               fontFamily: 'inherit',
             }}
           />
@@ -514,7 +514,7 @@ export default function EmbedChatPage() {
             type="submit"
             disabled={!data || !draft.trim() || asking}
             style={{
-              border: 'none', borderRadius: 10, padding: '0 14px', fontWeight: 600, fontSize: 13,
+              border: 'none', borderRadius: 10, padding: '0 14px', fontWeight: 600, fontSize: 'var(--fs-ui)',
               background: draft.trim() && !asking ? C.gold : C.panel,
               color: draft.trim() && !asking ? C.bg : C.dim,
               cursor: draft.trim() && !asking ? 'pointer' : 'default',

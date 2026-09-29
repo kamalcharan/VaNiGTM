@@ -55,7 +55,7 @@ export default function PeopleList() {
         <div className={s.empty} style={{ marginTop: 14 }}>
           <span className={u.cardMeta}>WHERE PEOPLE COME FROM</span>
           <div className={s.emptyH}>Build the audience, and the people you keep land here</div>
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: 'var(--tx2)' }}>A hot list from global data, the ones worth researching, briefs with evidence, then the decision-makers at every company worth a message. About ten minutes.</p>
+          <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.6, color: 'var(--tx2)' }}>A hot list from global data, the ones worth researching, briefs with evidence, then the decision-makers at every company worth a message. About ten minutes.</p>
           <Link href="/agents/gtm/audience" className={s.go}>Build the audience →</Link>
         </div>
       )}

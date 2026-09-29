@@ -18,17 +18,16 @@
   background: transparent;
   color: var(--color-fg);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-md);
   text-decoration: none;
 }
 .back:hover { border-color: var(--gold); }
 
 .crumbs {
   display: flex; align-items: center; gap: 8px;
-  font-family: var(--font-mono); font-size: 11px;
-  color: var(--color-muted); letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
+  font-family: var(--font-label); font-size: var(--fs-sm);
+  color: var(--color-muted); letter-spacing: var(--ls-label);
+  text-transform: uppercase; font-weight: var(--fw-label); }
 .crumbCurr { color: var(--gold); }
 
 .persona {
@@ -46,7 +45,7 @@
   background: transparent;
   color: var(--color-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-md);
   display: inline-flex; align-items: center; gap: 6px;
 }
 .personaBtn:hover { color: var(--color-fg); }

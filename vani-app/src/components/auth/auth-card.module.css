@@ -63,12 +63,11 @@
 }
 
 .kicker {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
-  color: var(--tx3);
-}
+  color: var(--tx3); font-weight: var(--fw-label); }
 
 .field {
   margin-bottom: 15px;
@@ -76,13 +75,12 @@
 
 .label {
   display: block;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.12em;
+  font-family: var(--font-label);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--tx2);
-  margin-bottom: 7px;
-}
+  margin-bottom: 7px; font-weight: var(--fw-label); }
 
 .input {
   width: 100%;
@@ -91,7 +89,7 @@
   border-radius: 7px;
   padding: 11px 13px;
   font-family: var(--mono);
-  font-size: 13.5px;
+  font-size: var(--fs-lg);
   color: var(--tx);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -118,13 +116,12 @@
   background: none;
   border: none;
   padding: 6px 9px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--tx3);
-  border-radius: 5px;
-}
+  border-radius: 5px; font-weight: var(--fw-label); }
 
 .reveal:hover {
   color: var(--ac);
@@ -140,7 +137,7 @@
   padding: 10px 12px;
   margin-bottom: 15px;
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--bad);
 }
@@ -153,7 +150,7 @@
   border-radius: 7px;
   padding: 12px 18px;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   letter-spacing: 0.04em;
   transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
@@ -174,7 +171,7 @@
   padding-top: 17px;
   border-top: 1px solid var(--line);
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: var(--fs-sm);
   line-height: 1.75;
   color: var(--tx3);
   text-align: center;
@@ -185,7 +182,7 @@
   margin-top: 14px;
   text-align: center;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.04em;
   color: var(--tx3);
   text-decoration: none;
@@ -199,7 +196,7 @@
 
 .lead {
   font-family: var(--sans);
-  font-size: 13px;
+  font-size: var(--fs-ui);
   line-height: 1.7;
   color: var(--tx2);
   text-align: center;
@@ -226,7 +223,7 @@
 .hint {
   margin-top: 6px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   line-height: 1.6;
   color: var(--tx3);
 }
@@ -242,7 +239,7 @@
 
 .rule {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   color: var(--tx3);
   transition: color 0.15s;
@@ -256,7 +253,7 @@
   margin-top: 16px;
   text-align: center;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   color: var(--tx3);
 }
 

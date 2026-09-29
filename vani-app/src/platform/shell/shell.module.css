@@ -11,9 +11,9 @@
 .logomark {
   width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
   background: var(--gold); color: var(--color-primary-fg);
-  display: grid; place-items: center; font-size: 14px; font-weight: 800;
+  display: grid; place-items: center; font-size: var(--fs-lg); font-weight: 800;
 }
-.logoDim { color: var(--tx3); font-weight: 500; font-size: 12px; }
+.logoDim { color: var(--tx3); font-weight: 500; font-size: var(--fs-md); }
 
 .orgpick {
   display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin-bottom: 14px;
@@ -22,26 +22,25 @@
 .av {
   width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0;
   background: var(--surf3); color: var(--tx2);
-  display: grid; place-items: center; font-size: 12px; font-weight: 700;
+  display: grid; place-items: center; font-size: var(--fs-md); font-weight: 700;
 }
-.orgName { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.orgSlug { font-family: var(--mono); font-size: 10px; color: var(--tx3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orgName { font-size: var(--fs-ui); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orgSlug { font-family: var(--mono); font-size: var(--fs-xs); color: var(--tx3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .grpLabel {
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--tx3); padding: 14px 10px 6px;
-}
+  font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); text-transform: uppercase;
+  color: var(--tx3); padding: 14px 10px 6px; font-weight: var(--fw-label); }
 .nv {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 10px; border-radius: 8px; margin-bottom: 1px;
-  font-size: 13px; color: var(--tx2); text-decoration: none;
+  font-size: var(--fs-ui); color: var(--tx2); text-decoration: none;
   transition: background 0.14s, color 0.14s;
 }
 .nv:hover { background: var(--surf); color: var(--tx); }
 .nvOn { background: var(--ac-dim); color: var(--ac-light); }
-.ic { width: 16px; text-align: center; flex-shrink: 0; font-size: 13px; }
+.ic { width: 16px; text-align: center; flex-shrink: 0; font-size: var(--fs-ui); }
 .bdg {
-  margin-left: auto; font-family: var(--mono); font-size: 10px;
+  margin-left: auto; font-family: var(--mono); font-size: var(--fs-xs);
   background: var(--surf3); color: var(--tx2); padding: 1px 7px; border-radius: 99px;
 }
 .soonDot { margin-left: auto; width: 5px; height: 5px; border-radius: 50%; background: var(--line2); }
@@ -50,14 +49,14 @@
 .envCard { background: var(--surf2); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; }
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--mono); font-size: 10px; color: var(--ok);
+  font-family: var(--mono); font-size: var(--fs-xs); color: var(--ok);
 }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
-.envMeta { font-family: var(--mono); font-size: 10px; color: var(--tx3); margin-top: 5px; }
+.envMeta { font-family: var(--mono); font-size: var(--fs-xs); color: var(--tx3); margin-top: 5px; }
 .signout {
   display: flex; align-items: center; gap: 10px; width: 100%;
   margin-top: 6px; padding: 8px 10px; border-radius: 8px;
-  background: none; border: none; font-size: 13px; color: var(--tx2); text-align: left;
+  background: none; border: none; font-size: var(--fs-ui); color: var(--tx2); text-align: left;
 }
 .signout:hover { background: var(--surf); color: var(--tx); }
 
@@ -88,8 +87,8 @@
     background: none; border: 1px solid var(--line2); border-radius: 7px;
     width: 34px; height: 34px; display: grid; place-items: center; color: var(--tx2);
   }
-  .mobTitle { font-size: 14px; font-weight: 600; }
-  .mobEnv { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--tx3); }
+  .mobTitle { font-size: var(--fs-lg); font-weight: 600; }
+  .mobEnv { margin-left: auto; font-family: var(--mono); font-size: var(--fs-xs); color: var(--tx3); }
   .shell { flex-direction: column; }
   .main { padding: 20px 16px 88px; }
   .bottomNav {
@@ -98,8 +97,8 @@
   }
   .tab {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 3px; font-size: 10px; color: var(--tx3); text-decoration: none;
+    gap: 3px; font-size: var(--fs-xs); color: var(--tx3); text-decoration: none;
   }
   .tabOn { color: var(--ac-light); }
-  .tabIc { font-size: 15px; }
+  .tabIc { font-size: var(--fs-xl); }
 }

@@ -68,7 +68,7 @@ function Detail({ r, onClose }: { r: PoolRecord; onClose: () => void }) {
           {r.tags.length > 0 && <Field k="Tags" v={r.tags.map((t) => t.label).join(', ')} />}
         </div>
         <div className={s.dSecTitle}>The row as the file had it</div>
-        {raw.length ? <div>{raw.map(([k, v]) => <Field key={k} k={k} v={v} />)}</div> : <p className={s.muted} style={{ fontSize: 13 }}>The source row was not kept for this record.</p>}
+        {raw.length ? <div>{raw.map(([k, v]) => <Field key={k} k={k} v={v} />)}</div> : <p className={s.muted} style={{ fontSize: 'var(--fs-ui)' }}>The source row was not kept for this record.</p>}
       </aside>
     </>
   );
@@ -169,7 +169,7 @@ export default function CommonPool() {
         <div className={s.secBody}>
           <div className={s.tools}>
             <input className={s.search} type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, domain, city, industry…" />
-            <button type="button" className={`${u.tag} ${dupes ? u.tagWarn : u.tagDim}`} aria-pressed={dupes} onClick={() => setDupes((v) => !v)} style={{ cursor: 'pointer', font: 'inherit', fontSize: 11 }}>Possible duplicates{stats?.duplicates ? ` (${stats.duplicates})` : ''}</button>
+            <button type="button" className={`${u.tag} ${dupes ? u.tagWarn : u.tagDim}`} aria-pressed={dupes} onClick={() => setDupes((v) => !v)} style={{ cursor: 'pointer', font: 'inherit', fontSize: 'var(--fs-sm)' }}>Possible duplicates{stats?.duplicates ? ` (${stats.duplicates})` : ''}</button>
             <select className={s.select} value={industry} onChange={(e) => setIndustry(e.target.value)}><option value="">All industries</option>{(facets?.industries ?? []).map((i) => <option key={i.value} value={i.value}>{i.value} ({i.count})</option>)}</select>
             <select className={s.select} value={tagId} onChange={(e) => setTagId(e.target.value)}><option value="">All tags</option>{(facets?.tags ?? []).map((t) => <option key={t.id} value={String(t.id)}>{t.label} ({t.count})</option>)}</select>
             <select className={s.select} value={domain} onChange={(e) => setDomain(e.target.value)}><option value="">Any domain</option><option value="has">Has a domain ({facets?.with_domain ?? 0})</option><option value="none">No domain ({facets?.without_domain ?? 0})</option></select>
@@ -190,7 +190,7 @@ export default function CommonPool() {
                           <td className={s.muted}>{[r.city, r.state_code].filter(Boolean).join(', ') || '—'}</td>
                           <td className={s.muted}>{r.industry_raw ?? '—'}</td>
                           <td><span className={`${s.q} ${Number(r.validity ?? 1) < 1 ? s.qBad : ''}`}>{pct(r.completeness)} full · {pct(r.validity)} valid</span></td>
-                          <td className={s.muted} style={{ fontSize: 12 }}>{r.source_label ?? '—'}{r.freshness && r.freshness !== 'unknown' ? ` · ${r.freshness}` : ' · undated'}</td>
+                          <td className={s.muted} style={{ fontSize: 'var(--fs-md)' }}>{r.source_label ?? '—'}{r.freshness && r.freshness !== 'unknown' ? ` · ${r.freshness}` : ' · undated'}</td>
                           <td>{r.tags.map((t) => <span key={t.id} className={`${u.tag} ${u.tagDim}`} style={{ marginRight: 4 }}>{t.label}</span>)}</td>
                         </tr>
                       ))}

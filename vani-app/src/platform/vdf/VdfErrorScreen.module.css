@@ -35,9 +35,9 @@
 
 .code {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--ls-label);
   color: var(--color-primary);
   text-transform: uppercase;
   margin-bottom: 10px;
@@ -57,7 +57,7 @@
 }
 
 .description {
-  font-size: 0.875rem;
+  font-size: var(--fs-lg);
   color: var(--color-muted);
   margin: 0 0 28px 0;
   line-height: 1.65;

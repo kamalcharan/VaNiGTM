@@ -131,8 +131,8 @@ export function ImportsPanel() {
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span className={`${u.tag} ${st.tone === 'ok' ? u.tagOk : st.tone === 'warn' ? u.tagWarn : st.tone === 'bad' ? u.tagBad : u.tagDim}`}>{st.label}</span>
-                    {ss.status === 'needs_review' && <button type="button" className={s.quiet} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => toggle('held')}>{isOpen && open?.view === 'held' ? 'Close' : 'Review held rows'}</button>}
-                    {ss.failed_records > 0 && <button type="button" className={s.quiet} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => toggle('failed')}>{isOpen && open?.view === 'failed' ? 'Close' : `${ss.failed_records} failed`}</button>}
+                    {ss.status === 'needs_review' && <button type="button" className={s.quiet} style={{ padding: '4px 10px', fontSize: 'var(--fs-md)' }} onClick={() => toggle('held')}>{isOpen && open?.view === 'held' ? 'Close' : 'Review held rows'}</button>}
+                    {ss.failed_records > 0 && <button type="button" className={s.quiet} style={{ padding: '4px 10px', fontSize: 'var(--fs-md)' }} onClick={() => toggle('failed')}>{isOpen && open?.view === 'failed' ? 'Close' : `${ss.failed_records} failed`}</button>}
                     {ss.successful_records > 0 && <Link href="/agents/gtm/companies" className={s.side}>see rows →</Link>}
                   </div>
                 </div>
