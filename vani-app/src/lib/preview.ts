@@ -17,6 +17,7 @@
  */
 import { GTM_MOCK_READS, GTM_MOCK_WRITES } from '@/skills/gtm-shell/mock';
 import { CONSOLE_PREVIEW_READS } from './mock-transport';
+import { EDGE_MOCK_READS } from '@/skills/edge/mock';
 
 type Handler = (p: Record<string, unknown>) => unknown;
 
@@ -38,7 +39,7 @@ const REAL = new Set([
 ]);
 
 export const PREVIEW_FUNCTIONS: Record<string, Handler> = Object.fromEntries(
-  Object.entries({ ...CONSOLE_PREVIEW_READS, ...GTM_MOCK_READS, ...GTM_MOCK_WRITES }).filter(([k]) => !REAL.has(k)),
+  Object.entries({ ...CONSOLE_PREVIEW_READS, ...GTM_MOCK_READS, ...GTM_MOCK_WRITES, ...EDGE_MOCK_READS }).filter(([k]) => !REAL.has(k)),
 );
 
 export const isPreviewFunction = (skill: string, fn: string): boolean => `${skill}.${fn}` in PREVIEW_FUNCTIONS;

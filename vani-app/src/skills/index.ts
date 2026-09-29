@@ -15,6 +15,7 @@ import install from './install';
 import demo from './demo';
 import { VARA_WORKSPACE } from './vara-shell/vara-nav';
 import { GTM_WORKSPACE } from './gtm-shell/gtm-nav';
+import { EDGE_WORKSPACE } from './edge/edge-nav';
 
 export const SKILLS: SkillModule[] = [onboarding, smartProfile, org, workspace, agents, runs, install, settings, demo];
 
@@ -23,4 +24,4 @@ export const SKILLS: SkillModule[] = [onboarding, smartProfile, org, workspace, 
  * and declares a journey the dashboard renders as a card. Adding an agent is
  * its folder plus one line here — the catalog and the journey travel together.
  */
-export const AGENT_WORKSPACES: SkillModule[] = [VARA_WORKSPACE, GTM_WORKSPACE];
+export const AGENT_WORKSPACES: SkillModule[] = [VARA_WORKSPACE, GTM_WORKSPACE, EDGE_WORKSPACE];

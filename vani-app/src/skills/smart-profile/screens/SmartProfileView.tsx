@@ -355,6 +355,28 @@ export default function SmartProfileView() {
           <span className={s.modelTag}>Workspace default</span>
         </div>
       </section>
+
+      {/* Where the profile goes next. VaNi Edge is the agent after Vara and
+          GTM and enters from here (Charan, 2026-09-29): its first chapter is
+          this profile, carried in and corrected, never retyped. */}
+      <section className={s.section}>
+        <header className={s.sectionHead}>
+          <span className={s.sectionNum}>11</span>
+          <div className={s.sectionTitles}>
+            <h2 className={s.sectionTitle}>VaNi Edge</h2>
+            <p className={s.sectionWhat}>Before you automate, know where you stand — a guided readiness and strategy mission over one process.</p>
+          </div>
+          <Link href="/agents/edge" className={s.sectionEdit}>Open Edge</Link>
+        </header>
+        <div className={s.sectionBody}>
+          <p className={s.modelNote}>
+            Edge starts from this profile: your business, industry and footprint
+            are its first chapter, confirmed rather than re-entered. From there
+            it walks your team through the process, its rules, the evidence and
+            every pathway, and delivers an Automation Strategy.
+          </p>
+        </div>
+      </section>
     </div>
   );
 }

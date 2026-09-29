@@ -11,6 +11,7 @@
 
 import type { SkillResult, SkillTransport } from './useSkill';
 import { GTM_MOCK_READS, GTM_MOCK_WRITES } from '@/skills/gtm-shell/mock';
+import { EDGE_MOCK_READS } from '@/skills/edge/mock';
 import { OFFERS_MOCK_READS, OFFERS_MOCK_WRITES } from '@/skills/smart-profile/offers-mock';
 import { KNOWLEDGE_MOCK_READS, KNOWLEDGE_MOCK_WRITES } from '@/skills/smart-profile/knowledge-mock';
 
@@ -284,6 +285,7 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   ...OFFERS_MOCK_READS,
   ...KNOWLEDGE_MOCK_READS,
   ...CONSOLE_PREVIEW_READS,
+  ...EDGE_MOCK_READS,
   'onboarding.status': () => onboardingStatus(),
   'llm-provider-skill.get_provider': () => ({
     provider: MOCK_PROVIDER,
