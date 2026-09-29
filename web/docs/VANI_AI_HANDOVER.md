@@ -1,16 +1,16 @@
 # VaNi AI — Session Handover
 
-> **2026-09-29 — restart pointer.** The live handover is
-> `VaNiGTM/HANDOVER.md` → "RESTART HANDOVER — 2026-09-29". Order of work:
-> **Edge UX** (reference at `VaNiGTM/docs/EDGE/`) → **Vara** → **GTM**.
-> This repo's `claude/bold-carson-7stecq` is 74 commits ahead of `main` and
-> NOT merged; Vercel deploys `main`, so none of this fortnight's console work
-> (import wizard, imports dashboard, admin common pool, Smart Profile row copy,
-> failover queue) is live until Charan merges it. The nginx `/api/v1/etl/`
-> location and CORS snippet edits go with that merge (see
-> `vani-app/src/skills/gtm-imports/INTEGRATION.md`). Where the Edge UX lives —
-> a skill + shell in `vani-app`, or a standalone app under the AutomationEdge
-> brand — is the first decision of the next session.
+> **2026-09-29 (late) — restart pointer.** The live handover is
+> `VaNiGTM/HANDOVER.md` → "RESTART HANDOVER — 2026-09-29, evening". Edge UX is
+> BUILT and merged (`vani-app/src/skills/edge/`, this repo's `main`, live on
+> Vercel). This repo's `main` now carries everything that was on
+> `claude/bold-carson-7stecq` — the earlier note that it was 74 commits behind
+> is stale. **Next is Vara, and its open list is written** (VaNiGTM
+> `HANDOVER.md` §2). It opens with a blocker that lives across both repos:
+> the console's Install screen and embed widget call `/api/v1/tenant/embed`,
+> `/tenant/domains/:id/origins`, `/embed/boot` and `/embed/intent`, which
+> exist only on VaNiGTM `claude/session-setup-qrxev9` — never merged to its
+> `main`, never deployed. Merge that first (migrations renumbered 254–258).
 
 
 **From:** Claude Code website session (last updated 2026-08-11)
