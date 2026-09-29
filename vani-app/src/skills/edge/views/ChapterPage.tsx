@@ -21,14 +21,19 @@ import { StoryThread } from './StoryThread';
 import { BoardView } from './BoardView';
 import { RulesView } from './RulesView';
 import { EvidenceView } from './EvidenceView';
+import { ExplorerView } from './ExplorerView';
+import { FindingsView } from './FindingsView';
+import { ReadinessView } from './ReadinessView';
+import { ComparisonView, HypothesesView, ActionsView } from './FailureViews';
 
 const VIEWS: Record<number, React.ComponentType> = {
   0: ContextView, 1: PeopleView, 2: ScopeView, 3: DiscoveryView, 4: BoardView, 5: RulesView, 6: EvidenceView,
+  7: ExplorerView, 8: FindingsView, 9: ReadinessView,
 };
 /** The failure-review mission swaps chapters in from 4 (index 3) — reference `missionView()`'s switch. */
 const FailureBoard = () => <BoardView title="Map the intended work and the failure location." />;
 const FAILURE_VIEWS: Record<number, React.ComponentType> = {
-  3: IncidentView, 4: FailureBoard, 5: RulesView, 6: EvidenceView,
+  3: IncidentView, 4: FailureBoard, 5: RulesView, 6: EvidenceView, 7: ComparisonView, 8: HypothesesView, 9: ActionsView,
 };
 
 function NotYet({ stage }: { stage: number }) {

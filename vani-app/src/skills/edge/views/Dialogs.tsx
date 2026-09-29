@@ -16,6 +16,7 @@ import { AddActorDialog, AssignDialog, TaskDialog, SwitchProcessDialog } from '.
 import { NodeDialog, LinkDialog } from './BoardDialogs';
 import { RulebookDialog } from './RulesView';
 import { SampleEvidenceDialog, MappingDialog } from './EvidenceView';
+import { HypothesisDialog, ActionDialog } from './FailureViews';
 
 export const BOOKING_URL = 'https://calendly.com/connect-vikuna/30min';
 
@@ -194,6 +195,11 @@ function renderDialog(id: ModalId, props: Record<string, unknown>, ctx: ReturnTy
       return { title: 'Explore sample evidence separately', body: <SampleEvidenceDialog /> };
     case 'mapping':
       return { title: 'Confirm the evidence boundary', body: <MappingDialog /> };
+
+    case 'failure-hypothesis':
+      return { title: props.id ? 'Review hypothesis' : 'Examine a possible cause', body: <HypothesisDialog id={props.id as string | undefined} /> };
+    case 'failure-action':
+      return { title: props.id ? 'Review corrective action' : 'Plan a corrective action', body: <ActionDialog id={props.id as string | undefined} hypothesis={props.hypothesis as string | undefined} /> };
 
     default:
       return { title: 'Not built yet', body: <p>This dialog lands with its chapter.</p> };
