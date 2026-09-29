@@ -1,0 +1,1501 @@
+{
+ "meta": {
+  "generatedBy": "tools/derive.py",
+  "rulebook": "0.1.0",
+  "sample": true,
+  "company": "Meridian Pharma Distributors Pvt Ltd (SAMPLE)"
+ },
+ "profile": {
+  "activeVendors": 620,
+  "vendorMaster": 620,
+  "msmeVendors": 184,
+  "microSmallVendors": 131,
+  "receivingPoints": 6,
+  "invoicesPerMonth": 4213,
+  "posPerMonth": 1137
+ },
+ "dataHealth": {
+  "ap": {
+   "name": "AP invoice register",
+   "provided": true,
+   "required": true,
+   "rows": 12640,
+   "from": "2026-04-01",
+   "to": "2026-06-30",
+   "completenessPct": 95.8,
+   "missing": [
+    {
+     "column": "Depot",
+     "rows": 529,
+     "pct": 4.2
+    }
+   ]
+  },
+  "po": {
+   "name": "PO register",
+   "provided": true,
+   "required": true,
+   "rows": 3410,
+   "from": "2026-02-02",
+   "to": "2026-07-04",
+   "completenessPct": 99.0,
+   "missing": [
+    {
+     "column": "Required By",
+     "rows": 33,
+     "pct": 1.0
+    }
+   ]
+  },
+  "grn": {
+   "name": "GRN register",
+   "provided": true,
+   "required": false,
+   "rows": 13357,
+   "from": "2026-02-13",
+   "to": "2026-07-01",
+   "completenessPct": 87.9,
+   "missing": [
+    {
+     "column": "Batch No",
+     "rows": 1613,
+     "pct": 12.1
+    },
+    {
+     "column": "Expiry",
+     "rows": 1613,
+     "pct": 12.1
+    }
+   ]
+  },
+  "vendor": {
+   "name": "Vendor master",
+   "provided": true,
+   "required": false,
+   "rows": 620,
+   "from": null,
+   "to": null,
+   "completenessPct": 100.0,
+   "missing": []
+  },
+  "gstr2b": {
+   "name": "GSTR-2B",
+   "provided": false,
+   "required": false
+  }
+ },
+ "rules": {
+  "D-01": {
+   "id": "D-01",
+   "name": "Approval limit by PO value",
+   "category": "declared",
+   "source": "customer",
+   "severity": "high",
+   "params": {
+    "tiers": [
+     {
+      "upTo": 100000,
+      "role": "Depot Manager"
+     },
+     {
+      "upTo": 500000,
+      "role": "Finance Controller"
+     },
+     {
+      "upTo": null,
+      "role": "CFO"
+     }
+    ],
+    "roleRank": [
+     "Depot Manager",
+     "Finance Controller",
+     "CFO"
+    ]
+   },
+   "fails": 214,
+   "population": 930,
+   "failPct": 23.0,
+   "passPct": 77.0,
+   "status": "fail",
+   "failsAllTiers": 214,
+   "posTotal": 3410,
+   "passPctAllPOs": 93.7,
+   "limitINR": 500000,
+   "evidence": [
+    {
+     "po": "PO/VJA/25-26/00001",
+     "value": 907020.87,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/VSP/25-26/00001",
+     "value": 1417043.4,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/BLR/25-26/00001",
+     "value": 1509792.3,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/VJA/25-26/00006",
+     "value": 1581347.04,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/BLR/25-26/00002",
+     "value": 1581750.0,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/HYD/25-26/00010",
+     "value": 1312652.08,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/VSP/25-26/00003",
+     "value": 678293.2,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/BLR/25-26/00006",
+     "value": 612940.8,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    }
+   ]
+  },
+  "D-02": {
+   "id": "D-02",
+   "name": "3-way match tolerance",
+   "category": "declared",
+   "source": "customer",
+   "severity": "medium",
+   "params": {
+    "pricePct": 2,
+    "qtyPct": 5
+   },
+   "fails": 5320,
+   "population": 12008,
+   "failPct": 44.3,
+   "passPct": 55.7,
+   "status": "fail",
+   "firstPassPct": 55.7,
+   "causes": [
+    {
+     "cause": "GRN not posted when invoice arrived",
+     "cases": 3385,
+     "shareOfFailures": 63.6
+    },
+    {
+     "cause": "PO raised after invoice",
+     "cases": 1011,
+     "shareOfFailures": 19.0
+    },
+    {
+     "cause": "Price or quantity outside tolerance",
+     "cases": 924,
+     "shareOfFailures": 17.4
+    }
+   ],
+   "topCause": "GRN not posted when invoice arrived",
+   "topCauseShare": 63.6,
+   "inPlaceAtReceiptPct": 63.4,
+   "evidence": [
+    {
+     "invoice": "INV/25-26/0210",
+     "po": "PO/BLR/25-26/00015",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 71.26,
+     "poRate": 71.26,
+     "invoiceQty": 5015.0,
+     "receivedQty": 5015.0
+    },
+    {
+     "invoice": "INV/26-27/0294",
+     "po": "PO/BLR/25-26/00030",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 319.46,
+     "poRate": 319.46,
+     "invoiceQty": 939.0,
+     "receivedQty": 939.0
+    },
+    {
+     "invoice": "INV/25-26/0342",
+     "po": "PO/HYD/26-27/00039",
+     "cause": "PO raised after invoice",
+     "invoiceRate": 10.61,
+     "poRate": 10.61,
+     "invoiceQty": 4885.0,
+     "receivedQty": 4885.0
+    },
+    {
+     "invoice": "VMA/0070/26-27",
+     "po": "PO/HYD/25-26/00067",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 23.7,
+     "poRate": 23.7,
+     "invoiceQty": 3365.0,
+     "receivedQty": 3365.0
+    },
+    {
+     "invoice": "KBL/0063/25-26",
+     "po": "PO/BLR/25-26/00050",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 222.62,
+     "poRate": 222.62,
+     "invoiceQty": 309.0,
+     "receivedQty": 309.0
+    },
+    {
+     "invoice": "NGT/25-26/0284",
+     "po": "PO/HYD/25-26/00049",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 11.58,
+     "poRate": 11.58,
+     "invoiceQty": 12598.0,
+     "receivedQty": 12598.0
+    },
+    {
+     "invoice": "AMP-00086",
+     "po": "PO/VJA/26-27/00057",
+     "cause": "PO raised after invoice",
+     "invoiceRate": 865.21,
+     "poRate": 865.21,
+     "invoiceQty": 33.0,
+     "receivedQty": 33.0
+    },
+    {
+     "invoice": "ALS-00220",
+     "po": "PO/HYD/25-26/00157",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 10.78,
+     "poRate": 10.78,
+     "invoiceQty": 2476.0,
+     "receivedQty": 2476.0
+    }
+   ]
+  },
+  "D-03": {
+   "id": "D-03",
+   "name": "Payment terms by vendor type",
+   "category": "declared",
+   "source": "customer",
+   "severity": "medium",
+   "params": {
+    "msmeDays": 45,
+    "otherDays": 60
+   },
+   "fails": 3552,
+   "population": 12640,
+   "failPct": 28.1,
+   "passPct": 71.9,
+   "status": "fail",
+   "evidence": [
+    {
+     "invoice": "INV/25-26/0210",
+     "vendor": "Godavari Labs & Co",
+     "terms": 60,
+     "daysToPay": 66
+    },
+    {
+     "invoice": "APP-00114",
+     "vendor": "Annapurna Pharma Pvt Ltd",
+     "terms": 60,
+     "daysToPay": 65
+    },
+    {
+     "invoice": "APP-00116",
+     "vendor": "Annapurna Pharma Pvt Ltd",
+     "terms": 60,
+     "daysToPay": 72
+    },
+    {
+     "invoice": "INV/25-26/0342",
+     "vendor": "Sri Lakshmi Remedies Agencies",
+     "terms": 45,
+     "daysToPay": 61
+    },
+    {
+     "invoice": "KPL/26-27/0195",
+     "vendor": "Kalpa Pharma LLP",
+     "terms": 45,
+     "daysToPay": 58
+    },
+    {
+     "invoice": "NGT/25-26/0284",
+     "vendor": "Nandi Generics Traders",
+     "terms": 60,
+     "daysToPay": 66
+    },
+    {
+     "invoice": "INV/26-27/0267",
+     "vendor": "Banjara Maintenance & Co",
+     "terms": 60,
+     "daysToPay": 69
+    },
+    {
+     "invoice": "VLA-00272",
+     "vendor": "Vishwa Labs Agencies",
+     "terms": 60,
+     "daysToPay": 66
+    }
+   ]
+  },
+  "D-04": {
+   "id": "D-04",
+   "name": "PO mandatory above threshold",
+   "category": "declared",
+   "source": "customer",
+   "severity": "high",
+   "params": {
+    "thresholdINR": 25000
+   },
+   "fails": 1252,
+   "population": 10389,
+   "failPct": 12.1,
+   "passPct": 87.9,
+   "status": "fail",
+   "valueFailPct": 14.0,
+   "valuePassPct": 86.0,
+   "valueFailINR": 164807077.43,
+   "valueTotalINR": 1176189283.22,
+   "evidence": [
+    {
+     "invoice": "INV/25-26/0355",
+     "vendor": "Hampi IT Services Traders",
+     "taxable": 73088.72,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-01"
+    },
+    {
+     "invoice": "NFS/0301/25-26",
+     "vendor": "Nandi Facility Services Enterprises",
+     "taxable": 37213.63,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-01"
+    },
+    {
+     "invoice": "INV/25-26/0342",
+     "vendor": "Sri Lakshmi Remedies Agencies",
+     "taxable": 51829.85,
+     "po": "PO/HYD/26-27/00039",
+     "poDate": "2026-04-03",
+     "received": "2026-04-02"
+    },
+    {
+     "invoice": "NCT/25-26/0130",
+     "vendor": "Nirmal Courier Traders",
+     "taxable": 53758.58,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-03"
+    },
+    {
+     "invoice": "AMP-00086",
+     "vendor": "Amrit Medicare Pvt Ltd",
+     "taxable": 28551.93,
+     "po": "PO/VJA/26-27/00057",
+     "poDate": "2026-04-09",
+     "received": "2026-04-03"
+    },
+    {
+     "invoice": "INV/26-27/0039",
+     "vendor": "Amrit Consultants & Co",
+     "taxable": 41480.42,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-03"
+    },
+    {
+     "invoice": "SLC/0104/26-27",
+     "vendor": "Sri Lakshmi Cold Chain Pvt Ltd",
+     "taxable": 26470.2,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-03"
+    },
+    {
+     "invoice": "PED-00057",
+     "vendor": "Pragati Electricals Distributors",
+     "taxable": 30896.65,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-03"
+    }
+   ]
+  },
+  "D-05": {
+   "id": "D-05",
+   "name": "GRN posting time",
+   "category": "declared",
+   "source": "default",
+   "severity": "medium",
+   "params": {
+    "maxDays": 2
+   },
+   "fails": 12318,
+   "population": 13357,
+   "failPct": 92.2,
+   "passPct": 7.8,
+   "status": "fail",
+   "medianLagDays": 6.0,
+   "evidence": [
+    {
+     "grn": "GRN/HYD/000001",
+     "received": "2026-02-17 10:06",
+     "posted": "2026-02-28 11:07",
+     "lagDays": 11.0
+    },
+    {
+     "grn": "GRN/HYD/000002",
+     "received": "2026-03-07 10:28",
+     "posted": "2026-03-12 10:15",
+     "lagDays": 5.0
+    },
+    {
+     "grn": "GRN/HBL/000001",
+     "received": "2026-03-10 10:15",
+     "posted": "2026-03-13 10:34",
+     "lagDays": 3.0
+    },
+    {
+     "grn": "GRN/VJA/000001",
+     "received": "2026-03-02 10:40",
+     "posted": "2026-03-14 15:22",
+     "lagDays": 12.2
+    },
+    {
+     "grn": "GRN/VSP/000001",
+     "received": "2026-03-05 10:32",
+     "posted": "2026-03-19 10:19",
+     "lagDays": 14.0
+    },
+    {
+     "grn": "GRN/HYD/000003",
+     "received": "2026-03-09 16:57",
+     "posted": "2026-03-19 10:30",
+     "lagDays": 9.7
+    },
+    {
+     "grn": "GRN/HYD/000004",
+     "received": "2026-03-13 12:45",
+     "posted": "2026-03-19 10:39",
+     "lagDays": 5.9
+    },
+    {
+     "grn": "GRN/HBL/000002",
+     "received": "2026-03-13 09:47",
+     "posted": "2026-03-19 17:08",
+     "lagDays": 6.3
+    }
+   ]
+  },
+  "S-01": {
+   "id": "S-01",
+   "name": "MSME payment within 45 days (Income Tax Act s.43B(h), MSMED Act s.15)",
+   "category": "statutory",
+   "source": "law",
+   "severity": "high",
+   "params": {
+    "withAgreementDays": 45,
+    "withoutAgreementDays": 15,
+    "categories": [
+     "Micro",
+     "Small"
+    ]
+   },
+   "fails": 1142,
+   "population": 3684,
+   "failPct": 31.0,
+   "passPct": 69.0,
+   "status": "fail",
+   "evidence": [
+    {
+     "invoice": "VMA/0069/26-27",
+     "vendor": "Vyom Medicare Agencies",
+     "category": "Small",
+     "accepted": "2026-03-23",
+     "paid": "2026-05-08",
+     "days": 46
+    },
+    {
+     "invoice": "KLE/0220/26-27",
+     "vendor": "Kaveri Labs Enterprises",
+     "category": "Micro",
+     "accepted": "2026-03-10",
+     "paid": "2026-04-28",
+     "days": 49
+    },
+    {
+     "invoice": "SWE/26-27/0303",
+     "vendor": "Surya Wellness Enterprises",
+     "category": "Micro",
+     "accepted": "2026-03-21",
+     "paid": "2026-05-08",
+     "days": 48
+    },
+    {
+     "invoice": "INV/25-26/0342",
+     "vendor": "Sri Lakshmi Remedies Agencies",
+     "category": "Small",
+     "accepted": "2026-04-02",
+     "paid": "2026-05-29",
+     "days": 57
+    },
+    {
+     "invoice": "DPT/26-27/0029",
+     "vendor": "Deccan Pharma Traders",
+     "category": "Small",
+     "accepted": "2026-03-09",
+     "paid": "2026-04-28",
+     "days": 50
+    },
+    {
+     "invoice": "GHE-00174",
+     "vendor": "Golconda Healthcare Enterprises",
+     "category": "Micro",
+     "accepted": "2026-04-01",
+     "paid": "2026-05-26",
+     "days": 55
+    },
+    {
+     "invoice": "NPP/26-27/0338",
+     "vendor": "Nirmal Pharma Pvt Ltd",
+     "category": "Micro",
+     "accepted": "2026-03-28",
+     "paid": "2026-06-05",
+     "days": 69
+    },
+    {
+     "invoice": "INV/26-27/0182",
+     "vendor": "Sahyadri Biotech Pvt Ltd",
+     "category": "Micro",
+     "accepted": "2026-04-06",
+     "paid": "2026-06-02",
+     "days": 57
+    }
+   ],
+   "verify": "CA review required"
+  },
+  "S-02": {
+   "id": "S-02",
+   "name": "Supplier paid within 180 days or ITC reversed (CGST s.16(2), second proviso)",
+   "category": "statutory",
+   "source": "law",
+   "severity": "high",
+   "params": {
+    "maxDays": 180
+   },
+   "fails": 0,
+   "population": 12640,
+   "failPct": 0.0,
+   "passPct": 100.0,
+   "status": "pass",
+   "evidence": [],
+   "verify": "CA review required"
+  },
+  "S-03": {
+   "id": "S-03",
+   "name": "ITC claimed only if invoice appears in GSTR-2B (CGST s.16(2)(aa))",
+   "category": "statutory",
+   "source": "law",
+   "severity": "high",
+   "params": {},
+   "fails": null,
+   "population": null,
+   "failPct": null,
+   "passPct": null,
+   "status": "untested",
+   "reason": "GSTR-2B not provided",
+   "evidence": [],
+   "verify": "CA review required"
+  },
+  "C-01": {
+   "id": "C-01",
+   "name": "PO exists before invoice",
+   "category": "conformance",
+   "source": "processModel",
+   "severity": "medium",
+   "params": {},
+   "fails": 1643,
+   "population": 12640,
+   "failPct": 13.0,
+   "passPct": 87.0,
+   "status": "fail",
+   "evidence": [
+    {
+     "invoice": "INV/25-26/0355",
+     "po": null
+    },
+    {
+     "invoice": "NFS/0301/25-26",
+     "po": null
+    },
+    {
+     "invoice": "NTP/0111/26-27",
+     "po": null
+    },
+    {
+     "invoice": "SCC-00092",
+     "po": null
+    },
+    {
+     "invoice": "SCP-00038",
+     "po": null
+    },
+    {
+     "invoice": "TFS/0068/25-26",
+     "po": null
+    },
+    {
+     "invoice": "INV/25-26/0342",
+     "po": "PO/HYD/26-27/00039"
+    },
+    {
+     "invoice": "SCD-00242",
+     "po": null
+    }
+   ]
+  },
+  "C-02": {
+   "id": "C-02",
+   "name": "GRN before invoice approval",
+   "category": "conformance",
+   "source": "processModel",
+   "severity": "high",
+   "params": {},
+   "fails": 0,
+   "population": 12008,
+   "failPct": 0.0,
+   "passPct": 100.0,
+   "status": "pass",
+   "evidence": []
+  },
+  "C-03": {
+   "id": "C-03",
+   "name": "Approval before payment",
+   "category": "conformance",
+   "source": "processModel",
+   "severity": "high",
+   "params": {},
+   "fails": 0,
+   "population": 12640,
+   "failPct": 0.0,
+   "passPct": 100.0,
+   "status": "pass",
+   "evidence": []
+  },
+  "C-04": {
+   "id": "C-04",
+   "name": "PO creator is not the PO approver",
+   "category": "conformance",
+   "source": "control",
+   "severity": "high",
+   "params": {},
+   "fails": 0,
+   "population": 3410,
+   "failPct": 0.0,
+   "passPct": 100.0,
+   "status": "pass",
+   "evidence": []
+  },
+  "A-01": {
+   "id": "A-01",
+   "name": "Possible duplicate invoice",
+   "category": "anomaly",
+   "source": "default",
+   "severity": "high",
+   "params": {
+    "sameAmountWindowDays": 7
+   },
+   "fails": 37,
+   "population": 12640,
+   "failPct": 0.3,
+   "passPct": 99.7,
+   "status": "fail",
+   "amountINR": 1860000.0,
+   "amountText": "₹18.6 lakh",
+   "byReason": {
+    "same amount within 7 days": 15,
+    "same invoice number": 22
+   },
+   "evidence": [
+    {
+     "invoice": "ULP/0055/26-27",
+     "matches": "ULP/0035/26-27",
+     "vendor": "Udaya Logistics Pvt Ltd",
+     "amount": 82484.19,
+     "reason": "same amount within 7 days",
+     "bothPaid": true
+    },
+    {
+     "invoice": "AET 213 26 27",
+     "matches": "AET/0213/26-27",
+     "vendor": "Amrit Electricals Traders",
+     "amount": 80781.93,
+     "reason": "same invoice number",
+     "bothPaid": true
+    },
+    {
+     "invoice": "SIS.153",
+     "matches": "SIS-00153",
+     "vendor": "Sneha IT Services Agencies",
+     "amount": 78783.98,
+     "reason": "same invoice number",
+     "bothPaid": true
+    },
+    {
+     "invoice": "NIS/285/26/27",
+     "matches": "NIS/0285/26-27",
+     "vendor": "Nirmal IT Services Distributors",
+     "amount": 77027.5,
+     "reason": "same invoice number",
+     "bothPaid": true
+    },
+    {
+     "invoice": "AMC/026/027/191",
+     "matches": "AMC/26-27/0191",
+     "vendor": "Annapurna Maintenance & Co",
+     "amount": 74820.28,
+     "reason": "same invoice number",
+     "bothPaid": true
+    },
+    {
+     "invoice": "ACA/0372/26-27",
+     "matches": "ACA/0362/26-27",
+     "vendor": "Aditya Courier Agencies",
+     "amount": 73733.78,
+     "reason": "same amount within 7 days",
+     "bothPaid": true
+    },
+    {
+     "invoice": "NCT/26-27/0163",
+     "matches": "NCT/26-27/0133",
+     "vendor": "Nirmal Courier Traders",
+     "amount": 68441.77,
+     "reason": "same amount within 7 days",
+     "bothPaid": true
+    },
+    {
+     "invoice": "VCD-00206",
+     "matches": "VCD-00183",
+     "vendor": "Vyom Consultants Distributors",
+     "amount": 66391.85,
+     "reason": "same amount within 7 days",
+     "bothPaid": true
+    }
+   ]
+  },
+  "A-02": {
+   "id": "A-02",
+   "name": "Split POs under an approval limit",
+   "category": "anomaly",
+   "source": "derivedFrom:D-01",
+   "severity": "high",
+   "params": {
+    "windowDays": 7,
+    "bandPct": 10
+   },
+   "fails": 0,
+   "population": 3410,
+   "failPct": 0.0,
+   "passPct": 100.0,
+   "status": "pass",
+   "evidence": []
+  },
+  "A-03": {
+   "id": "A-03",
+   "name": "Retro PO",
+   "category": "anomaly",
+   "source": "default",
+   "severity": "medium",
+   "params": {},
+   "fails": 1011,
+   "population": 12008,
+   "failPct": 8.4,
+   "passPct": 91.6,
+   "status": "fail",
+   "evidence": [
+    {
+     "invoice": "INV/25-26/0342",
+     "po": "PO/HYD/26-27/00039",
+     "received": "2026-04-02",
+     "poDate": "2026-04-03"
+    },
+    {
+     "invoice": "AMP-00086",
+     "po": "PO/VJA/26-27/00057",
+     "received": "2026-04-03",
+     "poDate": "2026-04-09"
+    },
+    {
+     "invoice": "OGC/26-27/0166",
+     "po": "PO/WGL/26-27/00020",
+     "received": "2026-04-03",
+     "poDate": "2026-04-06"
+    },
+    {
+     "invoice": "TGC-00359",
+     "po": "PO/BLR/26-27/00057",
+     "received": "2026-04-04",
+     "poDate": "2026-04-08"
+    },
+    {
+     "invoice": "NLA/26-27/0070",
+     "po": "PO/HYD/26-27/00068",
+     "received": "2026-04-04",
+     "poDate": "2026-04-06"
+    },
+    {
+     "invoice": "VFL/26-27/0122",
+     "po": "PO/VJA/26-27/00059",
+     "received": "2026-04-04",
+     "poDate": "2026-04-09"
+    },
+    {
+     "invoice": "KBL/0069/26-27",
+     "po": "PO/WGL/26-27/00022",
+     "received": "2026-04-06",
+     "poDate": "2026-04-07"
+    },
+    {
+     "invoice": "GHE-00174",
+     "po": "PO/HYD/26-27/00142",
+     "received": "2026-04-06",
+     "poDate": "2026-04-10"
+    }
+   ]
+  }
+ },
+ "kpis": {
+  "K-02": {
+   "name": "First-pass match rate",
+   "value": 55.7,
+   "unit": "%"
+  },
+  "K-03": {
+   "name": "Touchless rate",
+   "value": 36.2,
+   "unit": "%"
+  },
+  "K-04": {
+   "name": "Late payment rate (vs terms)",
+   "value": 28.1,
+   "unit": "%"
+  },
+  "K-05": {
+   "name": "AP cycle time (invoice → payment)",
+   "value": 46.6,
+   "unit": "days"
+  },
+  "K-06": {
+   "name": "Approval wait (invoice → approval)",
+   "value": 10.2,
+   "unit": "days"
+  },
+  "K-07": {
+   "name": "Match wait (invoice → match)",
+   "value": 1.8,
+   "unit": "days"
+  },
+  "K-08": {
+   "name": "GRN posting lag (goods in → GRN)",
+   "value": 6.0,
+   "unit": "days"
+  }
+ },
+ "hypotheses": [
+  {
+   "id": "H1",
+   "text": "Month-end backlog is an approval delay",
+   "status": "confirmed",
+   "evidence": "Median waits: Invoice → approval 10.2 days, Goods in → GRN 6.0 days, Invoice → match 1.8 days."
+  },
+  {
+   "id": "H2",
+   "text": "Match failures come from price and quantity variance",
+   "status": "contradicted",
+   "evidence": "Price/qty variance causes 17.4% of match failures; the top cause is \"GRN not posted when invoice arrived\" at 63.6%."
+  },
+  {
+   "id": "H3",
+   "text": "We are exposed to MSME payment penalties",
+   "status": "confirmed",
+   "evidence": "1,142 of 3,684 Micro/Small invoices paid after 45 days."
+  },
+  {
+   "id": "H4",
+   "text": "GST input credit is leaking",
+   "status": "untested",
+   "evidence": "Needs GSTR-2B to test."
+  }
+ ],
+ "findings": [
+  {
+   "id": "F1",
+   "group": "approval-wait",
+   "title": "Approval is the longest controllable wait",
+   "severity": "high",
+   "text": "Median invoice receipt → approval is 10.2 days, the longest controllable wait (goods in → GRN 6.0, invoice → match 1.8). Median receipt → payment is 46.6 days.",
+   "value": "10.2 days",
+   "rules": [
+    "K-06",
+    "H1"
+   ],
+   "evidence": []
+  },
+  {
+   "id": "F2",
+   "group": "cfo-limit",
+   "title": "Large POs skip CFO approval",
+   "severity": "high",
+   "text": "214 of 930 POs above ₹5 lakh (23.0%) have no CFO approval recorded.",
+   "value": "23.0%",
+   "rules": [
+    "D-01",
+    "C-04",
+    "A-02"
+   ],
+   "evidence": [
+    {
+     "po": "PO/VJA/25-26/00001",
+     "value": 907020.87,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/VSP/25-26/00001",
+     "value": 1417043.4,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/BLR/25-26/00001",
+     "value": 1509792.3,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/VJA/25-26/00006",
+     "value": 1581347.04,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/BLR/25-26/00002",
+     "value": 1581750.0,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/HYD/25-26/00010",
+     "value": 1312652.08,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/VSP/25-26/00003",
+     "value": 678293.2,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    },
+    {
+     "po": "PO/BLR/25-26/00006",
+     "value": 612940.8,
+     "approvedBy": "Finance Controller",
+     "required": "CFO"
+    }
+   ]
+  },
+  {
+   "id": "F3",
+   "group": "msme-late",
+   "title": "Micro and small vendors are paid late",
+   "severity": "high",
+   "text": "1,142 of 3,684 invoices from Micro and Small vendors (31.0%) were paid more than 45 days after acceptance.",
+   "value": "31.0%",
+   "rules": [
+    "S-01",
+    "D-03"
+   ],
+   "evidence": [
+    {
+     "invoice": "VMA/0069/26-27",
+     "vendor": "Vyom Medicare Agencies",
+     "category": "Small",
+     "accepted": "2026-03-23",
+     "paid": "2026-05-08",
+     "days": 46
+    },
+    {
+     "invoice": "KLE/0220/26-27",
+     "vendor": "Kaveri Labs Enterprises",
+     "category": "Micro",
+     "accepted": "2026-03-10",
+     "paid": "2026-04-28",
+     "days": 49
+    },
+    {
+     "invoice": "SWE/26-27/0303",
+     "vendor": "Surya Wellness Enterprises",
+     "category": "Micro",
+     "accepted": "2026-03-21",
+     "paid": "2026-05-08",
+     "days": 48
+    },
+    {
+     "invoice": "INV/25-26/0342",
+     "vendor": "Sri Lakshmi Remedies Agencies",
+     "category": "Small",
+     "accepted": "2026-04-02",
+     "paid": "2026-05-29",
+     "days": 57
+    },
+    {
+     "invoice": "DPT/26-27/0029",
+     "vendor": "Deccan Pharma Traders",
+     "category": "Small",
+     "accepted": "2026-03-09",
+     "paid": "2026-04-28",
+     "days": 50
+    },
+    {
+     "invoice": "GHE-00174",
+     "vendor": "Golconda Healthcare Enterprises",
+     "category": "Micro",
+     "accepted": "2026-04-01",
+     "paid": "2026-05-26",
+     "days": 55
+    },
+    {
+     "invoice": "NPP/26-27/0338",
+     "vendor": "Nirmal Pharma Pvt Ltd",
+     "category": "Micro",
+     "accepted": "2026-03-28",
+     "paid": "2026-06-05",
+     "days": 69
+    },
+    {
+     "invoice": "INV/26-27/0182",
+     "vendor": "Sahyadri Biotech Pvt Ltd",
+     "category": "Micro",
+     "accepted": "2026-04-06",
+     "paid": "2026-06-02",
+     "days": 57
+    }
+   ]
+  },
+  {
+   "id": "F4",
+   "group": "match-receipt",
+   "title": "Match failures start at receiving",
+   "severity": "medium",
+   "text": "First-pass 3-way match is 55.7%. 63.6% of failures are \"GRN not posted when invoice arrived\"; GRN is posted a median 6.0 days after goods arrive.",
+   "value": "55.7%",
+   "rules": [
+    "D-02",
+    "D-05",
+    "H2"
+   ],
+   "evidence": [
+    {
+     "invoice": "INV/25-26/0210",
+     "po": "PO/BLR/25-26/00015",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 71.26,
+     "poRate": 71.26,
+     "invoiceQty": 5015.0,
+     "receivedQty": 5015.0
+    },
+    {
+     "invoice": "INV/26-27/0294",
+     "po": "PO/BLR/25-26/00030",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 319.46,
+     "poRate": 319.46,
+     "invoiceQty": 939.0,
+     "receivedQty": 939.0
+    },
+    {
+     "invoice": "INV/25-26/0342",
+     "po": "PO/HYD/26-27/00039",
+     "cause": "PO raised after invoice",
+     "invoiceRate": 10.61,
+     "poRate": 10.61,
+     "invoiceQty": 4885.0,
+     "receivedQty": 4885.0
+    },
+    {
+     "invoice": "VMA/0070/26-27",
+     "po": "PO/HYD/25-26/00067",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 23.7,
+     "poRate": 23.7,
+     "invoiceQty": 3365.0,
+     "receivedQty": 3365.0
+    },
+    {
+     "invoice": "KBL/0063/25-26",
+     "po": "PO/BLR/25-26/00050",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 222.62,
+     "poRate": 222.62,
+     "invoiceQty": 309.0,
+     "receivedQty": 309.0
+    },
+    {
+     "invoice": "NGT/25-26/0284",
+     "po": "PO/HYD/25-26/00049",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 11.58,
+     "poRate": 11.58,
+     "invoiceQty": 12598.0,
+     "receivedQty": 12598.0
+    },
+    {
+     "invoice": "AMP-00086",
+     "po": "PO/VJA/26-27/00057",
+     "cause": "PO raised after invoice",
+     "invoiceRate": 865.21,
+     "poRate": 865.21,
+     "invoiceQty": 33.0,
+     "receivedQty": 33.0
+    },
+    {
+     "invoice": "ALS-00220",
+     "po": "PO/HYD/25-26/00157",
+     "cause": "GRN not posted when invoice arrived",
+     "invoiceRate": 10.78,
+     "poRate": 10.78,
+     "invoiceQty": 2476.0,
+     "receivedQty": 2476.0
+    }
+   ]
+  },
+  {
+   "id": "F5",
+   "group": "po-policy",
+   "title": "PO policy is not followed",
+   "severity": "high",
+   "text": "14.0% of invoice value above ₹25,000 (₹16.48 crore, 1,252 invoices) had no PO in place when the invoice arrived.",
+   "value": "14.0%",
+   "rules": [
+    "D-04",
+    "C-01",
+    "A-03"
+   ],
+   "evidence": [
+    {
+     "invoice": "INV/25-26/0355",
+     "vendor": "Hampi IT Services Traders",
+     "taxable": 73088.72,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-01"
+    },
+    {
+     "invoice": "NFS/0301/25-26",
+     "vendor": "Nandi Facility Services Enterprises",
+     "taxable": 37213.63,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-01"
+    },
+    {
+     "invoice": "INV/25-26/0342",
+     "vendor": "Sri Lakshmi Remedies Agencies",
+     "taxable": 51829.85,
+     "po": "PO/HYD/26-27/00039",
+     "poDate": "2026-04-03",
+     "received": "2026-04-02"
+    },
+    {
+     "invoice": "NCT/25-26/0130",
+     "vendor": "Nirmal Courier Traders",
+     "taxable": 53758.58,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-03"
+    },
+    {
+     "invoice": "AMP-00086",
+     "vendor": "Amrit Medicare Pvt Ltd",
+     "taxable": 28551.93,
+     "po": "PO/VJA/26-27/00057",
+     "poDate": "2026-04-09",
+     "received": "2026-04-03"
+    },
+    {
+     "invoice": "INV/26-27/0039",
+     "vendor": "Amrit Consultants & Co",
+     "taxable": 41480.42,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-03"
+    },
+    {
+     "invoice": "SLC/0104/26-27",
+     "vendor": "Sri Lakshmi Cold Chain Pvt Ltd",
+     "taxable": 26470.2,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-03"
+    },
+    {
+     "invoice": "PED-00057",
+     "vendor": "Pragati Electricals Distributors",
+     "taxable": 30896.65,
+     "po": null,
+     "poDate": null,
+     "received": "2026-04-03"
+    }
+   ]
+  },
+  {
+   "id": "F6",
+   "group": "duplicates",
+   "title": "Possible duplicate payments",
+   "severity": "high",
+   "text": "37 invoices worth ₹18.6 lakh flagged as possible duplicates; all were paid.",
+   "value": "₹18.6 lakh",
+   "rules": [
+    "A-01"
+   ],
+   "evidence": [
+    {
+     "invoice": "ULP/0055/26-27",
+     "matches": "ULP/0035/26-27",
+     "vendor": "Udaya Logistics Pvt Ltd",
+     "amount": 82484.19,
+     "reason": "same amount within 7 days",
+     "bothPaid": true
+    },
+    {
+     "invoice": "AET 213 26 27",
+     "matches": "AET/0213/26-27",
+     "vendor": "Amrit Electricals Traders",
+     "amount": 80781.93,
+     "reason": "same invoice number",
+     "bothPaid": true
+    },
+    {
+     "invoice": "SIS.153",
+     "matches": "SIS-00153",
+     "vendor": "Sneha IT Services Agencies",
+     "amount": 78783.98,
+     "reason": "same invoice number",
+     "bothPaid": true
+    },
+    {
+     "invoice": "NIS/285/26/27",
+     "matches": "NIS/0285/26-27",
+     "vendor": "Nirmal IT Services Distributors",
+     "amount": 77027.5,
+     "reason": "same invoice number",
+     "bothPaid": true
+    },
+    {
+     "invoice": "AMC/026/027/191",
+     "matches": "AMC/26-27/0191",
+     "vendor": "Annapurna Maintenance & Co",
+     "amount": 74820.28,
+     "reason": "same invoice number",
+     "bothPaid": true
+    },
+    {
+     "invoice": "ACA/0372/26-27",
+     "matches": "ACA/0362/26-27",
+     "vendor": "Aditya Courier Agencies",
+     "amount": 73733.78,
+     "reason": "same amount within 7 days",
+     "bothPaid": true
+    },
+    {
+     "invoice": "NCT/26-27/0163",
+     "matches": "NCT/26-27/0133",
+     "vendor": "Nirmal Courier Traders",
+     "amount": 68441.77,
+     "reason": "same amount within 7 days",
+     "bothPaid": true
+    },
+    {
+     "invoice": "VCD-00206",
+     "matches": "VCD-00183",
+     "vendor": "Vyom Consultants Distributors",
+     "amount": 66391.85,
+     "reason": "same amount within 7 days",
+     "bothPaid": true
+    }
+   ]
+  }
+ ],
+ "readiness": {
+  "steps": [
+   {
+    "id": "requisition",
+    "name": "Requisition",
+    "dimensions": {
+     "VOL": 76.4,
+     "STD": null,
+     "DAT": 0.0,
+     "RUL": 0.0,
+     "CMP": null
+    },
+    "rawScore": 38,
+    "score": 38,
+    "band": "wait",
+    "bandName": "Not yet",
+    "confidence": "Low",
+    "notes": []
+   },
+   {
+    "id": "po",
+    "name": "PO creation",
+    "dimensions": {
+     "VOL": 76.4,
+     "STD": 87.0,
+     "DAT": 99.0,
+     "RUL": 100.0,
+     "CMP": 86.0
+    },
+    "rawScore": 89,
+    "score": 69,
+    "band": "fix",
+    "bandName": "Fix first",
+    "confidence": "High",
+    "notes": [
+     "capped by Requisition (Not yet)"
+    ]
+   },
+   {
+    "id": "receipt",
+    "name": "Goods receipt",
+    "dimensions": {
+     "VOL": 91.2,
+     "STD": 88.8,
+     "DAT": 87.9,
+     "RUL": 50.0,
+     "CMP": 7.8
+    },
+    "rawScore": 61,
+    "score": 61,
+    "band": "fix",
+    "bandName": "Fix first",
+    "confidence": "High",
+    "notes": []
+   },
+   {
+    "id": "capture",
+    "name": "Invoice capture",
+    "dimensions": {
+     "VOL": 90.6,
+     "STD": 95.0,
+     "DAT": 95.8,
+     "RUL": 50.0,
+     "CMP": 99.7
+    },
+    "rawScore": 92,
+    "score": 92,
+    "band": "now",
+    "bandName": "Automate now",
+    "confidence": "High",
+    "notes": []
+   },
+   {
+    "id": "match",
+    "name": "3-way match",
+    "dimensions": {
+     "VOL": 90.1,
+     "STD": 55.7,
+     "DAT": 95.8,
+     "RUL": 100.0,
+     "CMP": 63.4
+    },
+    "rawScore": 74,
+    "score": 69,
+    "band": "fix",
+    "bandName": "Fix first",
+    "confidence": "High",
+    "notes": [
+     "gate not met: STD 55.7, CMP 63.4"
+    ]
+   },
+   {
+    "id": "approval",
+    "name": "Approval routing",
+    "dimensions": {
+     "VOL": 90.6,
+     "STD": 88.0,
+     "DAT": 95.8,
+     "RUL": 100.0,
+     "CMP": 100.0
+    },
+    "rawScore": 95,
+    "score": 95,
+    "band": "now",
+    "bandName": "Automate now",
+    "confidence": "High",
+    "notes": []
+   },
+   {
+    "id": "payment",
+    "name": "Payment run",
+    "dimensions": {
+     "VOL": 90.6,
+     "STD": 100.0,
+     "DAT": 97.9,
+     "RUL": 100.0,
+     "CMP": 69.0
+    },
+    "rawScore": 89,
+    "score": 69,
+    "band": "fix",
+    "bandName": "Fix first",
+    "confidence": "High",
+    "notes": [
+     "gate not met: CMP 69.0"
+    ]
+   }
+  ],
+  "overall": 70,
+  "firstSlice": {
+   "steps": [
+    "capture",
+    "approval"
+   ],
+   "title": "Invoice capture + Approval routing, with MSME due-date priority",
+   "baseline": [
+    {
+     "metric": "Median invoice → approval",
+     "value": 10.2,
+     "unit": "days"
+    },
+    {
+     "metric": "Micro/Small invoices paid late",
+     "value": 31.0,
+     "unit": "%"
+    }
+   ]
+  },
+  "reviewTopic": {
+   "step": "receipt",
+   "name": "Goods receipt",
+   "score": 61
+  },
+  "stepWaits": {
+   "receipt": 6.0,
+   "match": 1.8,
+   "approval": 10.2
+  }
+ }
+}

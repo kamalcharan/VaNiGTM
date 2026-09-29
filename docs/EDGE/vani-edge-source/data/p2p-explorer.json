@@ -1,0 +1,599 @@
+{
+  "nodes": {
+    "POC": {
+      "x": 180,
+      "y": 28,
+      "n": 12008,
+      "label": "PO created"
+    },
+    "POA": {
+      "x": 180,
+      "y": 92,
+      "n": 12008,
+      "label": "PO approved"
+    },
+    "AMD": {
+      "x": 372,
+      "y": 150,
+      "n": 923,
+      "label": "PO amended",
+      "side": 1
+    },
+    "GR": {
+      "x": 180,
+      "y": 176,
+      "n": 13357,
+      "label": "Goods received"
+    },
+    "GRN": {
+      "x": 180,
+      "y": 250,
+      "n": 13357,
+      "label": "GRN posted"
+    },
+    "INV": {
+      "x": 180,
+      "y": 324,
+      "n": 12640,
+      "label": "Invoice received"
+    },
+    "HLD": {
+      "x": 48,
+      "y": 360,
+      "n": 1250,
+      "label": "Invoice held",
+      "side": 1
+    },
+    "REL": {
+      "x": 48,
+      "y": 418,
+      "n": 1250,
+      "label": "Hold released",
+      "side": 1
+    },
+    "MAT": {
+      "x": 180,
+      "y": 408,
+      "n": 12008,
+      "label": "Invoice matched"
+    },
+    "RET": {
+      "x": 372,
+      "y": 452,
+      "n": 1517,
+      "label": "Returned",
+      "side": 1
+    },
+    "APP": {
+      "x": 180,
+      "y": 502,
+      "n": 12640,
+      "label": "Invoice approved"
+    },
+    "DN": {
+      "x": 48,
+      "y": 540,
+      "n": 1287,
+      "label": "Debit note",
+      "side": 1
+    },
+    "PAY": {
+      "x": 180,
+      "y": 590,
+      "n": 12640,
+      "label": "Paid"
+    }
+  },
+  "edges": [
+    [
+      "POC",
+      "POA",
+      12008,
+      1.3,
+      1
+    ],
+    [
+      "APP",
+      "PAY",
+      11906,
+      34.6,
+      1,
+      "terms"
+    ],
+    [
+      "POA",
+      "GR",
+      10477,
+      23.8,
+      1,
+      "lead"
+    ],
+    [
+      "MAT",
+      "APP",
+      9722,
+      6.1,
+      1
+    ],
+    [
+      "GR",
+      "GRN",
+      9289,
+      6,
+      1
+    ],
+    [
+      "GRN",
+      "INV",
+      8343,
+      2,
+      1
+    ],
+    [
+      "INV",
+      "MAT",
+      7145,
+      1,
+      1
+    ],
+    [
+      "GRN",
+      "MAT",
+      3946,
+      0.9,
+      0
+    ],
+    [
+      "GR",
+      "INV",
+      3665,
+      2,
+      0
+    ],
+    [
+      "INV",
+      "GRN",
+      2654,
+      3,
+      0
+    ],
+    [
+      "MAT",
+      "RET",
+      1517,
+      2.9,
+      0
+    ],
+    [
+      "RET",
+      "APP",
+      1517,
+      10,
+      0
+    ],
+    [
+      "HLD",
+      "REL",
+      1250,
+      4.3,
+      0
+    ],
+    [
+      "INV",
+      "POC",
+      1011,
+      2,
+      0
+    ],
+    [
+      "POA",
+      "GRN",
+      1011,
+      2,
+      0
+    ],
+    [
+      "REL",
+      "MAT",
+      917,
+      1,
+      0
+    ],
+    [
+      "APP",
+      "DN",
+      734,
+      1,
+      0
+    ],
+    [
+      "DN",
+      "PAY",
+      734,
+      30.6,
+      0,
+      "terms"
+    ],
+    [
+      "INV",
+      "GR",
+      731,
+      1.8,
+      0
+    ],
+    [
+      "INV",
+      "APP",
+      632,
+      5.1,
+      0
+    ],
+    [
+      "GRN",
+      "GR",
+      618,
+      1.8,
+      0
+    ],
+    [
+      "DN",
+      "APP",
+      553,
+      6.8,
+      0
+    ],
+    [
+      "POA",
+      "AMD",
+      520,
+      3,
+      0
+    ],
+    [
+      "AMD",
+      "GR",
+      520,
+      2,
+      0
+    ],
+    [
+      "INV",
+      "HLD",
+      467,
+      1,
+      0
+    ],
+    [
+      "GRN",
+      "HLD",
+      450,
+      0.8,
+      0
+    ],
+    [
+      "MAT",
+      "DN",
+      436,
+      1,
+      0
+    ],
+    [
+      "GR",
+      "AMD",
+      403,
+      3.3,
+      0
+    ],
+    [
+      "AMD",
+      "GRN",
+      403,
+      2.7,
+      0
+    ]
+  ],
+  "variants": [
+    {
+      "id": "V1",
+      "label": "Happy path",
+      "seq": [
+        "POC",
+        "POA",
+        "GR",
+        "GRN",
+        "INV",
+        "MAT",
+        "APP",
+        "PAY"
+      ],
+      "cases": 4803,
+      "share": 38,
+      "days": 45.6
+    },
+    {
+      "id": "V2",
+      "label": "Invoice before GRN",
+      "seq": [
+        "POC",
+        "POA",
+        "GR",
+        "INV",
+        "GRN",
+        "MAT",
+        "APP",
+        "PAY"
+      ],
+      "cases": 2654,
+      "share": 21,
+      "days": 46.6,
+      "dev": [
+        "INV",
+        "GRN"
+      ]
+    },
+    {
+      "id": "V3",
+      "label": "Approval returned",
+      "seq": [
+        "POC",
+        "POA",
+        "GR",
+        "GRN",
+        "INV",
+        "MAT",
+        "RET",
+        "APP",
+        "PAY"
+      ],
+      "cases": 1517,
+      "share": 12,
+      "days": 47.5,
+      "dev": [
+        "RET"
+      ]
+    },
+    {
+      "id": "V4",
+      "label": "Retro PO",
+      "seq": [
+        "GR",
+        "INV",
+        "POC",
+        "POA",
+        "GRN",
+        "MAT",
+        "APP",
+        "PAY"
+      ],
+      "cases": 1011,
+      "share": 8,
+      "days": 45.6,
+      "dev": [
+        "POC",
+        "POA"
+      ]
+    },
+    {
+      "id": "V5",
+      "label": "No PO",
+      "seq": [
+        "INV",
+        "APP",
+        "PAY"
+      ],
+      "cases": 632,
+      "share": 5,
+      "days": 44.3,
+      "dev": [
+        "INV"
+      ]
+    }
+  ],
+  "cases": {
+    "V1": {
+      "inv": "ULS-00184",
+      "vendor": "Udaya Life Sciences Agencies",
+      "ev": [
+        [
+          "POC",
+          "2 Apr 11:11"
+        ],
+        [
+          "POA",
+          "3 Apr 14:56",
+          1.2
+        ],
+        [
+          "GR",
+          "4 May 10:27",
+          30.8
+        ],
+        [
+          "GRN",
+          "6 May 10:06",
+          2
+        ],
+        [
+          "INV",
+          "8 May 09:36",
+          2
+        ],
+        [
+          "MAT",
+          "9 May 16:24",
+          1.3
+        ],
+        [
+          "APP",
+          "20 May 10:08",
+          10.7
+        ],
+        [
+          "PAY",
+          "23 Jun",
+          33.6
+        ]
+      ]
+    },
+    "V2": {
+      "inv": "APP-00273",
+      "vendor": "Annapurna Pharma Pvt Ltd",
+      "ev": [
+        [
+          "POC",
+          "2 Mar 10:09"
+        ],
+        [
+          "POA",
+          "3 Mar 11:55",
+          1.1
+        ],
+        [
+          "GR",
+          "9 Jun 17:55",
+          98.2
+        ],
+        [
+          "INV",
+          "11 Jun 09:36",
+          1.7
+        ],
+        [
+          "GRN",
+          "13 Jun 12:26",
+          2.1
+        ],
+        [
+          "MAT",
+          "15 Jun 10:22",
+          1.9
+        ],
+        [
+          "APP",
+          "29 Jun 10:47",
+          14
+        ],
+        [
+          "PAY",
+          "28 Jul",
+          28.6
+        ]
+      ]
+    },
+    "V3": {
+      "inv": "INV/26-27/0381",
+      "vendor": "Varsha Wellness Traders",
+      "ev": [
+        [
+          "POC",
+          "27 Mar 10:43"
+        ],
+        [
+          "POA",
+          "27 Mar 14:48",
+          0.2
+        ],
+        [
+          "GR",
+          "1 May 14:49",
+          35
+        ],
+        [
+          "GRN",
+          "5 May 15:18",
+          4
+        ],
+        [
+          "INV",
+          "6 May 12:28",
+          0.9
+        ],
+        [
+          "MAT",
+          "8 May 10:13",
+          1.9
+        ],
+        [
+          "RET",
+          "12 May 10:02",
+          4
+        ],
+        [
+          "APP",
+          "30 May 10:05",
+          18
+        ],
+        [
+          "PAY",
+          "23 Jun",
+          23.6
+        ]
+      ]
+    },
+    "V4": {
+      "inv": "INV/26-27/0190",
+      "vendor": "Kakatiya Surgicals Enterprises",
+      "ev": [
+        [
+          "GR",
+          "13 May 10:27"
+        ],
+        [
+          "INV",
+          "15 May 10:00",
+          2
+        ],
+        [
+          "POC",
+          "15 May 10:23",
+          0
+        ],
+        [
+          "POA",
+          "15 May 18:32",
+          0.3
+        ],
+        [
+          "GRN",
+          "18 May 13:28",
+          2.8
+        ],
+        [
+          "MAT",
+          "19 May 10:34",
+          0.9
+        ],
+        [
+          "APP",
+          "25 May 10:42",
+          6
+        ],
+        [
+          "PAY",
+          "30 Jun",
+          35.6
+        ]
+      ]
+    },
+    "V5": {
+      "inv": "AMP-00062",
+      "vendor": "Amrit Maintenance Pvt Ltd",
+      "ev": [
+        [
+          "INV",
+          "16 May 18:29"
+        ],
+        [
+          "APP",
+          "22 May 10:21",
+          5.7
+        ],
+        [
+          "PAY",
+          "30 Jun",
+          38.6
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+import {escapeHTML as e} from '../lib/model.js';
+export {e};
+export const btn=(label,action,kind='primary',attrs='')=>`<button class="btn ${kind}" data-action="${action}" ${attrs}>${label}</button>`;
+export const intro=(step,title,sub)=>`<div class="page-heading"><div class="eyebrow">EDGE AGENT / ${step}</div><h1>${title}</h1><p>${sub}</p></div>`;
+export const input=(label,name,value='',attrs='')=>`<label class="field">${label}<input name="${name}" value="${e(value)}" ${attrs}></label>`;
+export const area=(label,name,value='',hint='')=>`<label class="field">${label}<textarea name="${name}" rows="3" placeholder="${e(hint)}" maxlength="2000">${e(value)}</textarea></label>`;
+export const foot=(label='Confirm & continue',action='next')=>`<div class="step-actions">${btn('← Back','back','text')}${btn(label+' →',action)}</div>`;
+export const agent=(title,text)=>`<div class="vani-note"><span class="orb" aria-hidden="true"><i></i></span><div><strong>${title}</strong><p>${text}</p></div></div>`;
+export const choice=(values,selected,action)=>`<div class="chips">${values.map(v=>btn(e(v),action,selected.includes(v)?'selected':'secondary',`data-value="${e(v)}" aria-pressed="${selected.includes(v)}"`)).join('')}</div>`;
+export const status=text=>`<span class="tag">${e(text)}</span>`;
+export const help=(topic)=>`<button class="btn text" data-action="assist" data-topic="${e(topic)}">Get help with ${e(topic)} ↗</button>`;

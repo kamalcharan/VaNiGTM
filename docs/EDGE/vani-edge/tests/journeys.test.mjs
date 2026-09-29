@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {initial} from '../src/state.js';import {business,process,evidence,mirror,value,report} from '../src/views/assessment.js';
+test('both process journeys render every stage in sample and own-data modes',()=>{for(const id of ['p2p','o2c'])for(const mode of ['sample','own']){const s={...initial(),process:id,mode};for(const render of [business,process,evidence,mirror,value,report])assert.ok(render(s).length>100);}});
+test('own-data mirror contains no fabricated measured approval finding',()=>{const html=mirror({...initial(),mode:'own'});assert.ok(!html.includes('10.2'));assert.match(html,/No customer findings/);});
+test('customer clarification is escaped and report includes it',()=>{const html=report({...initial(),context:'<img src=x onerror=alert(1)>'});assert.ok(!html.includes('<img'));assert.ok(html.includes('&lt;img'));});
+test('O2C sample explicitly declares its invented provenance',()=>{assert.match(mirror({...initial(),process:'o2c'}),/invented demonstration/);});
