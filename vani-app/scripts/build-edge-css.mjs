@@ -64,6 +64,7 @@ ${ROOT} ul,${ROOT} ol{padding-left:40px}${ROOT} dd{margin-left:40px}
 ${ROOT} fieldset{margin:0 2px;padding:.35em .75em .625em;border:2px groove ThreeDFace}${ROOT} legend{padding:0 2px}
 ${ROOT} input,${ROOT} textarea,${ROOT} select{padding:1px 2px}${ROOT} textarea{padding:2px}${ROOT} button{padding:1px 6px}
 ${ROOT} table{border-spacing:2px}${ROOT} td,${ROOT} th{padding:1px}${ROOT} th{font-weight:bold}
+${ROOT} :focus-visible{outline:auto 1px -webkit-focus-ring-color;outline-offset:0}
 ${ROOT} strong,${ROOT} b{font-weight:bold}${ROOT} small{font-size:smaller}${ROOT} code,${ROOT} pre{font-family:monospace}
 `;
 

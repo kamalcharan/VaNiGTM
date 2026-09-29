@@ -13,6 +13,9 @@ import { clearSaved, saveMission } from '../mission/store';
 import { missionBrief } from '../mission/brief';
 import { Btn } from '../ui';
 import { AddActorDialog, AssignDialog, TaskDialog, SwitchProcessDialog } from './PeopleDialogs';
+import { NodeDialog, LinkDialog } from './BoardDialogs';
+import { RulebookDialog } from './RulesView';
+import { SampleEvidenceDialog, MappingDialog } from './EvidenceView';
 
 export const BOOKING_URL = 'https://calendly.com/connect-vikuna/30min';
 
@@ -180,6 +183,17 @@ function renderDialog(id: ModalId, props: Record<string, unknown>, ctx: ReturnTy
     }
     case 'switch-process':
       return { title: 'Change the process?', body: <SwitchProcessDialog id={props.id as ProcessId} /> };
+
+    case 'node':
+      return { title: props.id ? 'Describe this activity' : 'Add to the process', body: <NodeDialog id={props.id as string | undefined} /> };
+    case 'link':
+      return { title: 'Connect the work', body: <LinkDialog /> };
+    case 'rules-review':
+      return { title: 'Review your rulebook', body: <RulebookDialog /> };
+    case 'sample-evidence':
+      return { title: 'Explore sample evidence separately', body: <SampleEvidenceDialog /> };
+    case 'mapping':
+      return { title: 'Confirm the evidence boundary', body: <MappingDialog /> };
 
     default:
       return { title: 'Not built yet', body: <p>This dialog lands with its chapter.</p> };
