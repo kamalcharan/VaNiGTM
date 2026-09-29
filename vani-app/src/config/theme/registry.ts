@@ -1,5 +1,6 @@
 /**
- * The four themes, and the rules about which one you get.
+ * The four themes, and the rules about which one you get. Jade Thorn is the
+ * default and carries the VaNi Edge palette (themes/jadeThorn.ts).
  *
  * Adding a fourth is one file under themes/ and one line here.
  */
@@ -17,9 +18,14 @@ export const THEMES: ThemeConfig[] = [
   JadeThornTheme,
 ];
 
-/** The signature orange. A new user gets this until they choose otherwise. */
-export const DEFAULT_THEME_ID = 'vani';
-export const DEFAULT_MODE: ColorMode = 'dark';
+/**
+ * Jade Thorn, light — the VaNi Edge look — for the whole product (Charan,
+ * 2026-09-29: "default theme Jadethorn - light for complete product"). It was
+ * the signature orange in dark until then; anyone who chose a theme keeps it,
+ * because the choice is stored per user and only the fallback moved.
+ */
+export const DEFAULT_THEME_ID = 'jade-thorn';
+export const DEFAULT_MODE: ColorMode = 'light';
 
 /**
  * Never throws and never returns undefined: an id persisted before a theme was

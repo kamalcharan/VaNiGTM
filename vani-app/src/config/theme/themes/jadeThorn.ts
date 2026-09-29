@@ -14,17 +14,19 @@ import type { ThemeConfig } from '../types';
  * dark block is derived here: the same greens lifted to read on near-black,
  * with the ink panel (`.value-summary`, `#173f36`) becoming the card surface.
  *
- * Fonts: Edge sets Inter / Segoe UI / Arial for everything and Georgia italic
- * for the accent words only. The console's display face is Fraunces; keeping
- * Georgia as the display face here would make every console heading a
- * different serif from the other three themes, so the display face is left to
- * the default and body is pinned to Edge's stack.
+ * Fonts: Edge's, by ruling ("use Edge's fonts"). Edge sets one stack —
+ * Inter / Segoe UI / Arial — for headings and body alike; its Georgia italic
+ * is only for the accent words inside Edge's own screens and stays in Edge's
+ * scoped stylesheet. So both faces are pinned here. (BrandFonts still fetches
+ * Fraunces/DM Sans for the other three themes; Inter is not fetched — like the
+ * reference, it renders Inter where the OS has it and Segoe/Arial otherwise.)
  */
 export const JadeThornTheme: ThemeConfig = {
   id: 'jade-thorn',
   name: 'Jade Thorn',
   blurb: 'Paper, ink green and lime — the VaNi Edge palette.',
   fonts: {
+    display: "Inter, 'Segoe UI', Arial, sans-serif",
     body: "Inter, 'Segoe UI', Arial, sans-serif",
   },
   colors: {

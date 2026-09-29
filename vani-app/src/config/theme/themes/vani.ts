@@ -17,7 +17,7 @@ import type { ThemeConfig } from '../types';
 export const VaniTheme: ThemeConfig = {
   id: 'vani',
   name: 'VaNi',
-  blurb: 'The signature orange. Warm, and the one VaNi arrives in.',
+  blurb: 'The signature orange. Warm; the default until 2026-09-29.',
   colors: {
     brand: {
       primary: '#ff6b2b',   // signature VaNi orange
