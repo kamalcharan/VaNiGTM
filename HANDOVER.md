@@ -2,9 +2,122 @@
 
 > **This doc is the sole continuity between sessions.** The next session starts
 > with zero memory — read this first, then `CLAUDE.md`.
-> **Current state (2026-07-28):** work was developed on
-> **`claude/handover-docs-readiness-ajq5q2`** and **merged to `main`** at the
-> user's request. Everything below is pushed.
+> **Current state (2026-09-29):** see the RESTART HANDOVER section directly
+> below — order of work is Edge UX → Vara → GTM. Older sections are history.
+
+---
+
+# ▶ RESTART HANDOVER — 2026-09-29 (read this first)
+
+Charan closed the session with the order of work for the next one:
+
+```
+1. EDGE   build the UX layer for VaNi Edge — the reference is checked in at docs/EDGE/
+2. VARA   complete Vara once the Edge UX is done
+3. GTM    resume GTM once Vara is done
+```
+
+Everything below is pushed. Both repos' working branch is
+`claude/bold-carson-7stecq`. VaNiGTM `main` is fast-forwarded to it and is
+DEPLOYED on the Main VPS (2026-09-29, from `/opt/vikuna/src/vanigtm` with
+`deploy/vani-main-vps/deploy-vani.sh`). vikunawebsite `main` is NOT merged:
+its branch is 74 commits ahead and Vercel deploys from `main`, so the console
+changes of this fortnight (import wizard, imports dashboard, common pool,
+Smart Profile row copy, failover queue) are not live until that merge — it is
+Charan's call, and the nginx location for `/api/v1/etl/` plus the CORS snippet
+edits (DELETE method, `Idempotency-Key` header) must land with it; see the
+deploy section of the 2026-09-29 chat, or `vani-app/src/skills/gtm-imports/INTEGRATION.md`.
+
+## 1. EDGE — what it is and where to start
+
+`docs/EDGE/VaNi-Edge-Product-Specification.md` (v1.2, 29-Sep-2026) is the
+product spec: a paid, guided automation-readiness and strategy assessment,
+"Before you automate, know where you stand", ₹5,000 hypothesis, P2P first
+then O2C, an adaptive 12-chapter mission (context → people → scope → pain →
+process board → rules → evidence → process explorer → findings → readiness →
+value → implementation brief), a Failure Review mode folded into the same
+journey (rev 1.2), and a release plan A–D. **Section 20 lists nine decisions
+still required before implementation commitment** — read them before building
+anything that assumes an answer (price, packs order, providers, delivery
+destinations).
+
+`docs/EDGE/vani-edge-source/` is the UX REFERENCE: a dependency-free
+prototype (plain JS modules, `npm start` → :4173, `npm test`). Its README
+states what is connected (local CSV inspection, editable calculations, brief
+download, Calendly) and what is deliberately NOT (no LLM, no ICP lookup, no
+extraction, no accounts, no payment, no dispatch). The three PNGs are the
+look: sidebar of 12 numbered chapters, a headline per chapter, the process
+explorer as a branching graph with a pathways rail and a coverage strip
+(proposed / with conditions / human / unresolved), "Ask Edge" as a floating
+chat, "Mission memory" and "Contributions" in the sidebar, "Agent allowance"
+and "Save & pause" in the header. **The zip is committed beside the extracted
+folder** (`vani-edge-source.zip`, most of the 12 MB) — delete one; the
+extracted tree is the useful one.
+
+**First question for the new session, before any code:** where the Edge UX
+lives. Two credible answers: (a) a skill folder in `vani-app` under its own
+route group and shell (`edge-shell`, like `vara-shell` / `gtm-shell`), Edge
+chrome over the console's platform layer — one folder + one line in
+`src/skills/index.ts` per the registry boundary, `<DataBoundary>`,
+`useSkillMutation`, mock transport first; or (b) a standalone app because
+the brand is "VaNi Edge by AutomationEdge" and the buyer is not a console
+tenant. The spec's domain model (§14: mission, scope version, evidence asset,
+route decision, report version, dispatch job, entitlement…) is entirely new
+schema and needs Charan's approval table by table; the UX layer can and
+should be built on fixtures first (the prototype's `data/` files are the
+fixtures), which is how GTM Sprint 2 was done (`vani-app/CLAUDE.md` §2b).
+
+Non-negotiables that carry over unchanged: rule 12 (no silent fallbacks —
+the spec says the same in its own words: "customer outputs never silently
+fall back to sample data"), every screen owes five states, no schema without
+approval, findings go in the repo.
+
+## 2. VARA — "complete" means against the journey map
+
+There is no written list of Vara's open items. The authority is
+`documents/vara-journey-map.html` (the beats Vara promises) against what is
+built in `vani-app/src/skills/vara-onboarding/`, `vara-prompts/`,
+`vara-shell/` and the backend `src/vara/`. The next session should diff those
+two and write the list into this file before starting. Known from this
+fortnight: the family-shape append-only fix (`jd-compose.db.test.ts`), domain
+packs publishing unreviewed, and the RLS spine (240–246) still UNFORCED with
+migration 248 as the prerequisite (`docs/db/rls-status.md` §11–13).
+
+## 3. GTM — parked, with everything recorded
+
+State on 2026-09-29, all in `CLAUDE.md` under "EVERYTHING enters through
+staging" and the paragraphs after it:
+
+- Pool sources decided: own data only (400k held + 200k bought outright);
+  Apollo/Clay are tenant-key connectors for people, never the pool.
+- Haiku is the enrichment model; Laya rejected on measurement
+  (`backend/scripts/laya-trial/`, 31% agreement, confidence uninformative).
+- `src/etl/company-matcher.ts` built and measured (61/68, 0 wrong).
+- The ICP data structure is PROPOSED, not approved:
+  `documents/design-notes-icp-data-structure.md` — people table, link table,
+  one generic `gt_cleanup_gap` register as the model's only queue, personas,
+  suppression. **Two decisions pending on Charan** (people at platform level;
+  consent/suppression next) plus the explicit go on the `cleanup` source.
+- Build order once approved: chunked upload + landing as a worker job
+  (proven at 50k locally) → migrations → companies Pass 0/1 → people landing
+  + matcher + gap register → gap worker → personas → merge engine.
+- Datasets still to obtain as CSV exports (not screen copies), with the
+  profile URL kept in the people file.
+- Migrations: 249_ki and 253 applied on production 2026-09-29; next number
+  is 254; two files share 249 by accident, leave them.
+
+## 4. Things that cost a session this fortnight — do not repeat
+
+- PowerShell: `VAR=x cmd` and `a && b` are bash. Set `$env:VAR`, one command
+  per line, or run on the VPS over ssh where bash is the shell.
+- Three checkouts exist on Charan's laptop: `OpenClaw\VaNiGTM` (backend
+  work), `website\vikunawebsite-git` (console, with `vanigtm/` as a
+  submodule pinned to an older commit), and the VPS checkout at
+  `/opt/vikuna/src/vanigtm`. Say which one every time.
+- A migration is applied when `--status` says so, not when its commit is
+  deployed (253 sat pending for twelve days). `⚠ modified` on Windows is
+  CRLF, not an edit.
+- An API key pasted into chat is compromised; it happened twice.
 
 ---
 
