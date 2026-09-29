@@ -1,82 +1,99 @@
 import type { ThemeConfig } from '../types';
 
 /**
- * Jade Thorn — warm parchment and deep jade, pixel-matched to the
- * contactnest-ux.html reference. The one theme that pins its own surface
- * alphas rather than letting them be derived, because it was tuned against a
- * real design.
+ * Jade Thorn — RE-PINNED TO THE VaNi EDGE PALETTE (Charan, 2026-09-29).
+ *
+ * The values below are read off `VaNiGTM/docs/EDGE/vani-edge/styles/`
+ * (tokens.css, app.css, mission.css), the Edge UX reference. Charan's ruling:
+ * "update the product Jade-thorn to match the Edge specs … it will impact
+ * complete product which will now carry the theme of Edge theme." So this is
+ * no longer the contactnest-ux.html parchment-and-brass theme; the whole
+ * console wears Edge's paper, ink green and lime when this theme is chosen.
+ *
+ * Edge has no dark mode of its own — the reference is light only — so the
+ * dark block is derived here: the same greens lifted to read on near-black,
+ * with the ink panel (`.value-summary`, `#173f36`) becoming the card surface.
+ *
+ * Fonts: Edge sets Inter / Segoe UI / Arial for everything and Georgia italic
+ * for the accent words only. The console's display face is Fraunces; keeping
+ * Georgia as the display face here would make every console heading a
+ * different serif from the other three themes, so the display face is left to
+ * the default and body is pinned to Edge's stack.
  */
 export const JadeThornTheme: ThemeConfig = {
   id: 'jade-thorn',
   name: 'Jade Thorn',
-  blurb: 'Warm parchment, deep jade, aged brass.',
+  blurb: 'Paper, ink green and lime — the VaNi Edge palette.',
+  fonts: {
+    body: "Inter, 'Segoe UI', Arial, sans-serif",
+  },
   colors: {
     brand: {
-      primary: '#0f4c3a',    // deep jade — --accent
-      secondary: '#c7a557',  // aged brass — --accent-2
-      tertiary: '#5a7a6e',   // muted sage bridge
-      alternate: '#ecebe4',  // --bg-deep
+      primary: '#173f36',    // --ink: buttons, current step, the value panel
+      secondary: '#d7eea2',  // --lime: the accent that reads against ink
+      tertiary: '#718078',   // --muted: secondary copy, text buttons
+      alternate: '#eaf0e6',  // --wash: tags, source banners, selected chips
     },
     utility: {
-      primaryText: '#1a1a1a',          // --ink
-      secondaryText: '#8a8884',        // --ink-3
-      primaryBackground: '#f6f4ef',    // --bg, warm parchment
-      secondaryBackground: '#ffffff',  // --surface, white cards
+      primaryText: '#283f38',          // --text
+      secondaryText: '#718078',        // --muted
+      primaryBackground: '#f5f5ef',    // --paper
+      secondaryBackground: '#ffffff',  // cards
     },
     accent: {
-      accent1: '#0f4c3a',
-      accent2: '#c7a557',
-      accent3: '#7a4a2a',
-      accent4: '#2d6a5a',
+      accent1: '#22664e',  // --green: links, the live dot
+      accent2: '#d7eea2',  // --lime
+      accent3: '#a46a24',  // --amber: exceptions, needs-confirmation
+      accent4: '#7c8f64',  // the Georgia-italic accent words
     },
     semantic: {
-      success: '#2d7a4f',  // --ok
-      error: '#b54034',    // --danger
-      warning: '#c47e1a',  // --warn
-      info: '#2a5f8a',
+      success: '#22664e',  // --green
+      error: '#a45040',    // --red
+      warning: '#a46a24',  // --amber
+      info: '#376653',     // the Ask Edge pill border
     },
     surface: {
-      glass: 'rgba(15,76,58,0.04)',
-      glassStrong: 'rgba(15,76,58,0.07)',
-      glassBorder: '#e6e3d9',          // --line, the exact border colour
-      primaryDim: 'rgba(15,76,58,0.25)',
-      primaryGlow: 'rgba(15,76,58,0.1)',
-      primarySubtle: 'rgba(15,76,58,0.04)',
+      glass: 'rgba(23,63,54,0.04)',
+      glassStrong: 'rgba(23,63,54,0.07)',
+      glassBorder: '#dfe5de',          // --line, the exact border colour
+      primaryDim: 'rgba(23,63,54,0.25)',
+      primaryGlow: 'rgba(23,63,54,0.1)',
+      primarySubtle: 'rgba(23,63,54,0.04)',
     },
   },
   darkMode: {
     colors: {
       brand: {
-        primary: '#3aad7e',    // bright jade, legible on near-black
-        secondary: '#d4b46a',  // softened brass
-        tertiary: '#5a9a7a',
-        alternate: '#1a2e22',
+        primary: '#7eb58d',    // the orb's mid green, legible on near-black
+        secondary: '#d7eea2',  // lime stays lime
+        tertiary: '#8fa397',
+        alternate: '#174c3c',  // the Ask Edge pill green as the raised surface
       },
       utility: {
-        primaryText: '#f4f1e9',
-        secondaryText: 'rgba(244,241,233,0.68)',
-        primaryBackground: '#0a0f0d',
-        secondaryBackground: '#1a2e22',
+        primaryText: '#f5f5ef',
+        secondaryText: 'rgba(245,245,239,0.68)',
+        primaryBackground: '#0c1b17',  // the process-explorer canvas
+        secondaryBackground: '#173f36', // the value panel
       },
       accent: {
-        accent1: '#3aad7e',
-        accent2: '#d4b46a',
-        accent3: '#c47848',
-        accent4: '#42a882',
+        accent1: '#7eb58d',
+        accent2: '#d7eea2',
+        accent3: '#d9a55a',
+        accent4: '#b4cb9a',
       },
       semantic: {
-        success: '#4ecb8a',
-        error: '#e05555',
-        warning: '#e0a040',
-        info: '#4a8fc4',
+        success: '#7eb58d',
+        error: '#e07a68',
+        warning: '#d9a55a',
+        info: '#8fbfa8',
       },
       surface: {
-        glass: 'rgba(58,173,126,0.07)',
-        glassStrong: 'rgba(58,173,126,0.13)',
-        glassBorder: 'rgba(58,173,126,0.24)',
-        primaryDim: 'rgba(58,173,126,0.36)',
-        primaryGlow: 'rgba(58,173,126,0.16)',
-        primarySubtle: 'rgba(58,173,126,0.07)',
+        glass: 'rgba(126,181,141,0.07)',
+        glassStrong: 'rgba(126,181,141,0.13)',
+        glassBorder: 'rgba(126,181,141,0.24)',
+        primaryDim: 'rgba(126,181,141,0.36)',
+        primaryGlow: 'rgba(126,181,141,0.16)',
+        primarySubtle: 'rgba(126,181,141,0.07)',
       },
     },
   },
