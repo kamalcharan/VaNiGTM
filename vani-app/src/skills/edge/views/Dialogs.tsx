@@ -7,11 +7,12 @@
  */
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useMission, type ModalId } from '../mission/MissionProvider';
-import { createMission, type MissionType } from '../mission/types';
+import { createMission, type MissionType, type ProcessId } from '../mission/types';
 import { processes } from '../mission/domain';
 import { clearSaved, saveMission } from '../mission/store';
 import { missionBrief } from '../mission/brief';
 import { Btn } from '../ui';
+import { AddActorDialog, AssignDialog, TaskDialog, SwitchProcessDialog } from './PeopleDialogs';
 
 export const BOOKING_URL = 'https://calendly.com/connect-vikuna/30min';
 
@@ -168,6 +169,17 @@ function renderDialog(id: ModalId, props: Record<string, unknown>, ctx: ReturnTy
         </>
       ) };
     }
+
+    case 'add-actor':
+      return { title: 'Who else is involved?', body: <AddActorDialog /> };
+    case 'assign':
+      return { title: 'Ask the right person', body: <AssignDialog topic={props.topic as string | undefined} person={props.person as string | undefined} /> };
+    case 'task': {
+      const t = m.tasks.find((x) => x.id === props.id);
+      return { title: 'Contribution: ' + (t?.assignee ?? ''), body: <TaskDialog id={String(props.id)} /> };
+    }
+    case 'switch-process':
+      return { title: 'Change the process?', body: <SwitchProcessDialog id={props.id as ProcessId} /> };
 
     default:
       return { title: 'Not built yet', body: <p>This dialog lands with its chapter.</p> };

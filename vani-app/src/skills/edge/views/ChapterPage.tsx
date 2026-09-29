@@ -13,9 +13,18 @@ import { useMission } from '../mission/MissionProvider';
 import { processes, slugOfStage } from '../mission/domain';
 import { Btn, Intro } from '../ui';
 import { ContextView } from './ContextView';
+import { PeopleView } from './PeopleView';
+import { ScopeView } from './ScopeView';
+import { DiscoveryView } from './DiscoveryView';
+import { IncidentView } from './IncidentView';
+import { StoryThread } from './StoryThread';
 
 const VIEWS: Record<number, () => React.JSX.Element> = {
-  0: ContextView,
+  0: ContextView, 1: PeopleView, 2: ScopeView, 3: DiscoveryView,
+};
+/** The failure-review mission swaps chapters in from 4 (index 3) — reference `missionView()`'s switch. */
+const FAILURE_VIEWS: Record<number, () => React.JSX.Element> = {
+  3: IncidentView,
 };
 
 function NotYet({ stage }: { stage: number }) {
@@ -43,6 +52,13 @@ export function ChapterPage() {
     if (hydrated && stage > m.furthest) go(m.furthest);
   }, [hydrated, stage, m.furthest, go]);
 
+  // Reference `go()`: focus the chapter heading on arrival, so a keyboard
+  // user starts at the chapter and the skip link does not take focus.
+  useEffect(() => {
+    const h = document.querySelector<HTMLHeadingElement>('#main h1');
+    if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+  }, [stage, m.quiz, m.failureIntake]);
+
   if (stage < 0 || !chapters[stage]) {
     return (
       <main id="main" className="workspace-main">
@@ -51,7 +67,8 @@ export function ChapterPage() {
     );
   }
 
-  const View = VIEWS[stage];
+  const View = m.missionType === 'failure' ? (FAILURE_VIEWS[stage] ?? (stage < 3 ? VIEWS[stage] : undefined)) : VIEWS[stage];
+  const showStory = m.missionType !== 'failure' && stage >= 2 && stage !== 3;
   const open = m.tasks.filter((t) => t.status !== 'Resolved').length;
 
   return (
@@ -85,6 +102,7 @@ export function ChapterPage() {
           <button type="button" onClick={() => openModal('memory')}>Mission summary ↗</button>
           <span>{m.storage ? 'Saved on this device' : 'Session only'}</span>
         </div>
+        {showStory && <StoryThread />}
         {View ? <View /> : <NotYet stage={stage} />}
         <div className="contextual-help">
           Need another perspective?{' '}
