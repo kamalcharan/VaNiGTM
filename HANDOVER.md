@@ -10,9 +10,10 @@
 # ▶ RESTART HANDOVER — 2026-09-29, evening (read this first)
 
 **Edge is built. The next session is VARA** (Charan, closing the Edge
-session: "in new session we will focus on completing Vara"). Start at §2
-below: diff `documents/vara-journey-map.html` against what is built and
-write the open list into this file before coding.
+session: "in new session we will focus on completing Vara"). **The Vara diff
+is done — §2 below is the open list** (written 2026-09-29, late). It opens
+with a blocker: nine Vara backend commits on `claude/session-setup-qrxev9`
+never reached `main`, and the console on Vercel calls their routes.
 
 ## 0. What the Edge session delivered (2026-09-29)
 
@@ -118,16 +119,184 @@ the spec says the same in its own words: "customer outputs never silently
 fall back to sample data"), every screen owes five states, no schema without
 approval, findings go in the repo.
 
-## 2. VARA — "complete" means against the journey map
+## 2. VARA — the open list (diffed 2026-09-29, evening)
 
-There is no written list of Vara's open items. The authority is
-`documents/vara-journey-map.html` (the beats Vara promises) against what is
-built in `vani-app/src/skills/vara-onboarding/`, `vara-prompts/`,
-`vara-shell/` and the backend `src/vara/`. The next session should diff those
-two and write the list into this file before starting. Known from this
-fortnight: the family-shape append-only fix (`jd-compose.db.test.ts`), domain
-packs publishing unreviewed, and the RLS spine (240–246) still UNFORCED with
-migration 248 as the prerequisite (`docs/db/rls-status.md` §11–13).
+Diffed: `documents/vara-journey-map.html` (17-Sep) and
+`vikunawebsite/docs/vani/vara-specification.html` (v0.2, E1–E11) and
+`vara-execution-poa.md` (27-Aug) against what is on `main` of both repos.
+Everything below was checked in code, not read off a doc. Where a doc and
+`main` disagree, `main` is stated.
+
+### 2.0 BLOCKER — nine Vara commits never reached `main`, and the console runs on them
+
+VaNiGTM `claude/session-setup-qrxev9` (26–29 Aug, 9 commits, +1,463 lines,
+merge-base 9923782) holds the Phase 4 backend and the whole Platform Channel
+slice, and **was never merged**. The console merged the vikunawebsite half of
+that session twice, `main` is on Vercel, and VaNiGTM `main` is on the VPS —
+so the live console calls four paths the live API does not have:
+
+| Console screen (on Vercel) | Calls | On VaNiGTM `main`? |
+|---|---|---|
+| `/install` (InstallScreen) | `GET /api/v1/tenant/embed` | no |
+| `/install` | `PATCH /api/v1/tenant/domains/:id/origins` | no |
+| `/embed/chat` widget | `POST /api/v1/embed/boot` | no — `main` has `/vara/embed/boot` with a different shape |
+| `/embed/chat` widget | `POST /api/v1/embed/intent` | no |
+
+What the branch carries, per commit: 3ac0c49 embed allowlist as an app
+surface + migration 247 `boot_pings` · db2271f readiness names industry as the
+blocker · 916f58c declared vs candidate-facing domain split · cd3a0b0
+`purpose` is no longer a gate (Charan's ruling, 26-Aug; `main` still gates on
+`purpose='candidate'` at vara.routes.ts ~279/330) · da6f8e3 boot returns the
+public half of the JD · 4d2b984 activate reconciles (a published JD flips
+`activating`→`live`; `activated_at` stamped) · 92132d2 the embed channel becomes
+the platform's (`vani/embed.routes.ts`, `/tenant/embed`, `/embed/boot`,
+`/embed/intent`, `vara/offers.ts`) · 639b011 migration 248 `vara_answer_cache`
+· 38aa44c intent routing (`vani/intent.ts`, `intent-embed.ts`, migrations
+249 `vani_agent_intent`, 250 `vani_intent_match`, 251 seed intents).
+
+Merging it is a real task, not a button:
+- **Migration numbers collide.** The branch's 247–251 are five DIFFERENT
+  files from `main`'s 247–252. Renumber them **254–258** (rule: never reuse a
+  number). All five are new tables/columns — Charan approved them on 27-Aug
+  per the POA, but re-confirm before applying: they were approved against an
+  earlier schema state.
+- `git merge-tree` conflicts in three files: `backend/package.json`,
+  `backend/src/server.ts`, `backend/src/vara/vara.routes.ts`. The routes
+  file was rewritten on both sides (branch: −143 lines; `main`: September's
+  embed_origins / activation-readiness tests / jd-compose fix).
+- **The same capability was built twice.** Branch 3ac0c49 writes origins via
+  `PATCH /tenant/domains/:id/origins` in `auth.routes.ts`; `main` 7eaf4a2
+  (17-Sep) writes them via `onboarding/embed-origin.ts` + `PATCH
+  /onboarding/step`. Keep `main`'s normaliser (it has tests); keep the
+  branch's route because the Install screen calls it.
+- The branch's `/vara/activate` calls the readiness checklist; `main`'s does
+  not, although `activation-readiness.test.ts` says it does.
+- Snippet path: `main` emits `<script src=".../embed/vara.js">`; the console
+  ships `public/embed/vani.js`. The branch's platform router is what fixed
+  the name. Verify after merge.
+
+Until this merge lands, **Phase 4's gate cannot be run** (there is nothing on
+the API for the snippet to boot against) and the widget on every tenant page
+is dead on arrival. This is item 1.
+
+### 2.1 The journey map, station by station (tenant side, JD authoring)
+
+The map's seven breaks were drawn 17-Sep; five were fixed 17–18 Sep and it
+does not say so. State on `main`:
+
+| # | Station / break | Today |
+|---|---|---|
+| 1 | Name the role — title first, family is Vara's filing decision | **Done.** `match_title` is deterministic, no LLM (`title-match.ts`, floor 45). JD Studio asks title first; the doorway (`TakeFamilies`) is the family picker. |
+| 2 | Vara hands over a finished draft (the matched pack, whole) | **Done** (c3f8fd3 + JdStudio 271–284): a matched title gets the shape on the panel, no questions; only `unknownRole` asks. |
+| 3 | Accept or adapt — must-haves and weights editable | **Done** (`weights.ts`, split-of-100 conserved; add/drop/±5; knockouts add/remove). Provenance per field ("industry playbook → you changed this") is **not shown** — the panel shows `from_pack` at family level only. |
+| 4 | Publish — one transaction, advisory lock, replay | **Holds** (`jd-compose.db.test.ts` over HTTP; 580bf21 append-only fix). |
+| 5 | Second JD opens from the tenant's own shape | **Done** (651ec3c `take_families`/`my_families`; c3f8fd3 own families match before the catalogue; 127fa83 `update_family_shape`). |
+| — | Break 6: research waits on a Vikuna operator | **Done** (521e2af, packs publish `unreviewed`). |
+| — | Break 7: `gt_events` stale-row reclaim | **Done** (4f6301f, migration 253, applied on prod 29-Sep). |
+| — | Break 5 / decision 2: **seniority is invisible** — Junior and Principal produce a byte-identical contract | **OPEN.** Nothing in schema or code knows a level. Charan has not ruled (modifier vs pack-per-level; map recommends a modifier: years on the top must-have + shifted threshold). No code until ruled. |
+| — | Decision 3: when does the tenant's shape supersede the platform's | **Built as "on take"**, not "on first publish": `take_families` copies the pack at that moment; publish never rewrites the family (580bf21, deliberately). The map's "said out loud" consequence line is not in the UI. Confirm with Charan that take-time is the intended moment. |
+
+Also on the JD side, from the POA's "settled, not built": JD versioning
+(`POST /vara/jd/:id/version`, edit → v2 — referenced at vara.routes.ts:519,
+does not exist); the description drafter in brand voice (textarea only);
+**JD import is mock-only** (`JdImport.tsx` uses `mockExtractionFor`, publish
+writes sessionStorage, reachable by URL `?mode=import` only — the banner
+says so).
+
+### 2.2 The spec's eleven epics against `main`
+
+Schema first: migrations 240–246 model the WHOLE lifecycle — `vara_candidate`,
+`vara_candidate_pii`, `vara_consent`, `vara_application` (9 states, edges
+enforced by `vara_transition` + guard trigger 243), `vara_artifact`,
+`vara_extraction`, `vara_chat_turn`, `vara_score_snapshot` (metering trigger),
+`vara_flag`, `vara_calibration_signal/_proposal`, `vani_comms_log`,
+`vani_template`, `vara_skill`, `vara_match_log`. **No application code reads
+or writes any of them.** `recordMatch()` has no caller; `vara_transition` has
+no caller. Gaps in the schema itself: no interviews/scheduling table (v2 by
+spec), no offers (out of scope v1), no `vara_jd_position` (Charan asked for
+positions-per-location on 27-Aug; designed to land with Phase 5, unapproved).
+
+| Epic | State |
+|---|---|
+| E1 Onboarding & activation (V-01…07) | Partial. Domain + origins (`vani:domain`, enabled) · families taken · activate · readiness checklist reduced to 4 (industry, domain, origin, published JD). **Not built:** V-03 people/roles at VaNi (`vani:team` disabled, no `vani_user_agent_role` surface), V-04 MSG91 comms, V-05 consent/retention posture, V-06 talent overlay is now the take step, V-07 full gate. **No `vara:` lane exists** in either repo (`registerLane` never called; console lane commented out). |
+| E2 JD Studio (V-10…14) | V-10/11/12 done as above. V-13 publish-everywhere: posting Markdown exists (`posting-markdown.ts`), no link/QR/infographic. V-14 version-don't-mutate: **not built** (see 2.1). |
+| E3 Candidate intake (V-20…24) | **Not built.** The widget is Tier-1 chips + Tier-2 intent text on the unmerged branch; "Applying by chat arrives with intake" is hard-coded. No consent capture, no ack, no status page. |
+| E4 Ingestion (V-30…32) | **Not built** (Phase 2). No adapters, no `POST /vara/jd/import`, no eval fixtures, `nomic-embed-text` not pulled. |
+| E5 Screening & scoring (V-40…44) | **Not built.** `/agents/vara/map` is a `NotYet` page. |
+| E6 Closing window (V-50…53) | **Not built.** `/agents/vara/closing` is `NotYet`. No timer actor. |
+| E7 Handover & HM review (V-60…62) | **Not built.** `/agents/vara/handover` is `NotYet`. |
+| E8 Communications (V-70…71) | **Not built.** `vani_template` has no rows and no writer; MSG91 adapter not ported. |
+| E9 Calibration (V-80…81) | **Not built.** `/agents/vara/calibration` is `NotYet`. |
+| E10 Talent pool & history (V-90…93) | **Not built.** DPDP purge function exists (242), nothing calls it; no metering reader. |
+| E11 Mobile surfaces (V-95…97) | Widget is 360-first by design; the rest depends on E5–E7. |
+| Pulse (`/agents/vara/pulse`) | `NotYet`. Not in the spec's epics; came from the UX prototype. |
+
+Two smaller things on `main` worth fixing early because they mislead:
+`vara.journey` is a PREVIEW fixture (`gtm-shell/mock.ts`) that always says
+`done: [domain, families, jd]`; and the Vara landing in mock mode shows
+"Could not load Vara's state" because `VaraLanding.tsx` reads `/vara/status`
+over REST, which the mock transport cannot answer.
+
+### 2.3 The POA's phases, restated against `main`
+
+```
+Phase 0 UX preview ........................ done
+Phase 1 Compose path ...................... done, hardened in Sep (append-only fix, own-families match)
+Prompt Store / Semantic Layer ............. done (246 needs pgvector; no writer yet)
+Phase 4 Install screen .................... BUILT ON THE UNMERGED BRANCH — see 2.0; gate unrun
+Platform Channel slice .................... same branch; migrations need renumbering 254–258
+Phase 2 Import + Extractor ................ not started; blocked on LLM path (Haiku is primary now, so
+                                             the blocker is `nomic-embed-text` on the embed host, or an
+                                             embedding provider decision)
+Phase 3 Family derivation ................. SUPERSEDED in part: take/edit/my_families give the tenant
+                                             their own shape without N JDs. What remains is the
+                                             derived-diff proposal after N publishes — decide whether
+                                             it is still wanted.
+Phase 5 Candidate lifecycle ............... not started; the largest leg; needs consent model + comms
+Phase 6 Playbook agent .................... partly superseded by domain-pack-skill (research,
+                                             publish, promote/retire CLI). Operator UI not built.
+Calibration loop .......................... not started
+```
+
+### 2.4 Decisions pending on Charan (Vara)
+
+1. **Merge `claude/session-setup-qrxev9`** with migrations renumbered 254–258
+   (re-approving those five tables), or declare it dead and rebuild the four
+   paths the console calls. Recommendation: merge; the code was verified on a
+   throwaway Postgres on 29-Aug and the console already speaks its contract.
+2. **Seniority**: modifier on the family shape, or a pack per level. (Map
+   decision 2.)
+3. **Tenant shape supersedes at take-time** (built) vs at first publish (map).
+   Confirm.
+4. **D1 / D2 from 27-Aug, still unruled:** lane-aware onboarding status
+   (industry null on a `completed` `business_profile`), and industry as free
+   text vs a master list (two real tenants matched zero packs).
+5. **`vara_jd_position`** (positions per location) — schema, designed with
+   Phase 5.
+6. **Consent/suppression model** — the same gate GTM outreach is behind
+   (`design-notes-outreach-and-delivery.md` §5). Candidate intake (E3) cannot
+   ack a candidate or send anything until it exists. One decision serves
+   both agents.
+7. **MSG91 port from ContractNest**, or email-only for the first intake.
+8. **Embedding provider** for `vara_skill` / semantic dedup now that Haiku is
+   the primary model and Ollama is not on the path.
+
+### 2.5 Proposed order (no code before 1 and 6 are answered)
+
+1. Merge the branch (2.0), renumber, `--status`, deploy, run the Phase 4 gate:
+   paste the snippet on a real page, watch a boot land.
+2. Fix the two misleading reads (`vara.journey` preview, landing in mock).
+3. Phase 5 in slices, each visible: intake chat on the widget (consent first)
+   → knockouts + score snapshot → map → closing window → handover.
+   Recruiter surfaces already have routes and nav entries; replace `NotYet`
+   one at a time.
+4. Phase 2 import, once the embedding decision is made.
+5. Calibration + pulse last.
+
+Known-good from this fortnight, unchanged: family-shape append-only
+(`jd-compose.db.test.ts`), packs publish `unreviewed`, RLS spine 240–246 still
+UNFORCED with migration 248 as the prerequisite (`docs/db/rls-status.md`
+§11–13) — forcing it is a migration, and it should ride with the merge above.
 
 ## 3. GTM — parked, with everything recorded
 
