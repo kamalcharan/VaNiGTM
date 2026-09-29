@@ -9,6 +9,8 @@
  * React sees a new object and nothing is mutated in place.
  */
 
+import type { Analysis } from '../engine/analyse';
+
 export type ProcessId = 'p2p' | 'o2c';
 export type MissionType = 'readiness' | 'failure';
 export type EvidenceMode = 'own' | 'sample';
@@ -52,6 +54,8 @@ export interface BoardLink { from: string; to: string; label: string; kind: 'nor
 
 export interface FileSummary {
   kind: string;
+  /** Which of the register's expected columns the file carries (engine/schema). */
+  columns?: { found: string[]; missing: string[]; missingRequired: string[] };
   name: string;
   headers?: string[];
   rows?: number;
@@ -147,6 +151,9 @@ export interface Mission {
   usage: 'available' | 'low' | 'exhausted';
   topup: boolean;
   delivery?: { email: string; whatsapp: string; preview: boolean };
+  /** The engine's output for the confirmed evidence (engine/analyse). Persisted; the raw files are not. */
+  analysis?: Analysis | null;
+  analysisSource?: 'sample' | 'own';
 }
 
 export function createMission(): Mission {

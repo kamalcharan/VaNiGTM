@@ -5,7 +5,7 @@
  * two consumers, no drift.
  */
 import { escapeHTML as e } from './model';
-import type { ReferenceData } from './reference';
+import type { Graph as ReferenceData } from '../engine/analyse';
 import type { Mission } from './types';
 
 export function processSVG(d: ReferenceData, m: Pick<Mission, 'process' | 'variant' | 'lens' | 'selectedNode'>): string {

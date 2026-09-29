@@ -3,7 +3,7 @@
 import type { FormEvent } from 'react';
 import { useMission } from '../mission/MissionProvider';
 import { coverage, treatments, type Variant } from '../mission/pathways';
-import type { ReferenceData } from '../mission/reference';
+import type { Graph as ReferenceData } from '../engine/analyse';
 import type { PathReview } from '../mission/types';
 import { Btn } from '../ui';
 import { Radios } from './controls';
@@ -13,11 +13,11 @@ export function CoverageView({ variants }: { variants: Variant[] }) {
   const c = coverage(m, variants);
   return (
     <section className="card pathway-coverage">
-      <div className="eyebrow">PATHWAY DECISION COVERAGE · {m.mode === 'sample' ? 'SAMPLE CASE SHARE' : 'AWAITING EVIDENCE'}</div>
+      <div className="eyebrow">PATHWAY DECISION COVERAGE · {variants.length ? (m.mode === 'sample' ? 'SAMPLE CASE SHARE' : 'YOUR CASE SHARE') : 'AWAITING EVIDENCE'}</div>
       <h2>How much of the process have we accounted for?</h2>
       <div className="coverage-grid">
         {([['automate', 'Proposed automation'], ['conditional', 'With conditions'], ['human', 'Human handling'], ['unresolved', 'Unresolved / unreviewed']] as const).map(([k, l]) => (
-          <div key={k}><strong>{m.mode === 'sample' ? c[k] + '%' : '—'}</strong><span>{l}</span></div>
+          <div key={k}><strong>{variants.length ? c[k] + '%' : '—'}</strong><span>{l}</span></div>
         ))}
       </div>
       <p>Coverage counts a route only when its explanation, classification, owner and fallback are recorded. Conditional automation also needs explicit conditions. Open questions keep a route unresolved. These are proposed decisions, subject to validation; they are not deployment approval.</p>
@@ -55,7 +55,7 @@ export function RouteReview({ d }: { d: ReferenceData }) {
     <section className="card route-review">
       <div className="eyebrow">EXPLAIN → AGREE HANDLING</div>
       <h2>{v.label}</h2>
-      <p>{v.share}% of sample cases · {v.cases.toLocaleString('en-IN')} cases · {v.days} days</p>
+      <p>{v.share}% of {m.mode === 'sample' ? 'sample ' : ''}cases · {v.cases.toLocaleString('en-IN')} cases · {v.days} days</p>
       <p className="route-sequence">{v.seq.map((id) => d.nodes[id].label).join(' → ')}</p>
       <RouteConclusion r={m.pathReviews?.[v.id]} />
       <form id="path-review" key={v.id} onSubmit={submit}>
@@ -70,7 +70,7 @@ export function RouteReview({ d }: { d: ReferenceData }) {
         <button type="submit" className="btn primary">Save pathway decision</button>
       </form>
       <Btn kind="text" onClick={() => openModal('assign', { topic: `${v.label}: ${r.question || 'Confirm the explanation, controls and fallback'}` })}>Ask someone about this pathway</Btn>
-      <p className="micro">Comparison is your interpretation of a labelled sample. Your board has not been algorithmically matched to customer events.</p>
+      <p className="micro">{m.mode === 'sample' ? 'Comparison is your interpretation of a labelled sample. Your board has not been algorithmically matched to customer events.' : 'Comparison is your interpretation of the reconstructed pathways. Your board has not been algorithmically matched to them.'}</p>
     </section>
   );
 }
@@ -98,5 +98,5 @@ export function DecisionLedger({ variants }: { variants: Variant[] }) {
 /** Coverage + ledger, as chapters 10 and 11 open — reference `pathwaySummary()`. */
 export function PathwaySummary({ d }: { d: ReferenceData | null }) {
   const { m } = useMission();
-  return <><CoverageView variants={d?.variants || []} />{m.mode === 'sample' && d && <DecisionLedger variants={d.variants} />}</>;
+  return <><CoverageView variants={d?.variants || []} />{d && <DecisionLedger variants={d.variants} />}</>;
 }

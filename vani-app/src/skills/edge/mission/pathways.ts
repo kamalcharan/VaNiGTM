@@ -9,7 +9,7 @@ export interface Coverage { automate: number; conditional: number; human: number
 
 export function coverage(m: Mission, variants: Variant[]): Coverage {
   const c: Coverage = { automate: 0, conditional: 0, human: 0, unresolved: 100 };
-  if (m.mode !== 'sample') return c;
+  if (!variants.length) return c;
   for (const v of variants) {
     const r = m.pathReviews?.[v.id];
     if (r?.question?.trim() || !r?.explanation?.trim() || !r?.owner?.trim() || !r?.fallback?.trim() || r.classification === 'Unknown' || !r.classification) continue;

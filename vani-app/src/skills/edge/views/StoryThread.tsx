@@ -3,12 +3,12 @@
 import { useMission } from '../mission/MissionProvider';
 import { story } from '../mission/story';
 import { Btn } from '../ui';
-import { useReference, dataFor } from './useReference';
+import { useAnalysis } from './useAnalysis';
 
 export function StoryThread() {
   const { m, stage, go } = useMission();
-  const ref = useReference();
-  const row = story(m, stage, dataFor(m.process, ref.data?.data)?.variants ?? []);
+  const a = useAnalysis();
+  const row = story(m, stage, a.data?.data.graph?.variants ?? []);
   if (!row) return null;
   return (
     <details className="chapter-story">

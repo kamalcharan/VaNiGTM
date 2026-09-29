@@ -44,7 +44,7 @@ export function blockers(m: Mission): string[] {
   packs[m.process].rules.forEach(([id, title]) => {
     if (!m.rules[id]?.trim() || ['Needs confirmation', 'No defined rule'].includes(m.ruleStatus[id])) list.push('Rule to resolve: ' + title);
   });
-  if (m.mode !== 'sample') list.push('Validate event mapping and analyse customer records');
+  if (!m.analysis) list.push('Validate event mapping and analyse customer records');
   m.tasks.filter((t) => t.status !== 'Resolved').forEach((t) => list.push('Awaiting ' + t.assignee + ': ' + t.topic));
   return list;
 }
