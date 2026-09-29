@@ -106,7 +106,7 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…249 (highest = 249)
+  migrations/         — 001…254 (highest = 254)
 frontend/            — ⚠️ RETIRED (2026-09-16). Still on disk, still builds,
                       NOT the product. The frontend is vikunawebsite/vani-app.
                       Kept for reference; do not add features here.
@@ -317,7 +317,7 @@ because a date format or a token convention is worth not re-deciding.
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **249**.
+  status: `npm run db:migrate -- --status`. Highest = **254**.
 - Discuss schema changes with the user first. Make migrations **idempotent
   and guarded** (IF NOT EXISTS; DO-block existence checks before copying
   from or altering legacy tables — vani_gtm_db was bootstrapped fresh and
@@ -987,8 +987,9 @@ reading had:
    `ki_import_sessions.status` (104) never had that value — 200 and 201 only
    widened the STAGING check. The final UPDATE raised, the route marked the
    session `failed`, counters stayed 0, and the person was told the import
-   failed while 2,882 companies and 5,816 people had landed. **Migration 249**
-   adds the value. It is the fix; apply it before the next import.
+   failed while 2,882 companies and 5,816 people had landed. **Migration 254**
+   adds the value (it was numbered 249 for two days, colliding with the vara
+   249; the runner keys on filename so nothing broke, but do not reuse a number). It is the fix; apply it before the next import.
 2. **Different companies on one website collapsed into one pool row.** The
    pool's `source_record_id` was the dedup key, i.e. the domain, so the
    ON CONFLICT upsert made sister companies overwrite each other: 17 vanished
