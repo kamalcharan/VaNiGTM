@@ -4,7 +4,7 @@
   gap: 8px;
   border: none;
   cursor: pointer;
-  font-family: var(--font-body, sans-serif);
+  font-family: var(--font-body);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-decoration: none;

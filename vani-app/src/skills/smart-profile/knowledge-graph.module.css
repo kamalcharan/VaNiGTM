@@ -37,7 +37,7 @@
 .nodeOn rect { stroke: var(--ac); }
 .nodePicked rect { stroke: var(--ac); stroke-width: 2; fill: var(--ac-dim); }
 .nodeDim { opacity: 0.35; }
-.nodeText { font-size: 13px; fill: var(--tx); font-family: var(--font-body, inherit); }
+.nodeText { font-size: 13px; fill: var(--tx); font-family: var(--font-body); }
 /* A hint of kind on the left edge, via a stroke accent per column family. */
 .k_Product rect, .k_Feature rect, .k_Pricing rect { stroke-dasharray: none; }
 .k_Competitor rect { stroke: color-mix(in srgb, var(--color-danger) 55%, var(--line)); }

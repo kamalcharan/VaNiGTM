@@ -83,8 +83,12 @@ export function resolveTokens(theme: ThemeConfig, mode: ColorMode): Record<strin
   const line = c.surface?.glassBorder ?? mix(tx, bg, dark ? 0.14 : 0.12);
   const line2 = c.surface?.glassBorder ? mix(tx, bg, dark ? 0.26 : 0.2) : mix(tx, bg, dark ? 0.26 : 0.2);
 
-  // A third text step for the quietest labels.
-  const tx3 = mix(tx2, bg, 0.55);
+  // A third text step for the quietest labels. `mix` weights its FIRST
+  // argument, so this is 55% of the muted text over the page in dark mode.
+  // In light mode that measured 1.9:1 on Jade Thorn's paper — every eyebrow,
+  // counter label and role line vanished — so it keeps 90% (3.2:1), the
+  // faintest step that still reads (2026-09-29).
+  const tx3 = mix(tx2, bg, dark ? 0.55 : 0.9);
 
   // The primary at three alphas, and its glass counterparts. VaNiGTM's exact
   // steps — .38 / .16 / .07 for primary, .07 / .12 / .24 for glass — because

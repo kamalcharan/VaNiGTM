@@ -68,14 +68,25 @@
 /* color-scheme is set per mode by ThemeScript's boot and the provider, so the
    browser's own controls and scrollbars follow the chosen mode. */
 
+/*
+ * Body type — ONE setting for the whole product: 16px / 400, the values the
+ * Edge reference uses (Charan, 2026-09-29: "we should have uniformity").
+ *
+ * It was 14px / 300 / antialiased, tuned for the ink-dark console with DM Sans.
+ * On the default theme (Jade Thorn light, Inter) weight 300 is a different
+ * face — on Windows the stack fell to Segoe UI Light, a hairline — and
+ * `antialiased` thins glyphs on a light ground. Edge's screens read well only
+ * because their scoped stylesheet reset to 16 / 400. That reset no longer
+ * states a size or weight: this rule is the source, and Edge inherits it.
+ * No font-smoothing override anywhere: the OS renders the face as the OS does.
+ */
 body {
   background: var(--bg);
   color: var(--tx);
   font-family: var(--sans);
-  font-size: 14px;
-  font-weight: 300;
-  line-height: 1.65;
-  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
   min-height: 100vh;
 }
 

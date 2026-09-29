@@ -55,8 +55,8 @@ function scope(css) {
 // body, its paragraphs keep their 1em bottom margin, its lists their indent.
 // Restore those defaults under .edge-root BEFORE the reference rules, so
 // the reference still wins wherever it sets its own value.
-const HOST_RESET = `/* ── host reset: console globals → browser defaults ── */
-${ROOT}{font-size:16px;font-weight:400;line-height:normal;-webkit-font-smoothing:auto}
+const HOST_RESET = `/* ── host reset: console globals → browser defaults. Font size and weight are NOT restated here: globals.css sets 16px/400 for the whole product and Edge inherits it (2026-09-29). ── */
+${ROOT}{line-height:normal}
 ${ROOT} h1,${ROOT} h2,${ROOT} h3,${ROOT} h4{font-family:inherit;font-weight:bold;letter-spacing:normal}
 ${ROOT} h1{font-size:2em;margin:.67em 0}${ROOT} h2{font-size:1.5em;margin:.83em 0}${ROOT} h3{font-size:1.17em;margin:1em 0}${ROOT} h4{margin:1.33em 0}
 ${ROOT} p,${ROOT} dl,${ROOT} ul,${ROOT} ol,${ROOT} blockquote,${ROOT} figure,${ROOT} pre{margin:1em 0}

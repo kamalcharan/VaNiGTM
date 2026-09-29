@@ -9,7 +9,7 @@ const agents: SkillModule = {
   id: 'agents',
   name: 'Agents',
   routes: [
-    { id: 'agents-all', label: 'All Agents', href: '/agents', group: 'agents', icon: '◉', status: 'live', badge: '3' },
+    { id: 'agents-all', label: 'All Agents', href: '/agents', group: 'agents', icon: '◉', status: 'live', badge: '4' },
     // Charan, 2026-09-22: orchestration is already handled internally, so this
     // entry stays. But `planned` renders "Not built yet" above the summary,
     // and that was false of the FUNCTION — routing, intake and policy are
@@ -24,6 +24,8 @@ const agents: SkillModule = {
       summary: 'The first agent. Landing and activation are live; install and the working surfaces arrive slice by slice.' },
     { id: 'agent-gtm', label: 'GTM · Growth', href: '/agents/gtm', group: 'agents', icon: '◎', status: 'live',
       summary: 'Build the audience, put them in motion, work the queue. Reads the Smart Profile; never asks twice.' },
+    { id: 'agent-edge', label: 'Edge · Automation', href: '/agents/edge', group: 'agents', icon: '◌', status: 'live',
+      summary: 'Before you automate, know where you stand. A guided readiness and strategy mission over P2P or O2C, from your own registers.' },
     { id: 'agents-market', label: 'Add agent', href: '/agents/market', group: 'agents', icon: '＋', status: 'planned',
       summary: 'Agents are separately priced and activated per tenant. This is where that happens.' },
   ],

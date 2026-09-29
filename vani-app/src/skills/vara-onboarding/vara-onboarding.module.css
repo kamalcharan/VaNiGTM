@@ -614,7 +614,7 @@
 .familyRow { display: flex; gap: 12px; align-items: flex-start; }
 
 .prov {
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -655,7 +655,7 @@
   max-width: 56ch;
 }
 .peekTitles {
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--color-text-dim);
   line-height: 1.6;

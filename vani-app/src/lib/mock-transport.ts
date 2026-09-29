@@ -92,6 +92,19 @@ const AGENTS: AgentSummary[] = [
     facts: null,
     desc: 'Builds the audience from global data and your own, qualifies with evidence, and puts people in motion under the cadence governor.',
   },
+  {
+    id: 'edge',
+    name: 'Edge',
+    role: 'Automation Agent',
+    color: '#22664E',
+    icon: '◌',
+    scope: 'org://vikuna/edge/**',
+    status: 'active',
+    runs: 0,
+    tools: 1,
+    facts: null,
+    desc: 'Understand together, decide with evidence. A guided readiness and strategy mission over P2P or O2C, computed from your own registers.',
+  },
 ];
 
 const ACTIVITY: ActivityItem[] = [
