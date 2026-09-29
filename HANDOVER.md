@@ -50,9 +50,8 @@ look: sidebar of 12 numbered chapters, a headline per chapter, the process
 explorer as a branching graph with a pathways rail and a coverage strip
 (proposed / with conditions / human / unresolved), "Ask Edge" as a floating
 chat, "Mission memory" and "Contributions" in the sidebar, "Agent allowance"
-and "Save & pause" in the header. **The zip is committed beside the extracted
-folder** (`vani-edge-source.zip`, most of the 12 MB) — delete one; the
-extracted tree is the useful one.
+and "Save & pause" in the header. (The source zip was removed on 2026-09-29;
+the extracted tree is the reference.)
 
 **First question for the new session, before any code:** where the Edge UX
 lives. Two credible answers: (a) a skill folder in `vani-app` under its own
