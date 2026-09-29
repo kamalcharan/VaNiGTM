@@ -106,7 +106,7 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…254 (highest = 254)
+  migrations/         — 001…253 (highest = 253; TWO files are numbered 249)
 frontend/            — ⚠️ RETIRED (2026-09-16). Still on disk, still builds,
                       NOT the product. The frontend is vikunawebsite/vani-app.
                       Kept for reference; do not add features here.
@@ -317,7 +317,16 @@ because a date format or a token convention is worth not re-deciding.
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **254**.
+  status: `npm run db:migrate -- --status`. Highest = **253**. **Two files
+  share the number 249** (`249_ki_import_sessions_needs_review.sql` and
+  `249_vara_domain_pack_research_prompt.sql`); the runner keys on the full
+  filename, production has both recorded, so they stay as they are — the next
+  migration is 254, and never reuse a number again.
+- **`⚠ modified` on a Windows checkout is line endings, not an edit.** The
+  checksum is MD5 of the file bytes; a CRLF checkout of 239 hashes to
+  f43d515a…, the LF file and the DB both say 6e6c8dca… (verified 2026-09-29).
+  Run `--status` from the VPS, or ignore the warning when the git history of
+  that file is unchanged. The runner never re-runs an applied file anyway.
 - Discuss schema changes with the user first. Make migrations **idempotent
   and guarded** (IF NOT EXISTS; DO-block existence checks before copying
   from or altering legacy tables — vani_gtm_db was bootstrapped fresh and
@@ -720,6 +729,16 @@ is the only remaining copy.
 
 ### The queue reclaims orphans now — FIXED 2026-09-17 (migration 253)
 
+**253 was NOT applied on production until 2026-09-29.** `--status` on the
+29th listed it pending alongside 249_ki, while the text below says "after
+that deploy". If the 253 worker code was running against a database without
+`started_at`/`attempts`, `reclaimStaleEvents` threw on every poll, the catch
+logged `[Worker] Poll error`, and `queue.poll` was never reached — the worker
+claimed nothing at all. Check the worker log for that line over 09-18 → 09-29
+before trusting any run from that window. Charan applied 249 and 253 on
+2026-09-29. Lesson: a migration is applied when `--status` says so, not when
+the commit that added it is deployed.
+
 `gt_events` grew `started_at` and `attempts` (approved by Charan). The claim
 stamps both; `reclaimStaleEvents()` runs on every poll and returns a row whose
 claim has gone stale to `pending`, or fails it once `attempts` hits the cap so
@@ -987,9 +1006,9 @@ reading had:
    `ki_import_sessions.status` (104) never had that value — 200 and 201 only
    widened the STAGING check. The final UPDATE raised, the route marked the
    session `failed`, counters stayed 0, and the person was told the import
-   failed while 2,882 companies and 5,816 people had landed. **Migration 254**
-   adds the value (it was numbered 249 for two days, colliding with the vara
-   249; the runner keys on filename so nothing broke, but do not reuse a number). It is the fix; apply it before the next import.
+   failed while 2,882 companies and 5,816 people had landed. **Migration 249**
+   (`249_ki_…`, the second 249 — see Migrations) adds the value. Applied on
+   production by Charan on 2026-09-29. It is the fix; apply it before the next import.
 2. **Different companies on one website collapsed into one pool row.** The
    pool's `source_record_id` was the dedup key, i.e. the domain, so the
    ON CONFLICT upsert made sister companies overwrite each other: 17 vanished

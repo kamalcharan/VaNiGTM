@@ -1,5 +1,5 @@
 -- ============================================================
--- Migration: 254_ki_import_sessions_needs_review.sql
+-- Migration: 249_ki_import_sessions_needs_review.sql
 -- Purpose:   Let an import session end in the state the landing code has
 --            written since migration 200: 'needs_review'.
 --
