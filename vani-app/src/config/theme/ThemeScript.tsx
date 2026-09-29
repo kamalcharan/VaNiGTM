@@ -24,7 +24,12 @@ import { resolveTokens, tokensToCss } from './tokens';
 export function ThemeScript() {
   const rules = THEMES.flatMap((theme) =>
     (['light', 'dark'] as const).map((mode) =>
-      `html[data-theme="${theme.id}"][data-mode="${mode}"]{${tokensToCss(resolveTokens(theme, mode))}}`,
+      // Keyed on the ATTRIBUTES, not on `html[...]`: the same rule then
+      // applies to any element carrying them, which is how a route pins a
+      // theme for its subtree — the public landing at `/` wears the VaNi
+      // theme whatever the signed-in choice is (Charan, 2026-09-29). Tokens
+      // are custom properties, so they cascade from that element down.
+      `[data-theme="${theme.id}"][data-mode="${mode}"]{${tokensToCss(resolveTokens(theme, mode))}}`,
     ),
   );
 
