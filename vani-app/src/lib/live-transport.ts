@@ -21,6 +21,7 @@
 
 import { API_ORIGIN, ApiError, apiRequest } from './api-client';
 import type { SkillResult, SkillTransport } from './useSkill';
+import { PREVIEW_FUNCTIONS } from './preview';
 
 type PlatformCall = {
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -58,6 +59,66 @@ const PLATFORM_ROUTES: Record<string, (params: Record<string, unknown>) => Platf
     path: '/api/v1/auth/invite',
     body: { invitations: p.invitations },
   }),
+  // The ETL import is a REST router with a multipart upload, which no JSON
+  // skill call can carry — so it stays REST. The upload itself goes through
+  // apiRequest with a FormData body (gtm-audience/useImport.ts); the three
+  // JSON steps after it are declared here so they keep useSkillMutation's
+  // guarantees. nginx must expose /api/v1/etl/ for any of this to reach the
+  // API (deploy/vani-main-vps/api.vikuna.io.conf).
+  'etl.headers': (p) => ({
+    method: 'GET',
+    path: `/api/v1/etl/headers/${encodeURIComponent(String(p.file_id))}`,
+  }),
+  'etl.create_session': (p) => ({
+    method: 'POST',
+    path: '/api/v1/etl/sessions',
+    body: p,
+  }),
+  'etl.process': (p) => ({
+    method: 'POST',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/process`,
+  }),
+  'etl.sessions': () => ({ method: 'GET', path: '/api/v1/etl/sessions?type=company' }),
+  'etl.status': (p) => ({
+    method: 'GET',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/status`,
+  }),
+  'etl.records': (p) => ({
+    method: 'GET',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/records?status=${encodeURIComponent(String(p.status ?? 'all'))}&limit=${Number(p.limit ?? 50)}&page=${Number(p.page ?? 1)}`,
+  }),
+  // Tags describe a DELIVERY (gt_load_tags) and are picked at import time; a
+  // platform tag (is_platform) is visible to every tenant, so the server
+  // only lets an admin tenant create one.
+  'etl.tags': () => ({ method: 'GET', path: '/api/v1/etl/tags' }),
+  'etl.create_tag': (p) => ({
+    method: 'POST',
+    path: '/api/v1/etl/tags',
+    body: { label: p.label, is_platform: p.is_platform === true },
+  }),
+  // The dashboard's maintenance verbs, all on an owned session.
+  'etl.reprocess': (p) => ({
+    method: 'POST',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/reprocess`,
+  }),
+  'etl.patch_record': (p) => ({
+    method: 'PATCH',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/records/${encodeURIComponent(String(p.record_id))}`,
+    body: { mapped_data: p.mapped_data },
+  }),
+  'etl.sync_stats': (p) => ({
+    method: 'POST',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/sync-stats`,
+  }),
+  'etl.delete_staging': (p) => ({
+    method: 'DELETE',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/staging`,
+  }),
+  'etl.resolve_conflicts': (p) => ({
+    method: 'POST',
+    path: `/api/v1/etl/sessions/${encodeURIComponent(String(p.session_id))}/conflicts/resolve`,
+    body: p.accept_recommended ? { accept_recommended: true } : { decisions: p.decisions },
+  }),
 };
 
 export const liveTransport: SkillTransport = async (skill, fn, params) => {
@@ -68,6 +129,18 @@ export const liveTransport: SkillTransport = async (skill, fn, params) => {
   const { idempotency_key: idempotencyKey, ...rest } = params as Record<string, unknown> & {
     idempotency_key?: string;
   };
+
+  // UX preview: a screen whose backend does not exist yet is answered from
+  // its fixture, stamped so the shell can say so. See lib/preview.ts.
+  const preview = PREVIEW_FUNCTIONS[key];
+  if (preview) {
+    await new Promise((r) => setTimeout(r, 120));
+    try {
+      return { success: true, skill, function: fn, data: preview(rest), preview: true } as SkillResult;
+    } catch (err) {
+      return { success: false, skill, function: fn, data: null, error: err instanceof Error ? err.message : 'Preview failed', preview: true } as SkillResult;
+    }
+  }
 
   const route = PLATFORM_ROUTES[key];
 

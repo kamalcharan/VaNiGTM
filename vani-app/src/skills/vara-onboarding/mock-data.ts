@@ -46,74 +46,17 @@ export const MOCK_ROLE_FAMILIES: RoleFamilySeed[] = [
   },
 ];
 
-/**
- * The mock JD Studio composer script — Vara's questions and the tenant's
- * pickable answers. In the real build this is an LLM conversation; in the
- * preview it is a scripted flow so Charan can click through the shape.
+/*
+ * The JD Studio script used to live here as `jdScriptFor(family, title)` —
+ * ONE hardcoded engineering script returned for every role, whatever the
+ * family. Its own comment said "for the preview, one script covers all three
+ * families sensibly"; it did not, and a Customer Success role was offered
+ * "PostgreSQL row-level security" at 40% weight.
  *
- * Each step's picks contribute STRUCTURED FACTS to the JD panel on the right
- * — the "playbook controls" (weights, knockouts, threshold) emerge here, not
- * in onboarding.
+ * It is now `jd-script.ts`, built from what `domain-pack-skill.match_title`
+ * actually returns: a matched family's real must-haves, or — when nothing
+ * matches — the same questions with nothing suggested.
  */
-export interface JdStudioStep {
-  ask: string;
-  chips: { label: string; contributes: Record<string, unknown> }[];
-}
-
-export function jdScriptFor(family: string, title: string): JdStudioStep[] {
-  // Family-specific colouring is where real seed playbooks would diverge.
-  // For the preview, one script covers all three families sensibly.
-  return [
-    {
-      ask: `Great — let's shape ${title}. In one line, what does this role do?`,
-      chips: [
-        { label: `Ships ${family.toLowerCase()} for our platform`, contributes: { one_liner: `Ships ${family.toLowerCase()} for our platform` } },
-        { label: 'Owns a domain end-to-end', contributes: { one_liner: 'Owns a domain end-to-end' } },
-        { label: 'Ships product features across the stack', contributes: { one_liner: 'Ships product features across the stack' } },
-      ],
-    },
-    {
-      ask: 'What must be true for someone to succeed? Pick the strongest signal — I will weight it heaviest.',
-      chips: [
-        { label: 'TypeScript / Node.js in production', contributes: { top_musthave: { name: 'TypeScript + Node.js', weight: 40 } } },
-        { label: 'PostgreSQL row-level security', contributes: { top_musthave: { name: 'PostgreSQL + RLS', weight: 40 } } },
-        { label: 'Distributed systems experience', contributes: { top_musthave: { name: 'Distributed systems', weight: 40 } } },
-      ],
-    },
-    {
-      ask: 'Add up to two more must-haves — I will weight them behind the first.',
-      chips: [
-        { label: 'Cloud deploy (AWS/GCP)', contributes: { addl_musthave: { name: 'Cloud deploy', weight: 25 } } },
-        { label: 'Testing culture (unit + integration)', contributes: { addl_musthave: { name: 'Testing rigor', weight: 25 } } },
-        { label: '5+ years experience', contributes: { addl_musthave: { name: '≥ 5 yrs experience', weight: 20 } } },
-      ],
-    },
-    {
-      ask: 'Notice period tolerance? This becomes a knockout — deterministic, never scored.',
-      chips: [
-        { label: '≤ 30 days', contributes: { knockout: { label: 'Notice period', rule: '≤ 30 days' } } },
-        { label: '≤ 60 days', contributes: { knockout: { label: 'Notice period', rule: '≤ 60 days' } } },
-        { label: 'Flexible — no knockout', contributes: {} },
-      ],
-    },
-    {
-      ask: 'Compensation band? I will state it up front in the chat so candidates know.',
-      chips: [
-        { label: '₹25 – 35 L', contributes: { knockout: { label: 'Comp band', rule: '≤ ₹35 L' }, band: '₹25 – 35 L' } },
-        { label: '₹32 – 45 L', contributes: { knockout: { label: 'Comp band', rule: '≤ ₹45 L' }, band: '₹32 – 45 L' } },
-        { label: '₹40 – 60 L', contributes: { knockout: { label: 'Comp band', rule: '≤ ₹60 L' }, band: '₹40 – 60 L' } },
-      ],
-    },
-    {
-      ask: 'Handover threshold — how confident does the score need to be before I hand a candidate to your team?',
-      chips: [
-        { label: 'Strict (35%)', contributes: { threshold: 35 } },
-        { label: 'Standard (30%) — my default', contributes: { threshold: 30 } },
-        { label: 'Wider (25%)', contributes: { threshold: 25 } },
-      ],
-    },
-  ];
-}
 
 /**
  * Session-scoped "live" flag — set when the first JD is published in the
@@ -269,7 +212,14 @@ export interface PublishedFacts {
   onsite_pct?: number;
   /** Where the role sits. Free text per entry — "Hyderabad", "Remote (India)". */
   locations?: string[];
-  musthaves: { name: string; weight: number }[];
+  /**
+   * `why` and `years` come from the role family's starter shape and are copied
+   * into the JD verbatim. The type said {name, weight} while the data carried
+   * four fields — so the JD panel could not render the one line that explains
+   * a must-have ("the signal that separates someone who has RUN a service from
+   * someone who has written one"), which is the most useful thing on it.
+   */
+  musthaves: { name: string; weight: number; years?: number; why?: string }[];
   knockouts: { label: string; rule: string }[];
 }
 

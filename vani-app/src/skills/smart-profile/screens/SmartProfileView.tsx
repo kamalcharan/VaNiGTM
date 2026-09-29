@@ -36,6 +36,8 @@ import {
   type TenantDomain,
 } from '../useSmartProfile';
 import { PeopleSection } from './PeopleSection';
+import { KnowledgeSection } from './KnowledgeSection';
+import { useOffers, type OffersResult } from '../useOffers';
 import s from '../smart-profile.module.css';
 
 /** Deep link into the build flow at the step that owns a section. */
@@ -136,12 +138,13 @@ export default function SmartProfileView() {
   const competitors = useCompetitorsRead();
   const brand = useBrandRead();
   const domains = useDomainsRead();
+  const offers = useOffers();
 
   const score = profile.data?.data?.completion_score ?? 0;
 
   return (
     <div className={s.page}>
-      <header className={s.head}>
+      <header className={s.head} id="smart-profile-top">
         <span className={s.eyebrow}>Smart Profile</span>
         <h1 className={s.title}>What VaNi knows about you</h1>
         <p className={s.lede}>
@@ -278,6 +281,29 @@ export default function SmartProfileView() {
 
       <Section
         n={6}
+        title="Offers"
+        what="What you sell, in the shape agents score against. VaNi drafts; you confirm."
+        editStep="offers"
+        editHref="/smart-profile/offers"
+        editLabel="Open"
+        query={offers}
+        isEmpty={(d: OffersResult | undefined) => !d?.offers?.length}
+        empty="No offers yet. Fit is scored against an offer, so GTM cannot start without one — draft them from what VaNi has read."
+      >
+        {(d: OffersResult) => (
+          <ul className={s.rows}>
+            {d.offers.map((o) => (
+              <li key={o.id} className={s.row}>
+                <span className={s.rowName}>{o.name}<span className={o.confirmed_at ? s.rowTag : s.rowTagMuted}>{o.confirmed_at ? 'confirmed' : 'unconfirmed'}</span></span>
+                {o.one_line && <span className={s.rowDetail}>{o.one_line}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section
+        n={7}
         title="Domain"
         what="The domain your workspace runs on, so agents can address it."
         editStep="vani:domain"
@@ -302,40 +328,53 @@ export default function SmartProfileView() {
         )}
       </Section>
 
-      <PeopleSection n={7} />
+      <KnowledgeSection n={8} />
 
-      {/* Model. This section used to say BYOK was "coming" because
-          vani_llm_provider.credentials_enc had no encryption path behind it.
-          It does now (VaNiGTM agent-core/secret.crypto.ts + llm.provider.ts,
-          2026-09-15), and BYOK is a MENU item rather than an onboarding step
-          (user ruling, 2026-09-16).
+      <PeopleSection n={9} />
 
-          It is NOT linked from here, and that is deliberate rather than an
-          oversight: this app's own Settings is status:'planned' (see
-          src/skills/settings/index.ts, whose P2 summary names the model
-          provider), so a link would be a dead route. Naming where the surface
-          actually lives is the honest thing a reader can act on; inventing a
-          link they cannot follow is not. When vani-app's Settings lands, this
-          copy points at it. */}
+      {/* Model. BYOK is a MENU item, not an onboarding step (user ruling,
+          2026-09-16), and since 2026-09-22 the menu item is this app's own
+          Settings → Model — so this section links there rather than naming a
+          screen in another console. */}
       <section className={s.section}>
         <header className={s.sectionHead}>
-          <span className={s.sectionNum}>8</span>
+          <span className={s.sectionNum}>10</span>
           <div className={s.sectionTitles}>
             <h2 className={s.sectionTitle}>Model</h2>
             <p className={s.sectionWhat}>Which model answers when an agent needs one.</p>
           </div>
-          <span className={s.sectionSoon}>Default</span>
+          <Link href="/settings/model" className={s.sectionEdit}>Change</Link>
         </header>
         <div className={s.sectionBody}>
           <p className={s.modelNote}>
             A provider is configured for your workspace and in force for every
             agent. You can bring your own key instead — your endpoint, your
-            model, your billing, and no daily token cap. It is set in the
-            Vikuna GTM console under Settings → Model Provider, and applies to
-            every agent here the moment it is saved. This screen gets its own
-            control when Settings arrives.
+            model, your billing, and no daily token cap. Set it under
+            Settings → Model; it applies to every agent the moment it is saved.
           </p>
           <span className={s.modelTag}>Workspace default</span>
+        </div>
+      </section>
+
+      {/* Where the profile goes next. VaNi Edge is the agent after Vara and
+          GTM and enters from here (Charan, 2026-09-29): its first chapter is
+          this profile, carried in and corrected, never retyped. */}
+      <section className={s.section}>
+        <header className={s.sectionHead}>
+          <span className={s.sectionNum}>11</span>
+          <div className={s.sectionTitles}>
+            <h2 className={s.sectionTitle}>VaNi Edge</h2>
+            <p className={s.sectionWhat}>Before you automate, know where you stand — a guided readiness and strategy mission over one process.</p>
+          </div>
+          <Link href="/agents/edge" className={s.sectionEdit}>Open Edge</Link>
+        </header>
+        <div className={s.sectionBody}>
+          <p className={s.modelNote}>
+            Edge starts from this profile: your business, industry and footprint
+            are its first chapter, confirmed rather than re-entered. From there
+            it walks your team through the process, its rules, the evidence and
+            every pathway, and delivers an Automation Strategy.
+          </p>
         </div>
       </section>
     </div>

@@ -52,7 +52,7 @@
 .personaBtn:hover { color: var(--color-fg); }
 .personaBtnActive {
   background: var(--gold);
-  color: #141414;
+  color: var(--color-primary-fg);
 }
 .personaDot {
   width: 6px; height: 6px; border-radius: 50%;

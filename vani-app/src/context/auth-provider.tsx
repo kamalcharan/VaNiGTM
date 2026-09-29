@@ -37,6 +37,17 @@ export interface VaniUser {
   id: string;
   email: string;
   name?: string | null;
+  /**
+   * `vn_users.preferences`, returned by /auth/me and written by
+   * PATCH /auth/preferences. The theme choice lives here so it follows the
+   * person to another machine; the browser only keeps a mirror of it to paint
+   * before this response lands.
+   */
+  preferences?: {
+    theme_override?: string | null;
+    color_mode?: string | null;
+    [key: string]: unknown;
+  } | null;
 }
 
 export interface VaniTenant {
@@ -53,6 +64,12 @@ export interface VaniTenant {
    * runner corrects itself against the lane the moment it loads.
    */
   onboarding_complete?: boolean;
+  /**
+   * vn_tenants.is_admin, from /api/v1/auth/me. An admin tenant is Vikuna
+   * itself: it may feed the common pool and read it. The server re-checks
+   * the JWT on every such call; this only decides what the console offers.
+   */
+  is_admin?: boolean;
 }
 
 interface MeResponse {

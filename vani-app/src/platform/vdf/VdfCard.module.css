@@ -59,6 +59,8 @@
   border-radius: 20px;
   background: linear-gradient(180deg, var(--color-primary-dim), transparent 40%);
   z-index: -1;
+  /* #fff here is MASK LUMINANCE, not a colour — it means "fully opaque".
+     Theming it would make the border vanish. */
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;

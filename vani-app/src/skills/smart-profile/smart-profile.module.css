@@ -188,6 +188,8 @@
 .rowName { font-size: 0.88rem; color: var(--tx); }
 
 .rowDetail { font-size: 0.78rem; line-height: 1.5; color: var(--tx3); }
+.rowLink { color: var(--gold); text-decoration: none; border-bottom: 1px solid transparent; }
+.rowLink:hover { border-bottom-color: var(--gold); }
 
 .list { margin-top: 12px; }
 
@@ -311,3 +313,37 @@
   padding: 3px 9px;
   margin-top: 8px;
 }
+
+/* ── Knowledge: what VaNi has read ────────────────────────────────────── */
+
+.teach { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+
+.teachSeg { display: inline-flex; border: 1px solid var(--line2); border-radius: 7px; overflow: hidden; align-self: flex-start; }
+.teachSeg button {
+  font: inherit; font-size: 0.78rem; letter-spacing: 0.03em;
+  color: var(--tx3); background: transparent; border: 0; padding: 6px 13px; cursor: pointer;
+}
+.teachSeg button + button { border-left: 1px solid var(--line2); }
+.teachSeg button[aria-pressed="true"] { color: var(--gold); background: rgba(201, 151, 58, 0.1); }
+
+.teachText { display: flex; flex-direction: column; gap: 8px; }
+.teachArea {
+  width: 100%; padding: 10px 12px; font: inherit; font-size: 0.86rem; line-height: 1.55;
+  color: var(--tx); background: var(--bg2); border: 1px solid var(--line2); border-radius: 7px; resize: vertical;
+}
+.teachArea::placeholder { color: var(--tx3); }
+.teachArea:focus { outline: none; border-color: var(--gold); }
+.teachFoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.teachCount { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em; color: var(--tx3); }
+.teachNote { font-size: 0.78rem; line-height: 1.55; color: var(--tx3); }
+
+.srcRow { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.srcReading { color: var(--gold); }
+.srcBad { color: var(--color-danger); }
+.srcRemove {
+  flex: none; font: inherit; font-size: 0.72rem; letter-spacing: 0.03em;
+  color: var(--tx3); background: transparent; border: 1px solid transparent; border-radius: 6px;
+  padding: 3px 8px; cursor: pointer;
+}
+.srcRemove:hover { color: var(--tx); border-color: var(--line2); }
+.srcRemove:disabled { opacity: 0.5; cursor: not-allowed; }

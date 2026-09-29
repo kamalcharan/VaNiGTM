@@ -24,6 +24,7 @@
     linear-gradient(rgba(232, 66, 10, 0.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(232, 66, 10, 0.045) 1px, transparent 1px);
   background-size: 52px 52px;
+  /* Mask luminance, not colour — see VdfCard.module.css. Not themed. */
   -webkit-mask-image: radial-gradient(ellipse 74% 66% at 50% 40%, #000 0%, transparent 76%);
   mask-image: radial-gradient(ellipse 74% 66% at 50% 40%, #000 0%, transparent 76%);
 }
@@ -147,7 +148,7 @@
 .submit {
   width: 100%;
   background: var(--ac);
-  color: #fff;
+  color: var(--color-primary-fg);
   border: none;
   border-radius: 7px;
   padding: 12px 18px;

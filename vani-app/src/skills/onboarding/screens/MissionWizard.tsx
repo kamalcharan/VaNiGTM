@@ -35,6 +35,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
+import { callSkill } from '@/lib/useSkill';
 import { useToast } from '@/platform/feedback';
 import { useMissionOnboarding } from '../useOnboarding';
 import { useMissionHandoff } from '../useMissionHandoff';
@@ -53,6 +54,7 @@ import {
   type VdfMissionMemoryItem,
 } from '@/platform/vdf';
 import s from '../mission-wizard.module.css';
+import { INTERNAL_STEPS, RESEARCH_ROTATION, RESEARCH_STEP_LABELS } from '@/skills/smart-profile/reading-steps';
 
 /* ── Types (backend contracts) ──────────────────────────────────────── */
 
@@ -84,37 +86,6 @@ interface KbSource {
   node_count?: number | null;
   run_status?: string | null;
   run_steps?: AgentRunStep[] | null;
-}
-
-/** Friendly labels for the agent's real pipeline steps (gt_agent_runs.steps). */
-/**
- * Steps the pipeline records for US, never for the tenant.
- *
- * `llm_failover` is written by agent-core whenever the local model is
- * unreachable and the call is retried on Claude, and it carries the raw VPS
- * error in its action text. That belongs in gt_agent_runs, not on a customer's
- * screen: which model answered is our operational detail, and surfacing it
- * turns "VaNi is analysing your site" into a visible internal wobble.
- *
- * Hidden from the FEED only — the row is still stored, still auditable, and
- * still shows in the run history. Nothing is swallowed.
- */
-const INTERNAL_STEPS = new Set(['llm_failover']);
-
-const RESEARCH_STEP_LABELS: Record<string, string> = {
-  parse: 'Connected — reading your website',
-  parse_complete: 'Website read',
-  site_health: 'Website health check',
-  render_page: 'JS-rendered site — opening it in a headless browser',
-  render_complete: 'Rendered page read',
-  draft_profile: 'Drafting your GTM profile',
-  crawl_pages: 'Exploring more pages of your site',
-  crawl_complete: 'Site crawl finished',
-  draft_profile_enriched: 'Filling profile gaps from deeper pages',
-  chunk: 'Organizing what I found',
-  extract: 'Deep-reading each section',
-  extract_complete: 'Knowledge extracted',
-  complete: 'Saved to your knowledge graph',
 }
 
 /** Site-health signals → what's at stake (SEO/AEO/CRO framing). */
@@ -316,13 +287,6 @@ const VOCAB_ROTATION = [
 
 /** Rotating status copy for multi-minute agent phases. Every line describes
     work the agent genuinely does — never a fake progress claim. */
-const RESEARCH_ROTATION = [
-  'Reading your pages the way a first-time buyer would',
-  'Pulling out what you sell, who for, and what it fixes',
-  'Noting proof — case studies, numbers, differentiators',
-  'Writing it all into your knowledge graph',
-];
-
 const COMPETITOR_ROTATION = [
   'Framing the search from the words your buyers use',
   'Sweeping the live web for who occupies your space',
@@ -470,14 +434,14 @@ export default function MissionWizardPage() {
      be many sources), so we take the newest source and fetch just that one. */
   const restoreResearchSteps = useCallback(async () => {
     try {
-      const list = await apiFetch<{ sources: { id: string; source_type: string }[] }>(
-        API.ingest.listSources,
+      const list = await callSkill<{ sources: { id: string; source_type: string }[] }>(
+        'ingestion-skill', 'list_sources', { limit: 20 },
       );
       const newest = list.sources?.find((x) => x.source_type === 'url') ?? list.sources?.[0];
       if (!newest) return;
 
-      const res = await apiFetch<{ source: KbSource }>(
-        API.ingest.getSource, { pathParams: { id: newest.id } },
+      const res = await callSkill<{ source: KbSource }>(
+        'ingestion-skill', 'get_source', { source_id: newest.id },
       );
       if (Array.isArray(res.source.run_steps) && res.source.run_steps.length > 0) {
         setResearchSteps(res.source.run_steps);
@@ -530,7 +494,7 @@ export default function MissionWizardPage() {
       }
 
       try {
-        const res = await apiFetch<{ source: KbSource }>(API.ingest.getSource, { pathParams: { id: sourceId } });
+        const res = await callSkill<{ source: KbSource }>('ingestion-skill', 'get_source', { source_id: sourceId });
         const src = res.source;
 
         if (Array.isArray(src.run_steps) && src.run_steps.length > 0) {
@@ -579,7 +543,7 @@ export default function MissionWizardPage() {
     setResearchNote('Submitting your website to VaNi…');
 
     try {
-      const res = await apiFetch<{ source_id: string }>(API.ingest.submitUrl, { body: { url: input } });
+      const res = await callSkill<{ source_id: string }>('ingestion-skill', 'submit_url', { url: input });
       pollResearch(res.source_id);
     } catch (err) {
       setResearch('error');
@@ -601,8 +565,8 @@ export default function MissionWizardPage() {
     setResearchNote('Analyzing your pasted copy…');
 
     try {
-      const res = await apiFetch<{ source_id: string }>(API.ingest.submitText, {
-        body: { text, title: 'Website copy (pasted)' },
+      const res = await callSkill<{ source_id: string }>('ingestion-skill', 'submit_text', {
+        text, title: 'Website copy (pasted)',
       });
       pollResearch(res.source_id);
     } catch (err) {

@@ -8,3 +8,4 @@ export {
   ArtefactSwatches,
 } from './Artefact';
 export type { ArtefactField } from './Artefact';
+export { AgentJourney, resolveJourney } from './AgentJourney';

@@ -22,6 +22,8 @@ export interface SkillResult<T = unknown> {
   function: string;
   data: T;
   error?: string;
+  /** Answered from fixtures because the backend is not integrated yet (lib/preview.ts). */
+  preview?: boolean;
 }
 
 export type SkillTransport = (
@@ -40,6 +42,19 @@ export function setSkillTransport(t: SkillTransport): void {
 /** For writes, which go through useSkillMutation rather than useQuery. */
 export function getSkillTransport(): SkillTransport | null {
   return transport;
+}
+
+/**
+ * One imperative skill call, for code that runs outside a hook — a poll
+ * chain, a multi-step flow. Throws with the server's own message on
+ * `success:false`, so callers read it like a fetch that failed rather than a
+ * 200 they have to inspect.
+ */
+export async function callSkill<T = unknown>(skill: string, fn: string, params: Record<string, unknown> = {}): Promise<T> {
+  if (!transport) throw new Error('No skill transport configured.');
+  const r = (await transport(skill, fn, params)) as SkillResult<T>;
+  if (!r.success) throw new Error(r.error ?? `${skill}.${fn} failed`);
+  return r.data;
 }
 
 export function useSkillQuery<T = unknown>(

@@ -3,7 +3,11 @@
 import { useSkillQuery } from '@/lib/useSkill';
 import type { ActivityItem, AgentSummary } from '@/lib/mock-transport';
 import { DataBoundary, SkeletonCounters, SkeletonRows } from '@/platform/feedback';
+import Link from 'next/link';
 import u from '@/platform/shell/ui.module.css';
+import { AgentJourney } from '@/platform/pathway';
+import { AGENT_WORKSPACES } from '@/skills';
+import { PreviewBadge } from '@/skills/gtm-shell/PreviewBadge';
 
 interface Counters {
   agents_active: number;
@@ -38,6 +42,7 @@ export default function Dashboard() {
         is genuinely unknown", which are different things a reader cannot tell
         apart. The boundary makes the wait visible and the failure loud.
       */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><PreviewBadge what="counters, activity, agents and the journey" /></div>
       <DataBoundary
         query={counters}
         label="counters"
@@ -54,6 +59,23 @@ export default function Dashboard() {
           </div>
         )}
       </DataBoundary>
+
+      {/* One card per agent: where this tenant is with it, and the next step.
+          Rendered from each workspace's journey declaration — the same source
+          the agent's own landing uses (POA §2.4b). */}
+      <div className={u.counters} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+        {AGENT_WORKSPACES.filter((w) => w.journey).map((w) => {
+          const landing = w.routes[0]?.href ?? '/agents';
+          return (
+            <div key={w.id} className={u.counter}>
+              <AgentJourney decl={w.journey!} variant="card" name={w.name} />
+              <Link href={landing} className={u.cardMeta} style={{ display: 'inline-block', marginTop: 10, color: 'var(--ac)', textDecoration: 'none' }}>
+                Open {w.name} →
+              </Link>
+            </div>
+          );
+        })}
+      </div>
 
       <div className={u.grid2}>
         <section className={u.card}>

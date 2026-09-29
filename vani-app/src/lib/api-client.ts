@@ -242,7 +242,10 @@ export async function apiRequest<T>(
   path: string,
   options: FetchOptions & { authenticated?: boolean } = {},
 ): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // A FormData body (a file upload) sets its own multipart boundary; forcing
+  // application/json on it makes the server see an empty body.
+  const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const headers: Record<string, string> = isForm ? {} : { 'Content-Type': 'application/json' };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   // Where the client half of the idempotency contract goes on the wire. The
   // server half — store the key with its result and replay it — is per handler.
@@ -264,7 +267,7 @@ export async function apiRequest<T>(
       headers,
       credentials: 'include',
       signal: options.signal,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body: options.body === undefined ? undefined : isForm ? (options.body as FormData) : JSON.stringify(options.body),
     });
   } catch {
     // Network-level failure — most often the API origin is unset or unreachable.

@@ -50,6 +50,20 @@ export const API = {
       auth: true,
       description: 'Hydrate the current user and tenant.',
     },
+    /**
+     * The user's own preferences — theme and colour mode today.
+     *
+     * Merged into `vn_users.preferences` (JSONB, migration 001) rather than
+     * stored in a new column, so this needed no schema change. The server
+     * already accepted `theme_override` and `color_mode`; nothing in either
+     * console had ever sent them.
+     */
+    preferences: {
+      method: 'PATCH',
+      path: '/api/v1/auth/preferences',
+      auth: true,
+      description: 'Persist this user\'s theme and colour mode.',
+    },
     team: {
       method: 'GET',
       path: '/api/v1/auth/team',

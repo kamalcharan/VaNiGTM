@@ -1,0 +1,21 @@
+.tabs {
+  display: flex; gap: 2px; overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  margin: 4px 0 28px;
+}
+.tab {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--tx3); text-decoration: none; white-space: nowrap;
+  padding: 0 14px 11px; margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  transition: color .12s ease, border-color .12s ease;
+}
+.tab:hover { color: var(--tx2); }
+.tab[aria-current="page"] { color: var(--ac); border-bottom-color: var(--ac); }
+.tabSoon { color: var(--tx3); opacity: .7; }
+.tabSoon::after { content: '·'; margin-left: 6px; color: var(--tx3); }
+
+.h2 {
+  font-family: var(--display); font-size: 19px; font-weight: 700;
+  letter-spacing: -.4px; line-height: 1.2; margin: 0 0 8px;
+}

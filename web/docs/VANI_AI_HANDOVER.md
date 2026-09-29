@@ -1,5 +1,18 @@
 # VaNi AI — Session Handover
 
+> **2026-09-29 — restart pointer.** The live handover is
+> `VaNiGTM/HANDOVER.md` → "RESTART HANDOVER — 2026-09-29". Order of work:
+> **Edge UX** (reference at `VaNiGTM/docs/EDGE/`) → **Vara** → **GTM**.
+> This repo's `claude/bold-carson-7stecq` is 74 commits ahead of `main` and
+> NOT merged; Vercel deploys `main`, so none of this fortnight's console work
+> (import wizard, imports dashboard, admin common pool, Smart Profile row copy,
+> failover queue) is live until Charan merges it. The nginx `/api/v1/etl/`
+> location and CORS snippet edits go with that merge (see
+> `vani-app/src/skills/gtm-imports/INTEGRATION.md`). Where the Edge UX lives —
+> a skill + shell in `vani-app`, or a standalone app under the AutomationEdge
+> brand — is the first decision of the next session.
+
+
 **From:** Claude Code website session (last updated 2026-08-11)
 **To:** next Claude Code session in this repo
 **State:** the assessment funnel is **built and merged** in `kamalcharan/VaNiGTM`

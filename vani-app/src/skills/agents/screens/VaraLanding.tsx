@@ -30,6 +30,9 @@ import { checkGatePhrase } from '@/lib/gate';
 import type { SkillResult } from '@/lib/useSkill';
 import { DataBoundary, SkeletonRows, useToast } from '@/platform/feedback';
 import u from '@/platform/shell/ui.module.css';
+import { AgentJourney } from '@/platform/pathway';
+import { VARA_WORKSPACE } from '@/skills/vara-shell/vara-nav';
+import { PreviewBadge } from '@/skills/gtm-shell/PreviewBadge';
 import s from './vara.module.css';
 
 interface VaraState {
@@ -175,6 +178,15 @@ export default function VaraLanding() {
             )}
           </DataBoundary>
         </div>
+      </div>
+
+      {/* ── Where you are: the journey, on the shared renderer (POA §2.4b) ── */}
+      <div style={{ margin: '4px 0 26px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className={u.cardMeta} style={{ letterSpacing: '0.14em', textTransform: 'uppercase' }}>Where you are</div>
+          <PreviewBadge what="the journey" />
+        </div>
+        <AgentJourney decl={VARA_WORKSPACE.journey!} />
       </div>
 
       {/* ── The living demo: the approved prototype, playing itself ── */}

@@ -79,12 +79,9 @@ function newId(): string {
 
 function VaraOnboardingRunnerInner() {
   const router = useRouter();
-  const [family, setFamily] = useState<string | null>(null);
-  const [otherFamily, setOtherFamily] = useState('');
   /** Which published JD is expanded. One at a time — a list of open panels
    *  is a worse way to compare two JDs than opening each in turn. */
   const [openJd, setOpenJd] = useState<string | null>(null);
-  const [title, setTitle] = useState('');
 
   const emptyMode = useSearchParams().get('empty') === '1';
 
@@ -130,40 +127,6 @@ function VaraOnboardingRunnerInner() {
           // the family list is empty. Useful to preview the empty state
           // without seeding a fresh DB.
           const shownFamilies = emptyMode ? [] : c.families;
-          const effectiveFamily = family === '__other__' ? (otherFamily.trim() || null) : family;
-          const activeFamily = shownFamilies.find((f) => f.name === effectiveFamily) ?? null;
-          const suggestions = activeFamily?.suggested_titles ?? [];
-          const ready = effectiveFamily !== null && title.trim().length > 3;
-
-          function toStudio(mode: 'compose' | 'import') {
-            const q = new URLSearchParams({
-              family: effectiveFamily!,
-              title: title.trim(),
-              mode,
-            });
-            // Prefill the studio with the pack's starter facts. Ad-hoc
-            // (Other) families skip prefill — the tenant fills from scratch.
-            if (activeFamily) {
-              const draft: DraftJd = {
-                id: newId(),
-                family: effectiveFamily!,
-                title: title.trim(),
-                facts: {
-                  musthaves: activeFamily.starter.musthaves ?? [],
-                  knockouts: activeFamily.starter.knockouts ?? [],
-                  threshold: activeFamily.starter.threshold ?? 30,
-                  one_liner: activeFamily.starter.role_summary_hint,
-                },
-                mode: 'duplicate',   // pack starter is a starting shape, not a real prior version
-                baseVersion: 0,
-              };
-              try { sessionStorage.setItem(UX_DRAFT_KEY, JSON.stringify(draft)); } catch { /* private mode */ }
-            } else {
-              try { sessionStorage.removeItem(UX_DRAFT_KEY); } catch { /* ignore */ }
-            }
-            router.push(`/agents/vara/jd-studio?${q.toString()}`);
-          }
-
           function duplicate(jd: ContextPublishedJd) {
             const draft: DraftJd = {
               id: newId(),
@@ -266,151 +229,44 @@ function VaraOnboardingRunnerInner() {
                 <ResearchCard industryRaw={c.industry.raw} variant="provenance" />
               </div>
 
-              {/* Role family ─────────────────────────────────────────── */}
+              {/* Into the journey ─────────────────────────────────────────
+                  This used to be three cards: pick a family, type a title,
+                  choose how to build it. All three belonged to the old shape,
+                  where a family tile was a SELECTOR that carried a name to JD
+                  Studio in a URL and wrote nothing — so the tenant's own
+                  families never existed and the second JD was identical work
+                  to the first.
+                  The journey now runs: take the families you hire for →
+                  they are yours to change → name a role → read the finished
+                  JD. The doorway's job is to say what Vara knows and open
+                  that door, not to be a form. */}
               <div className={s.card}>
                 <div className={s.cardHead}>
-                  <h2 className={s.cardTitle}>Which family is the role in?</h2>
+                  <h2 className={s.cardTitle}>Take the families you hire for</h2>
                   <span className={s.cardMeta}>
-                    Vara has starting playbooks for these under {c.industry.raw}
+                    {shownFamilies.length} known under {c.industry.raw}
                   </span>
                 </div>
                 <p className={s.cardWhat}>
-                  Pick the closest family — Vara starts you with its playbook so the
-                  first JD is a tune-and-publish, not a build-from-scratch.
+                  Read what is inside each one — the must-haves Vara would score,
+                  the knockouts, the handover bar — and take the ones that are
+                  yours. From then on you can change them, and the industry
+                  version never changes underneath you.
                 </p>
-                {/* One line used to cover every reason this list can be empty.
-                    ResearchCard asks the server which one it is, and offers the
-                    retry when there is one to offer. */}
-                {/* Not gated on an empty list any more. The case that mattered
-                    — three seeded families that were never researched — has a
-                    FULL list, so an empty-state check could never catch it.
-                    ResearchCard returns null once the industry is really
-                    researched. */}
                 <ResearchCard industryRaw={c.industry.raw} variant="action" />
-                <div className={s.familyList}>
-                  {shownFamilies.map((f) => (
-                    <button
-                      key={f.pack_code}
-                      type="button"
-                      className={
-                        family === f.name
-                          ? `${s.familyItem} ${s.familyItemActive}`
-                          : s.familyItem
-                      }
-                      onClick={() => setFamily(f.name)}
-                    >
-                      <div className={s.familyName}>{f.name}</div>
-                      <div className={s.familyHint}>{f.hint ?? ''}</div>
-                    </button>
-                  ))}
+                <div className={s.actions} style={{ marginTop: 16 }}>
                   <button
-                    key="__other__"
                     type="button"
-                    className={
-                      family === '__other__'
-                        ? `${s.familyItem} ${s.familyItemActive}`
-                        : s.familyItem
-                    }
-                    onClick={() => setFamily('__other__')}
+                    className={s.primary}
+                    onClick={() => router.push('/agents/vara/families')}
                   >
-                    <div className={s.familyName}>Other — I&rsquo;ll name it</div>
-                    <div className={s.familyHint}>
-                      Manual skeleton — default 33/33/33 weights, no knockouts. You
-                      tune everything in the next screen.
-                    </div>
+                    {shownFamilies.length
+                      ? `See the ${shownFamilies.length} families →`
+                      : 'Shape a role from scratch →'}
                   </button>
                 </div>
-                {family === '__other__' && (
-                  <div style={{ marginTop: 12 }}>
-                    <input
-                      type="text"
-                      className={s.textInput}
-                      placeholder="Data Engineering · Field Sales · Staff Nurse · …"
-                      value={otherFamily}
-                      onChange={(e) => setOtherFamily(e.target.value)}
-                      autoFocus
-                    />
-                    <div className={s.familyHint} style={{ marginTop: 6 }}>
-                      Vara will file this JD under a new family with this name.
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Role title ──────────────────────────────────────────── */}
-              <div className={s.card}>
-                <div className={s.cardHead}>
-                  <h2 className={s.cardTitle}>What is the exact role you are hiring for?</h2>
-                  <span className={s.cardMeta}>your first JD in {effectiveFamily ?? 'this family'}</span>
-                </div>
-                <p className={s.cardWhat}>
-                  The title as it will appear on your careers page. You will shape the
-                  rest — must-haves, band, knockouts — in the next screen.
-                </p>
-                <input
-                  type="text"
-                  className={s.textInput}
-                  placeholder="Senior Backend Engineer for the VaNi platform"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  disabled={!effectiveFamily}
-                />
-                {effectiveFamily && suggestions.length > 0 && (
-                  <div className={s.suggested} aria-label="Suggested titles">
-                    {suggestions.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        className={s.suggChip}
-                        onClick={() => setTitle(t)}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Choice ─────────────────────────────────────────────── */}
-              <div className={s.card}>
-                <div className={s.cardHead}>
-                  <h2 className={s.cardTitle}>How do you want to build this JD?</h2>
-                  <span className={s.cardMeta}>both paths end at the same Publish</span>
-                </div>
-                <div className={s.familyList}>
-                  <button
-                    type="button"
-                    className={s.familyItem}
-                    onClick={() => toStudio('compose')}
-                    disabled={!ready}
-                    style={{ opacity: ready ? 1 : 0.45 }}
-                  >
-                    <div className={s.familyName}>Compose with Vara →</div>
-                    <div className={s.familyHint}>
-                      A short chat with Vara. Answer 5 questions, watch the JD build
-                      itself on the right. ~4 minutes.
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    className={s.familyItem}
-                    onClick={() => toStudio('import')}
-                    disabled={!ready}
-                    style={{ opacity: ready ? 1 : 0.45 }}
-                  >
-                    <div className={s.familyName}>Import existing JDs →</div>
-                    <div className={s.familyHint}>
-                      Drag a docx or pdf. Vara extracts must-haves, knockouts and band
-                      with evidence — you review, tune, publish. (Preview — extraction
-                      wires in Phase 2.)
-                    </div>
-                  </button>
-                </div>
-                <p className={s.note} style={{ marginTop: 10 }}>
-                  Publishing the first JD takes Vara live for your workspace and
-                  writes it as v1 in the DB — check the doorway list on the next visit.
-                </p>
-              </div>
             </>
           );
         }}
