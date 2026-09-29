@@ -112,7 +112,11 @@ export const systems = ['Tally', 'SAP / ERP', 'Excel', 'Email', 'CRM / workflow'
 export const controlLabels = { assist: 'Assist the team', guarded: 'Automate within agreed limits', extend: 'Explore wider coverage after validation' } as const;
 
 /** The two processes as the welcome and scope screens name them (reference `src/data/processes.js`, the fields the mission uses). */
-export const processes: Record<ProcessId, { name: string; short: string; description: string; opportunity: string }> = {
-  p2p: { name: 'Procure to Pay', short: 'P2P', description: 'From purchase request to supplier payment.', opportunity: 'Invoice intake & approval routing' },
-  o2c: { name: 'Order to Cash', short: 'O2C', description: 'From customer order to cash in the bank.', opportunity: 'Billing checks & collection prioritisation' },
+export const processes: Record<ProcessId, { name: string; short: string; description: string; opportunity: string; control: string; risk: string }> = {
+  p2p: { name: 'Procure to Pay', short: 'P2P', description: 'From purchase request to supplier payment.', opportunity: 'Invoice intake & approval routing',
+    control: 'Keep payment release with your finance team. Route missing receipts and possible duplicates for review.',
+    risk: 'Faster processing can accelerate duplicate invoices and approvals without a recorded receipt.' },
+  o2c: { name: 'Order to Cash', short: 'O2C', description: 'From customer order to cash in the bank.', opportunity: 'Billing checks & collection prioritisation',
+    control: 'Review disputes before reminders. Keep credit decisions and write-offs with your team.',
+    risk: 'Automated reminders can chase disputed or already-paid invoices if payment and dispute records are incomplete.' },
 };

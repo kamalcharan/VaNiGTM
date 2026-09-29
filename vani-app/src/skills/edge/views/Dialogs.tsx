@@ -11,6 +11,7 @@ import { createMission, type MissionType, type ProcessId } from '../mission/type
 import { processes } from '../mission/domain';
 import { clearSaved, saveMission } from '../mission/store';
 import { missionBrief } from '../mission/brief';
+import { failureText } from '../mission/failure-report';
 import { Btn } from '../ui';
 import { AddActorDialog, AssignDialog, TaskDialog, SwitchProcessDialog } from './PeopleDialogs';
 import { NodeDialog, LinkDialog } from './BoardDialogs';
@@ -72,7 +73,7 @@ export function BookingContent({ hasAssessment }: { hasAssessment: boolean }) {
 
 function renderDialog(id: ModalId, props: Record<string, unknown>, ctx: ReturnType<typeof useMission>): { title: ReactNode; body: ReactNode } {
   const { m, stage, update, replace, go, closeModal, toast, download, openModal } = ctx;
-  const downloadBrief = () => download('vani-edge-decision-brief.txt', missionBrief(m));
+  const downloadBrief = () => m.missionType === 'failure' ? download('failure-review.txt', failureText(m)) : download('vani-edge-decision-brief.txt', missionBrief(m));
 
   switch (id) {
     case 'memory':

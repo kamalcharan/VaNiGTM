@@ -25,15 +25,18 @@ import { ExplorerView } from './ExplorerView';
 import { FindingsView } from './FindingsView';
 import { ReadinessView } from './ReadinessView';
 import { ComparisonView, HypothesesView, ActionsView } from './FailureViews';
+import { ValueView } from './ValueView';
+import { StrategyView } from './StrategyView';
+import { VerificationView, FailureReportView } from './FailureEnd';
 
 const VIEWS: Record<number, React.ComponentType> = {
   0: ContextView, 1: PeopleView, 2: ScopeView, 3: DiscoveryView, 4: BoardView, 5: RulesView, 6: EvidenceView,
-  7: ExplorerView, 8: FindingsView, 9: ReadinessView,
+  7: ExplorerView, 8: FindingsView, 9: ReadinessView, 10: ValueView, 11: StrategyView,
 };
 /** The failure-review mission swaps chapters in from 4 (index 3) — reference `missionView()`'s switch. */
 const FailureBoard = () => <BoardView title="Map the intended work and the failure location." />;
 const FAILURE_VIEWS: Record<number, React.ComponentType> = {
-  3: IncidentView, 4: FailureBoard, 5: RulesView, 6: EvidenceView, 7: ComparisonView, 8: HypothesesView, 9: ActionsView,
+  3: IncidentView, 4: FailureBoard, 5: RulesView, 6: EvidenceView, 7: ComparisonView, 8: HypothesesView, 9: ActionsView, 10: VerificationView, 11: FailureReportView,
 };
 
 function NotYet({ stage }: { stage: number }) {
