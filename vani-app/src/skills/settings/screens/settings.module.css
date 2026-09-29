@@ -4,12 +4,11 @@
   margin: 4px 0 28px;
 }
 .tab {
-  font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  font-family: var(--font-label); font-size: var(--fs-sm); letter-spacing: var(--ls-label); text-transform: uppercase;
   color: var(--tx3); text-decoration: none; white-space: nowrap;
   padding: 0 14px 11px; margin-bottom: -1px;
   border-bottom: 2px solid transparent;
-  transition: color .12s ease, border-color .12s ease;
-}
+  transition: color .12s ease, border-color .12s ease; font-weight: var(--fw-label); }
 .tab:hover { color: var(--tx2); }
 .tab[aria-current="page"] { color: var(--ac); border-bottom-color: var(--ac); }
 .tabSoon { color: var(--tx3); opacity: .7; }

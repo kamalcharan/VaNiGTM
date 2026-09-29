@@ -9,11 +9,10 @@
   color: var(--tx3);
   border-radius: 6px;
   padding: 5px 11px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase; font-weight: var(--fw-label); }
 
 .signOut:hover { color: var(--tx); border-color: var(--line2); }
 
@@ -29,13 +28,12 @@
 }
 
 .eyebrow {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--ac);
-  margin-bottom: 10px;
-}
+  margin-bottom: 10px; font-weight: var(--fw-label); }
 
 .h {
   font-family: var(--display);
@@ -45,7 +43,7 @@
   margin-bottom: 8px;
 }
 
-.sub { font-size: 13.5px; line-height: 1.7; color: var(--tx2); margin-bottom: 24px; }
+.sub { font-size: var(--fs-lg); line-height: 1.7; color: var(--tx2); margin-bottom: 24px; }
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
@@ -58,15 +56,14 @@
 
 .label {
   display: block;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--tx2);
-  margin-bottom: 6px;
-}
+  margin-bottom: 6px; font-weight: var(--fw-label); }
 
-.optional { color: var(--tx3); text-transform: none; letter-spacing: 0; font-size: 9.5px; }
+.optional { color: var(--tx3); text-transform: none; letter-spacing: 0; font-size: var(--fs-xs); }
 
 .input, .select {
   width: 100%;
@@ -75,13 +72,13 @@
   border-radius: 7px;
   padding: 10px 12px;
   font-family: var(--sans);
-  font-size: 13.5px;
+  font-size: var(--fs-lg);
   color: var(--tx);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.select { font-family: var(--mono); font-size: 12.5px; }
+.select { font-family: var(--mono); font-size: var(--fs-ui); }
 
 .input:focus, .select:focus {
   border-color: var(--ac);
@@ -99,7 +96,7 @@
   padding: 9px 11px;
   margin-bottom: 14px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--bad);
 }
@@ -120,7 +117,7 @@
   border-radius: 7px;
   padding: 11px 20px;
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   letter-spacing: 0.04em;
   display: inline-flex;
@@ -135,7 +132,7 @@
 
 .note {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--tx3);
   line-height: 1.6;
 }
@@ -167,20 +164,19 @@
 }
 
 .headOrg {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--tx3);
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  white-space: nowrap; font-weight: var(--fw-label); }
 
 .railConfirmed {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   line-height: 1.6;
   color: var(--tx3);
 }

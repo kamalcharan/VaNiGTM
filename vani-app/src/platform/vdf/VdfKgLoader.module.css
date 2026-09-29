@@ -40,7 +40,7 @@
 }
 
 .message {
-  font-size: 0.88rem;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--color-fg);
   display: inline-flex;
@@ -60,7 +60,7 @@
 }
 
 .hint {
-  font-size: 0.75rem;
+  font-size: var(--fs-md);
   color: var(--color-muted);
 }
 
@@ -81,10 +81,10 @@
 }
 
 .subjectLead {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1.4px;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--color-muted);
 }
@@ -100,7 +100,7 @@
 
 .rotating {
   margin-top: 6px;
-  font-size: 0.82rem;
+  font-size: var(--fs-ui);
   line-height: 1.5;
   color: var(--color-primary);
   text-align: center;
@@ -118,7 +118,7 @@
   padding: 9px 13px;
   border-radius: 10px;
   border: 1px dashed var(--color-border);
-  font-size: 0.76rem;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--color-muted);
   text-align: center;

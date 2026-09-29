@@ -68,7 +68,7 @@ export default function CompanyDetail({ refId }: { refId: string }) {
                   <Field k="Source" v={[p.load_label ?? p.source, p.source_code, p.load_as_of ? `as of ${formatDate(p.load_as_of)}` : null].filter(Boolean).join(' · ')} />
                   <Field k="Held since" v={formatDate(p.created_at)} />
                   {d.tags.length > 0 && <Field k="Tags" v={d.tags.map((t) => <span key={t.id} className={`${u.tag} ${u.tagDim}`} style={{ marginRight: 4 }}>{t.label}{t.inherited ? ' · from the load' : ''}</span>)} />}
-                  {p.description && <p style={{ margin: '10px 0 0', fontSize: 13.5, lineHeight: 1.6, color: 'var(--tx2)' }}>{p.description}</p>}
+                  {p.description && <p style={{ margin: '10px 0 0', fontSize: 'var(--fs-lg)', lineHeight: 1.6, color: 'var(--tx2)' }}>{p.description}</p>}
                 </section>
 
                 <section className={u.card}>
@@ -92,7 +92,7 @@ export default function CompanyDetail({ refId }: { refId: string }) {
                       {b.raw_evidence?.length ? (
                         <div style={{ marginTop: 10 }}>
                           <span className={u.cardMeta}>EVIDENCE · {b.raw_evidence.length}</span>
-                          {b.raw_evidence.map((e, i) => <div key={i} style={{ fontSize: 13, lineHeight: 1.5, padding: '4px 0 4px 10px', borderLeft: '2px solid var(--line2)', marginTop: 6 }}>{e.claim}<br /><a href={e.url} target="_blank" rel="noreferrer noopener" style={{ fontFamily: 'var(--mono)', fontSize: 11, wordBreak: 'break-all' }}>{e.url}</a></div>)}
+                          {b.raw_evidence.map((e, i) => <div key={i} style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.5, padding: '4px 0 4px 10px', borderLeft: '2px solid var(--line2)', marginTop: 6 }}>{e.claim}<br /><a href={e.url} target="_blank" rel="noreferrer noopener" style={{ fontFamily: 'var(--mono)', fontSize: 'var(--fs-sm)', wordBreak: 'break-all' }}>{e.url}</a></div>)}
                         </div>
                       ) : <div className={s.none} style={{ marginTop: 8 }}>No evidence the model could point at.</div>}
                       <div style={{ marginTop: 10 }}><Link href="/agents/gtm/audience?step=qualify" className={s.go}>Decide in Qualify →</Link></div>

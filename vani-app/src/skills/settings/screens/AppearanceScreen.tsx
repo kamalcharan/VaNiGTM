@@ -46,7 +46,7 @@ export default function AppearanceScreen() {
             <button
               key={m}
               type="button"
-              className={mode === m ? s.modeOn : s.mode}
+              className={mode === m ? `${s.mode} ${s.modeOn}` : s.mode}
               aria-pressed={mode === m}
               onClick={() => setMode(m)}
             >

@@ -141,7 +141,7 @@ export function JdImport({ family, title }: Props) {
                       <div className={s.weightBar}>
                         <div className={s.weightFill} style={{ width: `${m.value.weight}%` }} />
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--color-muted)', marginTop: 3 }}>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--color-muted)', marginTop: 3 }}>
                         {m.from.source} · {m.from.span}
                       </div>
                     </div>
@@ -161,7 +161,7 @@ export function JdImport({ family, title }: Props) {
                       <ConfMark c={k.from.confidence} />
                     </span>
                     <span className={s.knockRule}>{k.value.rule}</span>
-                    <span style={{ fontSize: 10, color: 'var(--color-muted)', marginLeft: 'auto' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--color-muted)', marginLeft: 'auto' }}>
                       {k.from.source}
                     </span>
                   </div>
@@ -174,7 +174,7 @@ export function JdImport({ family, title }: Props) {
                 Handover threshold: {extracted?.threshold_suggested !== undefined
                   ? `${extracted.threshold_suggested}%`
                   : <span className={s.jdEmpty}>—</span>}
-                {' '}<span style={{ fontSize: 11, color: 'var(--color-muted)' }}>(you set this — not in the file)</span>
+                {' '}<span style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-muted)' }}>(you set this — not in the file)</span>
               </div>
               <div className={s.jdLine}>
                 Comp band: {extracted?.band ? extracted.band.value : <span className={s.jdEmpty}>—</span>}
@@ -242,10 +242,10 @@ function DropZone({ onFile }: { onFile: (f: File) => void }) {
         transition: 'border-color .15s',
       }}
     >
-      <div style={{ fontSize: 15, marginBottom: 8, fontWeight: 500 }}>
+      <div style={{ fontSize: 'var(--fs-xl)', marginBottom: 8, fontWeight: 500 }}>
         Drop a JD here — docx or pdf
       </div>
-      <div style={{ fontSize: 12, color: 'var(--color-muted)', marginBottom: 14 }}>
+      <div style={{ fontSize: 'var(--fs-md)', color: 'var(--color-muted)', marginBottom: 14 }}>
         Vara reads it in one pass, and shows you what it found with evidence.
       </div>
       <label style={{
@@ -256,7 +256,7 @@ function DropZone({ onFile }: { onFile: (f: File) => void }) {
         background: 'var(--gold)',
         color: 'var(--color-primary-fg)',
         fontWeight: 600,
-        fontSize: 13,
+        fontSize: 'var(--fs-ui)',
       }}>
         Choose a file
         <input
@@ -273,7 +273,7 @@ function ProvLine({ value, prov }: { value: string; prov: { source: string; span
   return (
     <div>
       <div className={s.jdLine}>{value}</div>
-      <div style={{ fontSize: 10, color: 'var(--color-muted)', marginTop: 3 }}>
+      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--color-muted)', marginTop: 3 }}>
         {prov.source}{prov.span ? ` · ${prov.span}` : ''}
       </div>
     </div>
@@ -285,9 +285,9 @@ function ConfMark({ c }: { c: 'high' | 'medium' | 'low' }) {
   const label = c === 'high' ? '✓ high' : c === 'medium' ? '~ medium' : '⚠ low — review';
   return (
     <span style={{
-      fontSize: 9, marginLeft: 8, padding: '1px 6px',
+      fontSize: 'var(--fs-xs)', marginLeft: 8, padding: '1px 6px',
       borderRadius: 999, border: `1px solid ${color}`, color,
-      fontFamily: 'var(--font-mono)', letterSpacing: '.04em', textTransform: 'uppercase',
+      fontFamily: 'var(--font-label)', fontWeight: 'var(--fw-label)', letterSpacing: 'var(--ls-label)', textTransform: 'uppercase',
     }}>{label}</span>
   );
 }

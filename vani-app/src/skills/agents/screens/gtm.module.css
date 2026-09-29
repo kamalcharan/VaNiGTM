@@ -6,9 +6,9 @@
   border: 1px solid var(--glass-border); border-radius: 12px; background: var(--glass);
 }
 .scoreVal { font-family: var(--display); font-size: 30px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
-.scoreVal small { font-size: 14px; color: var(--tx3); font-weight: 500; margin-left: 2px; }
-.scoreLbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--tx3); margin-top: 6px; }
-.scoreNote { font-size: 12.5px; line-height: 1.55; color: var(--tx2); margin: 10px 0 0; }
+.scoreVal small { font-size: var(--fs-lg); color: var(--tx3); font-weight: 500; margin-left: 2px; }
+.scoreLbl { font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx3); margin-top: 6px; font-weight: var(--fw-label); }
+.scoreNote { font-size: var(--fs-ui); line-height: 1.55; color: var(--tx2); margin: 10px 0 0; }
 
 .grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1px;
@@ -17,11 +17,11 @@
 }
 .cell { background: var(--surf); padding: 13px 15px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .cellHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cellKey { font-family: var(--mono); font-size: 10px; letter-spacing: 0.11em; text-transform: uppercase; color: var(--tx3); }
-.cellVal { font-size: 13px; line-height: 1.5; color: var(--tx); }
+.cellKey { font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx3); font-weight: var(--fw-label); }
+.cellVal { font-size: var(--fs-ui); line-height: 1.5; color: var(--tx); }
 .cellMiss .cellVal { color: var(--warn); }
-.cellWhy { font-size: 11.5px; line-height: 1.45; color: var(--tx3); }
-.cellLink { font-size: 11.5px; color: var(--ac); text-decoration: none; }
+.cellWhy { font-size: var(--fs-md); line-height: 1.45; color: var(--tx3); }
+.cellLink { font-size: var(--fs-md); color: var(--ac); text-decoration: none; }
 .cellLink:hover { text-decoration: underline; }
 
 .lane {
@@ -29,18 +29,18 @@
   border-left: 2px solid var(--warn); border-radius: 0 var(--r) var(--r) 0;
   background: color-mix(in srgb, var(--warn) 10%, transparent);
 }
-.laneTag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--warn); }
-.lane p { margin: 8px 0 0; font-size: 14px; line-height: 1.6; }
+.laneTag { font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--warn); font-weight: var(--fw-label); }
+.lane p { margin: 8px 0 0; font-size: var(--fs-lg); line-height: 1.6; }
 .lane b { color: var(--tx); }
 .laneGo {
   display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
   padding: 8px 14px; border-radius: 8px; text-decoration: none;
-  border: 1px solid var(--warn); color: var(--tx); font-size: 13px;
+  border: 1px solid var(--warn); color: var(--tx); font-size: var(--fs-ui);
 }
 
 .two { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 22px; margin-top: 26px; align-items: start; }
 @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
-.secH { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tx3); margin-bottom: 4px; }
+.secH { font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx3); margin-bottom: 4px; font-weight: var(--fw-label); }
 .changes { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-.chg { display: grid; grid-template-columns: 84px 1fr; gap: 10px; font-size: 13px; line-height: 1.5; color: var(--tx2); }
-.chgAt { font-family: var(--mono); font-size: 10.5px; color: var(--tx3); padding-top: 2px; }
+.chg { display: grid; grid-template-columns: 84px 1fr; gap: 10px; font-size: var(--fs-ui); line-height: 1.5; color: var(--tx2); }
+.chgAt { font-family: var(--mono); font-size: var(--fs-sm); color: var(--tx3); padding-top: 2px; }

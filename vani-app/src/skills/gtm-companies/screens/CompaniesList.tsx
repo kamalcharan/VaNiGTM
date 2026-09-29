@@ -51,7 +51,7 @@ export default function CompaniesList() {
       </div>
       <div className={s.tools} role="group" aria-label="Research state" style={{ gap: 6, flexWrap: 'wrap' }}>
         {RESEARCH.map((r) => (
-          <button key={r.v || 'all'} type="button" className={`${u.tag} ${research === r.v ? u.tagOk : u.tagDim}`} aria-pressed={research === r.v} onClick={() => setResearch(r.v)} style={{ cursor: 'pointer', font: 'inherit', fontSize: 11 }}>{r.label}</button>
+          <button key={r.v || 'all'} type="button" className={`${u.tag} ${research === r.v ? u.tagOk : u.tagDim}`} aria-pressed={research === r.v} onClick={() => setResearch(r.v)} style={{ cursor: 'pointer', font: 'inherit', fontSize: 'var(--fs-sm)' }}>{r.label}</button>
         ))}
       </div>
 
@@ -83,7 +83,7 @@ export default function CompaniesList() {
         <div className={s.empty} style={{ marginTop: 14 }}>
           <span className={u.cardMeta}>WHERE COMPANIES COME FROM</span>
           <div className={s.emptyH}>Bring a list, or wait for the pool to be fed for your market</div>
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: 'var(--tx2)' }}>Step 1 of Build the audience takes a spreadsheet — mapped before anything lands, clashes held for your decision. Rows land here and on the hot list.</p>
+          <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.6, color: 'var(--tx2)' }}>Step 1 of Build the audience takes a spreadsheet — mapped before anything lands, clashes held for your decision. Rows land here and on the hot list.</p>
           <Link href="/agents/gtm/audience?step=bring" className={s.go}>Add your own list →</Link>
         </div>
       )}

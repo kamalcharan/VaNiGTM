@@ -183,7 +183,7 @@ export default function VaraLanding() {
       {/* ── Where you are: the journey, on the shared renderer (POA §2.4b) ── */}
       <div style={{ margin: '4px 0 26px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className={u.cardMeta} style={{ letterSpacing: '0.14em', textTransform: 'uppercase' }}>Where you are</div>
+          <div className={u.eyebrow} style={{ marginBottom: 0 }}>Where you are</div>
           <PreviewBadge what="the journey" />
         </div>
         <AgentJourney decl={VARA_WORKSPACE.journey!} />

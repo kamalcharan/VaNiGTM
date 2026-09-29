@@ -33,23 +33,47 @@
   --r: 10px;
   --space-lg: 24px;
 
+  /*
+   * The type scale — ONE for the whole product (Charan, 2026-09-29: "make it
+   * unified"). Seven steps; every screen's font-size is one of these, and a
+   * pixel value written next to them drifts away from them. Matched to the
+   * Edge reference: its tags are 9–10, eyebrows 10, micro 11, nav/buttons
+   * 13, body 16. Sizes above --fs-xl are headline sizes and stay per design.
+   */
+  --fs-xs: 10px;   /* eyebrows, tags, counter labels */
+  --fs-sm: 11px;   /* micro copy, meta lines */
+  --fs-md: 12px;   /* secondary copy, table meta */
+  --fs-ui: 13px;   /* nav, buttons, table cells, form help */
+  --fs-lg: 14px;   /* dense body copy */
+  --fs-xl: 15px;   /* lede, prominent copy */
+  --fs-body: 16px; /* body — see the body rule below */
+
+  /*
+   * Labels — uppercase, tracked. Edge sets them in the BODY face at 700 with
+   * 1.9px tracking; the console had them in JetBrains Mono at 400, which is
+   * why every eyebrow read thin. `--font-label` is emitted by tokens.ts as
+   * the theme's body face. Code and identifiers (run ids, scopes) stay mono.
+   */
+  --fw-label: 700;
+  --ls-label: 0.18em;
+
   /* Control metrics, verbatim from VaNiGTM's ThemeScript. */
   --input-height: 44px;
   --input-padding: 13px 16px;
   --input-radius: 8px;
-  --input-font-size: 0.9rem;
+  --input-font-size: var(--fs-lg);
   --input-border-width: 1px;
   --input-focus-ring-size: 3px;
   --input-focus-ring-opacity: 12%;
   --input-placeholder-opacity: 0.35;
-  --label-font-size: 0.65rem;
-  --label-font-weight: 500;
-  --label-letter-spacing: 0.12em;
+  --label-font-size: var(--fs-xs);
+  --label-font-weight: var(--fw-label);
+  --label-letter-spacing: var(--ls-label);
   --label-margin-bottom: 6px;
   --btn-height: 44px;
   --btn-padding: 14px;
   --btn-radius: 8px;
-  --btn-font-size: 0.85rem;
+  --btn-font-size: var(--fs-ui);
   --btn-font-weight: 700;
   --btn-letter-spacing: 0.08em;
   --form-group-gap: 16px;
@@ -84,7 +108,7 @@ body {
   background: var(--bg);
   color: var(--tx);
   font-family: var(--sans);
-  font-size: 16px;
+  font-size: var(--fs-body);
   font-weight: 400;
   line-height: 1.6;
   min-height: 100vh;

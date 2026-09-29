@@ -175,6 +175,8 @@ export function resolveTokens(theme: ThemeConfig, mode: ColorMode): Record<strin
     '--font-display': fonts.display,
     '--font-body': fonts.body,
     '--font-mono': fonts.mono,
+    // Uppercase labels wear the body face (Edge does; mono at 400 read thin).
+    '--font-label': fonts.body,
   };
 }
 

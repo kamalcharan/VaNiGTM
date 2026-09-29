@@ -53,7 +53,7 @@ export function FailoverQueue({ signal }: { signal: string }) {
         <ul className={s.rows}>
           {runs.map((r) => {
             const h = r.superseded ? null : hint(r.vps_error);
-            const btn = { cursor: 'pointer', font: 'inherit', fontSize: 12, padding: '6px 12px' } as const;
+            const btn = { cursor: 'pointer', font: 'inherit', fontSize: 'var(--fs-md)', padding: '6px 12px' } as const;
             return (
               <li key={r.run_id} className={s.srcRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8, opacity: r.superseded ? 0.75 : 1 }}>
                 <div className={s.row}>
@@ -64,9 +64,9 @@ export function FailoverQueue({ signal }: { signal: string }) {
                   </span>
                   <span className={s.rowDetail}>asked {formatDateTime(r.asked_at)}{r.failover_model ? ` · failover to ${r.failover_model}` : ''}</span>
                 </div>
-                {r.superseded && r.superseded_detail && <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--tx2)' }}>{r.superseded_detail}</div>}
-                {r.vps_error && <div className={s.srcBad} style={{ fontSize: 12.5, fontFamily: 'var(--mono)', wordBreak: 'break-word' }}>{r.vps_error}</div>}
-                {h && <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--tx2)' }}>{h}</div>}
+                {r.superseded && r.superseded_detail && <div style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.55, color: 'var(--tx2)' }}>{r.superseded_detail}</div>}
+                {r.vps_error && <div className={s.srcBad} style={{ fontSize: 'var(--fs-ui)', fontFamily: 'var(--mono)', wordBreak: 'break-word' }}>{r.vps_error}</div>}
+                {h && <div style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.55, color: 'var(--tx2)' }}>{h}</div>}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {r.superseded ? (
                     <>

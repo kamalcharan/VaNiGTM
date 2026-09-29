@@ -24,11 +24,11 @@
 .titleArea {}
 
 .eyebrow {
-  font-size: 0.65rem;
-  letter-spacing: 0.16em;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--color-muted);
-  font-weight: 600;
+  font-weight: var(--fw-label);
   margin: 0 0 6px;
 }
 
@@ -51,7 +51,7 @@
 .meta {
   display: flex;
   gap: 20px;
-  font-size: 0.75rem;
+  font-size: var(--fs-md);
   color: var(--color-muted);
   flex-wrap: wrap;
 }
@@ -61,7 +61,7 @@
   color: var(--color-fg);
   font-weight: 600;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: var(--fs-ui);
 }
 
 .actions {
