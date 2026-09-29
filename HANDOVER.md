@@ -7,9 +7,56 @@
 
 ---
 
-# ▶ RESTART HANDOVER — 2026-09-29 (read this first)
+# ▶ RESTART HANDOVER — 2026-09-29, evening (read this first)
 
-Charan closed the session with the order of work for the next one:
+**Edge is built. The next session is VARA** (Charan, closing the Edge
+session: "in new session we will focus on completing Vara"). Start at §2
+below: diff `documents/vara-journey-map.html` against what is built and
+write the open list into this file before coding.
+
+## 0. What the Edge session delivered (2026-09-29)
+
+All in `vikunawebsite/vani-app/src/skills/edge/`, MERGED to vikunawebsite
+`main` (cb7fb9d) and therefore live on Vercel. Working branch of both repos
+is `claude/sweet-meitner-t4qvxr`.
+
+- **The whole mission, chapters 1–12, and the failure mission's chapters
+  3–12**, ported from `docs/EDGE/vani-edge/` (the newer prototype, 27 tests —
+  NOT `vani-edge-source/`, which §1 below still names; the newer tree is the
+  reference). Own shell + "← Back to VaNi", URL per chapter
+  (`/agents/edge/<slug>`), menu entry `Edge · Automation` beside Vara and GTM,
+  dashboard journey card, entry from Smart Profile.
+- **Chapters 8–10 are COMPUTED, not fixtures**: `engine/` (pure TS, rulebook
+  0.1.0) reproduces the reference results 108/108 from the four sample CSV
+  registers (AP / PO / GRN / vendor), and runs on a tenant's own uploads
+  through the mapping dialog. `scripts/test-edge-engine.mjs` is the check.
+- Chapter 11 value calculator, the Automation Strategy HTML report (declared
+  map, engine network, pathway table, six findings, readiness rows), print,
+  dispatch card; failure verification + Failure Review report + action
+  register export.
+- Mission state is a single object in localStorage (`vani-edge-mission-v2`).
+  **No schema was created** — server persistence is a decision for Charan.
+
+**Theme rulings from the same day, product-wide:** Jade Thorn is re-pinned to
+the Edge palette and is the default theme, light; Edge's fonts (Inter,
+fetched) for the product; ONE type scale (`--fs-*`) and ONE label style
+(`--font-label`/`--fw-label`/`--ls-label`) in `globals.css` — no local
+resets, no `var(--font-*, fallback)`. The public landing at `/` keeps the
+ORIGINAL VaNi theme (orange on ink), pinned by attribute in
+`app/(site)/layout.tsx`. Login/signup are on the product theme; not decided.
+
+**Edge, not done (unscoped, none started):** slice 6 chrome re-check +
+`INTEGRATION.md` for the `edge.journey` preview read; xlsx parsing (CSV
+only today, and the data comes as xls); O2C engine (P2P only); chapter-6
+rule answers feeding the rulebook thresholds; dispatch (preview only, and
+gated on the consent model); one cosmetic overlap of two edge labels in the
+network drawing.
+
+**Seen, not mine, not fixed:** the Vara landing in mock mode shows "Could not
+load Vara's state" — `VaraLanding.tsx` fetches `API.vara.state` over REST,
+which only the live API answers. Same on `main`. Relevant to the Vara session.
+
+Charan's original order of work, from the morning of the same day:
 
 ```
 1. EDGE   build the UX layer for VaNi Edge — the reference is checked in at docs/EDGE/
