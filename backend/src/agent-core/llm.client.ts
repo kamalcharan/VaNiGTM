@@ -456,7 +456,7 @@ const HAIKU_DEFAULT = process.env.HAIKU_DEFAULT !== 'false';
  */
 const failoverAllowed = new Map<string, boolean>();
 
-async function mayFailOver(pool: Pool, runId: string | number): Promise<boolean> {
+export async function mayFailOver(pool: Pool, runId: string | number): Promise<boolean> {
   if (HAIKU_DEFAULT) return true;
   const key = String(runId);
   const cached = failoverAllowed.get(key);

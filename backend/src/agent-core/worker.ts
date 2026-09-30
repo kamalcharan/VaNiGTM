@@ -243,7 +243,9 @@ async function processEvent(
     return;
   }
 
-  const runId = await createRun(pool, event.tenant_id, event.event_type, event.id);
+  // The payload rides on the run so per-run permissions (allow_failover) and
+  // per-run claims can be read back without joining to the event.
+  const runId = await createRun(pool, event.tenant_id, event.event_type, event.id, event.payload ?? {});
 
   try {
     await setStatus(pool, runId, 'running');

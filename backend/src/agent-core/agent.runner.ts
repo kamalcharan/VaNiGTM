@@ -70,17 +70,27 @@ interface StatusExtras {
  * Insert a new gt_agent_runs row in 'queued' state.
  * Returns the new run id (BIGSERIAL → string).
  */
+/**
+ * `inputs` is the event payload the run was started for. It is stored on the
+ * run — not only on the event — because the run is what later code can see:
+ * `mayFailOver` reads `inputs.allow_failover`, and `resolve_failover` puts
+ * that flag on the RE-EMITTED EVENT's payload. Until 2026-09-30 nothing copied
+ * the payload across, so an approved failover parked again with the same
+ * question. Agents that stamp their own keys (domain-pack's `domain`) merge
+ * with `||`, so the payload and the stamp coexist.
+ */
 export async function createRun(
   pool: Pool,
   tenantId: string,
   agentName: string,
   eventId?: string,
+  inputs?: Record<string, unknown> | null,
 ): Promise<string> {
   const result = await pool.query<{ id: string }>(
-    `INSERT INTO gt_agent_runs (tenant_id, agent_name, event_id, status)
-     VALUES ($1, $2, $3, 'queued')
+    `INSERT INTO gt_agent_runs (tenant_id, agent_name, event_id, status, inputs)
+     VALUES ($1, $2, $3, 'queued', $4::jsonb)
      RETURNING id`,
-    [tenantId, agentName, eventId ?? null],
+    [tenantId, agentName, eventId ?? null, JSON.stringify(inputs ?? {})],
   );
   return String(result.rows[0].id);
 }
