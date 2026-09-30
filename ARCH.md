@@ -158,12 +158,31 @@ about this document changes when it does.
   claim to `pending` or fails it at the attempt cap. A resume after failure is
   a NEW event carrying `resume_run_id`; the agent's checkpoint decides what to
   skip.
-- **Concurrency against a model server** is a lane, not a hope: one platform
-  call at a time by default, per endpoint. [deviation → the lane is in-process;
-  Track C5 moves the slot to Postgres advisory locks so two workers and the API
-  share it.]
+- **Concurrency against a model server** is a lane, not a hope:
+  `LLM_MAX_CONCURRENT` platform calls in flight per endpoint, held as Postgres
+  advisory locks so the API and every worker share the limit (C5, 2026-09-30).
 - **Agent-level claims** (one research run per domain at a time) are taken
   inside the same transaction that stamps the claim on the run.
+- **One job engine, agents supply only the work** (Charan's question,
+  2026-09-30: a common "jobs to be done" engine or each agent on its own?).
+  Queue, claim, heartbeat, reclaim, resume, parking for a human and the model
+  lane are shared; an agent decides only what a job does. No separate "jobs
+  brain" and no DAG runner — pathway steps (D5) are definitions the queue
+  follows.
+
+### 6a. Queue gaps — FOR LATER REVIEW (recorded 2026-09-30, not scheduled)
+
+What the engine does not do yet. None blocks anything built today; all four
+are needed before the first send path (D9 build step 5), and they belong in
+the shared engine, once — never re-solved inside an agent. Each needs columns
+on `gt_events`, so each is a schema decision.
+
+| Gap | Today | Why it matters |
+|---|---|---|
+| Automatic retry of a failed job | Only a worker CRASH is retried (reclaim, up to `WORKER_MAX_ATTEMPTS`). A handler that throws marks the run and event `failed`; a person retries | A provider down for a minute should not need a human |
+| Back-off before a retry | None — a reclaimed job is claimable on the next poll | Retrying straight into an outage fails every attempt at once |
+| Run at a time ("9am Tuesday") | Every event runs as soon as it is claimed | Follow-up timing and cadence windows need `run_at` |
+| At-most-once side effects | Not guaranteed: a retry re-runs the handler from the start or its last checkpoint | A retried send must never send twice — needs a per-effect idempotency key checked before the provider call |
 
 ## 7. The Brain is one thing, read by all
 

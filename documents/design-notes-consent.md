@@ -1,7 +1,7 @@
 # D9 — Consent and suppression: design for approval · 2026-09-30
 
-> **Status: PROPOSED — partly decided (Charan, 2026-09-30, see §6).
-> Nothing here is built, and no migration is written.**
+> **Status: DECIDED (Charan, 2026-09-30, §6a). Migration 260 written, awaiting approval to apply.
+> Nothing reads these tables yet; the gate (comms/may-contact.ts) is the next build step.**
 > Schema changes need Charan's approval (CLAUDE.md, repo rule). §6 lists the
 > decisions; each has a recommended answer. Once they are answered, the build
 > is §7.
@@ -188,9 +188,13 @@ How rows get written:
 | D9-a | **As recommended**: bounce, complaint and erasure are platform-wide; unsubscribe, manual and consent-withdrawn are one tenant only | — |
 | D9-b | **Yes — keyed hash** (`SUPPRESSION_HASH_KEY` in .env, no default, backed up with the other secrets, never rotated casually) | — |
 | D9-c | **Product-level tenant id = `vani_tenant.id`** | — |
-| D9-d | **Yes — lifted by an admin or by the person themselves** | A `lift` row records who (`actor_type`, `actor_id`) and why. **Open point:** an admin undoing a person's own unsubscribe, complaint or consent withdrawal is what consent rules exist to stop; recommended split: an admin may lift `manual` and `bounced`; `unsubscribed`, `complained` and `consent_withdrawn` are lifted only by the person opting in again. Awaiting confirmation |
+| D9-d | **Yes, split (confirmed):** an admin may lift `manual` and `bounced` (`admin_lift`); `unsubscribed`, `complained` and `consent_withdrawn` are lifted only by the person opting in again (`reconsented`, actor `subject`); erasure never. Enforced in the gate's lift function | A `lift` row records who (`actor_type`, `actor_id`) and why |
 | D9-e | **Configurable per tenant.** When the Smart Profile is built, the tenant is shown what the DPDP Act means for outreach and ticks "I agree"; that switches GTM sending on. Settings can switch it off again | §6b |
-| D9-f | Not answered yet | — |
+| D9-f | **Yes — `vani_consent_text`**, which also holds the platform's DPDP notice (tenant_id NULL) | — |
+| Domain block (§6c) | **Yes** | `identifier_kind = 'domain'` |
+| **Agent-wise blocking** (new) | **Yes** — "an id might block marketing but keep a job application open" | `agent_code` on suppression (NULL = every agent). Agents are codes, not a FK: `vani_agent` holds only `vara`, and adding `gtm` there would change the console's agent list |
+
+**Migration 260 is written and tested locally, NOT applied** (`backend/migrations/260_vani_consent_suppression.sql`): all 155 migrations apply on a fresh database; re-running 260 is harmless; as a non-superuser role, two tenants see only their own rows plus platform rows, a tenant cannot write another tenant's row or any platform row, the platform writer refuses tenant-only reasons, and UPDATE/DELETE are refused (no grant, and the append-only trigger stops even the owner).
 
 ## 6c. Suppression is per PERSON, not per company (Charan's question, 2026-09-30)
 
