@@ -11,7 +11,7 @@
  * that makes the score meaningless.
  */
 
-import type { Pool } from 'pg';
+import type { PoolClient } from 'pg';
 
 export interface VaraOffer {
   id: string;
@@ -24,10 +24,12 @@ export interface VaraOffer {
   band: string | null;
 }
 
-export async function varaOffers(pool: Pool, vaniTenantId: string): Promise<VaraOffer[]> {
+export async function varaOffers(db: PoolClient, vaniTenantId: string): Promise<VaraOffer[]> {
+  // `db` is a tenant-scoped client (withTenantClient): vara_jd has RLS, and a
+  // raw pool connection reads zero rows under vanigtm_app.
   // LEFT JOIN so a JD whose version row is somehow missing still lists with
   // nulls rather than vanishing from the widget without explanation.
-  const r = await pool.query(
+  const r = await db.query(
     `SELECT jd.id, jd.title,
             ver.facts ->> 'one_liner'       AS one_liner,
             ver.facts ->> 'description'     AS description,

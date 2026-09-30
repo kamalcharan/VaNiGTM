@@ -46,6 +46,17 @@ sections only for history.
   answered 500 instead of 401). Rides the next deploy.
 - **Phase 4 gate: still to run** — it is now purely console + a real page.
 
+## RLS runtime switch — decided 2026-09-30, code ready, NOT switched
+
+Charan: "we should use vanigtm_app — and then based on user-login RLS".
+Production still runs as `vikuna_admin` (SUPERUSER + BYPASSRLS). Run as
+`vanigtm_app` locally, seven spine paths broke (Domain step, Install screen,
+`/tenant/embed`, public boot, intents, offers, domain-claim error) — all fixed
+in code, verified under BOTH roles by `backend/scripts/rls-runtime-probe/`
+(25/25). **Migration 259 is written and PENDING APPROVAL** — without it no new
+tenant can finish the Domain step under `vanigtm_app`. Procedure, preflight
+and the 12-item test list: `DEPLOY.md` §4b. Evidence: `docs/db/rls-status.md` §14.
+
 ## Next session, in order
 
 1. **Phase 4 gate** (POA B1, the one open item of Track B): with the API

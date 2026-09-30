@@ -31,11 +31,17 @@ const isDev = process.env.NODE_ENV !== 'production';
 /* ── Pool (standalone — not shared with server) ─────── */
 
 function createMigrationPool(): Pool {
-  const connectionString = process.env.DB_PRIMARY;
+  // DB_MIGRATE, when set, is the OWNER's connection (vikuna_admin). Migrations
+  // are DDL and the runtime role (vanigtm_app) deliberately has none, so once
+  // DB_PRIMARY points at the app role the runner must not use it. Unset, the
+  // runner uses DB_PRIMARY as it always has.
+  const connectionString = process.env.DB_MIGRATE || process.env.DB_PRIMARY;
   if (!connectionString) {
-    console.error('[Migrate] DB_PRIMARY environment variable is required.');
+    console.error('[Migrate] DB_MIGRATE or DB_PRIMARY environment variable is required.');
     process.exit(1);
   }
+  const who = (() => { try { return new URL(connectionString).username || '?'; } catch { return '?'; } })();
+  console.log(`[Migrate] connecting as ${who}${process.env.DB_MIGRATE ? ' (DB_MIGRATE)' : ' (DB_PRIMARY)'}`);
 
   const useSSL = process.env.DB_PRIMARY_SSL === 'true';
 

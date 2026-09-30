@@ -34,12 +34,13 @@
 
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import jwt from 'jsonwebtoken';
 import { extractJwt } from '../auth/auth.routes';
 import { varaOffers } from '../vara/offers';
 import { EmbedError } from './embed';
 import { IntentRouterError, liveVisitorIntents, resolveIntent } from './intent';
+import { withTenantClient } from '../db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
@@ -80,13 +81,24 @@ interface EmbedSessionClaims {
  * An agent with nothing to offer a visitor is a FIRST-CLASS case — Nova's two
  * pathways are things it does FOR the tenant, so it may never appear here.
  */
-const OFFER_PROVIDERS: Record<string, (pool: Pool, vaniTenantId: string) => Promise<unknown[]>> = {
+const OFFER_PROVIDERS: Record<string, (db: PoolClient, vaniTenantId: string) => Promise<unknown[]>> = {
   vara: varaOffers,
 };
 
-/** The vn_ → vani_ slug bridge (reads only, no provisioning). */
-async function vaniTenantFor(pool: Pool, vnTenantId: string): Promise<{ id: string; name: string } | null> {
-  const r = await pool.query(
+/**
+ * The vn_ → vani_ slug bridge (reads only, no provisioning).
+ *
+ * ── Every query in this file runs on a tenant-scoped client ──────────────
+ * The vani_ tables it reads have RLS, and under vanigtm_app a raw pool
+ * connection carries no tenant GUC and sees nothing: /tenant/embed answered
+ * TENANT_NOT_PROVISIONED for a provisioned tenant, and boot refused every
+ * allowlisted site (found by running as that role, 2026-09-30). The workspace
+ * route scopes to the JWT's vn_tenants id; the public routes scope to the
+ * embed token's vani_tenant id, which vani_current_tenant() resolves to
+ * itself. The explicit WHERE tenant_id stays on every query as well.
+ */
+async function vaniTenantFor(db: PoolClient, vnTenantId: string): Promise<{ id: string; name: string } | null> {
+  const r = await db.query(
     `SELECT vt.id, vt.name FROM vani_tenant vt
        JOIN vn_tenants t ON t.slug = vt.slug
       WHERE t.id = $1`,
@@ -113,40 +125,44 @@ export function createEmbedRouter(pool: Pool): Router {
         res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
         return;
       }
-      const vani = await vaniTenantFor(pool, auth.tenant_id);
-      if (!vani) {
+      const found = await withTenantClient(pool, auth.tenant_id, async (db) => {
+        const vani = await vaniTenantFor(db, auth.tenant_id);
+        if (!vani) return null;
+
+        const agents = await db.query(
+          `SELECT a.code, a.name, ta.status
+             FROM vani_tenant_agent ta
+             JOIN vani_agent a ON a.id = ta.agent_id
+            WHERE ta.tenant_id = $1
+            ORDER BY a.name`,
+          [vani.id],
+        );
+
+        // Every declared domain, whatever its purpose. `purpose` stopped being a
+        // gate on 2026-08-26 — the origin allowlist is the control.
+        const domains = await db.query(
+          `SELECT id, domain, embed_origins, boot_pings
+             FROM vani_tenant_domain
+            WHERE tenant_id = $1
+            ORDER BY created_at`,
+          [vani.id],
+        );
+        return { vani, agents: agents.rows, domains: domains.rows };
+      });
+      if (!found) {
         res.status(409).json({
           error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
         });
         return;
       }
 
-      const claims: EmbedTokenClaims = { tid: vani.id, scope: 'vani-embed' };
+      const claims: EmbedTokenClaims = { tid: found.vani.id, scope: 'vani-embed' };
       const token = jwt.sign(claims, JWT_SECRET, { expiresIn: EMBED_TOKEN_TTL });
-
-      const agents = await pool.query(
-        `SELECT a.code, a.name, ta.status
-           FROM vani_tenant_agent ta
-           JOIN vani_agent a ON a.id = ta.agent_id
-          WHERE ta.tenant_id = $1
-          ORDER BY a.name`,
-        [vani.id],
-      );
-
-      // Every declared domain, whatever its purpose. `purpose` stopped being a
-      // gate on 2026-08-26 — the origin allowlist is the control.
-      const domains = await pool.query(
-        `SELECT id, domain, embed_origins, boot_pings
-           FROM vani_tenant_domain
-          WHERE tenant_id = $1
-          ORDER BY created_at`,
-        [vani.id],
-      );
 
       res.json({
         token,
-        agents: agents.rows,
-        domains: domains.rows,
+        agents: found.agents,
+        domains: found.domains,
         // The console substitutes its own origin for CONSOLE_ORIGIN at render
         // time — the API does not know where the widget assets are served from.
         snippet:
@@ -179,69 +195,79 @@ export function createEmbedRouter(pool: Pool): Router {
         return;
       }
 
-      // The allowlist check — every boot, so removing an origin takes effect
-      // immediately. Exact string match on scheme+host(+port), as stored.
-      const allowed = await pool.query(
-        `SELECT 1 FROM vani_tenant_domain
-          WHERE tenant_id = $1 AND $2 = ANY(embed_origins)`,
-        [claims.tid, parent_origin],
-      );
-      if (!allowed.rows.length) {
-        res.status(403).json({
-          error: { code: 'EMBED_ORIGIN_NOT_ALLOWED', message: 'This site is not allowlisted for the workspace' },
-        });
+      // One tenant-scoped transaction for the whole boot, keyed on the embed
+      // token's vani_tenant id (see the note above vaniTenantFor).
+      type Refusal = { status: number; code: string; message: string };
+      const outcome = await withTenantClient(pool, claims.tid, async (db): Promise<
+        { refusal: Refusal } | { tenantName: string; agents: unknown[] }
+      > => {
+        // The allowlist check — every boot, so removing an origin takes effect
+        // immediately. Exact string match on scheme+host(+port), as stored.
+        const allowed = await db.query(
+          `SELECT 1 FROM vani_tenant_domain
+            WHERE tenant_id = $1 AND $2 = ANY(embed_origins)`,
+          [claims.tid, parent_origin],
+        );
+        if (!allowed.rows.length) {
+          return { refusal: { status: 403, code: 'EMBED_ORIGIN_NOT_ALLOWED', message: 'This site is not allowlisted for the workspace' } };
+        }
+
+        const live = await db.query(
+          `SELECT a.code, a.name
+             FROM vani_tenant_agent ta
+             JOIN vani_agent a ON a.id = ta.agent_id
+            WHERE ta.tenant_id = $1 AND ta.status = 'live'
+            ORDER BY a.name`,
+          [claims.tid],
+        );
+        if (!live.rows.length) {
+          return { refusal: { status: 403, code: 'NO_AGENT_LIVE', message: 'No agent is live for this workspace yet' } };
+        }
+
+        // Site-alive telemetry, written only once both gates have passed so the
+        // map records boots that actually succeeded. One merging UPDATE: `||`
+        // replaces the value at an existing key, so the map stays bounded by
+        // origin count no matter how much traffic the page gets.
+        await db.query(
+          `UPDATE vani_tenant_domain
+              SET boot_pings = boot_pings || jsonb_build_object($2::text, now())
+            WHERE tenant_id = $1 AND $2 = ANY(embed_origins)`,
+          [claims.tid, parent_origin],
+        );
+
+        const tenant = await db.query(`SELECT name FROM vani_tenant WHERE id = $1`, [claims.tid]);
+
+        // Tier 1 of routing: what each live agent can be ASKED for, rendered as
+        // chips. A click IS the routing — no embedding, no model call, and it
+        // works before the backfill has ever run, because a click needs no
+        // vector. Free text (tier 2) is POST /embed/intent below, and most
+        // visitors will never reach it.
+        const intents = await liveVisitorIntents(db, claims.tid);
+
+        // Each live agent contributes its own offers. An agent with no provider
+        // registered contributes an empty list rather than breaking the boot —
+        // that is the Nova case, not an error. The same is true of intents: an
+        // agent whose work is done FOR the tenant declares none and boots fine.
+        // Sequential: one client, one transaction.
+        const agents: unknown[] = [];
+        for (const a of live.rows as { code: string; name: string }[]) {
+          agents.push({
+            code: a.code,
+            name: a.name,
+            offers: OFFER_PROVIDERS[a.code] ? await OFFER_PROVIDERS[a.code](db, claims.tid) : [],
+            intents: intents
+              .filter((i) => i.agent_code === a.code)
+              .map(({ id, code, label, description }) => ({ id, code, label, description })),
+          });
+        }
+        return { tenantName: tenant.rows[0]?.name ?? 'This workspace', agents };
+      });
+
+      if ('refusal' in outcome) {
+        const { status, code, message } = outcome.refusal;
+        res.status(status).json({ error: { code, message } });
         return;
       }
-
-      const live = await pool.query(
-        `SELECT a.code, a.name
-           FROM vani_tenant_agent ta
-           JOIN vani_agent a ON a.id = ta.agent_id
-          WHERE ta.tenant_id = $1 AND ta.status = 'live'
-          ORDER BY a.name`,
-        [claims.tid],
-      );
-      if (!live.rows.length) {
-        res.status(403).json({
-          error: { code: 'NO_AGENT_LIVE', message: 'No agent is live for this workspace yet' },
-        });
-        return;
-      }
-
-      // Site-alive telemetry, written only once both gates have passed so the
-      // map records boots that actually succeeded. One merging UPDATE: `||`
-      // replaces the value at an existing key, so the map stays bounded by
-      // origin count no matter how much traffic the page gets.
-      await pool.query(
-        `UPDATE vani_tenant_domain
-            SET boot_pings = boot_pings || jsonb_build_object($2::text, now())
-          WHERE tenant_id = $1 AND $2 = ANY(embed_origins)`,
-        [claims.tid, parent_origin],
-      );
-
-      const tenant = await pool.query(`SELECT name FROM vani_tenant WHERE id = $1`, [claims.tid]);
-
-      // Tier 1 of routing: what each live agent can be ASKED for, rendered as
-      // chips. A click IS the routing — no embedding, no model call, and it
-      // works before the backfill has ever run, because a click needs no
-      // vector. Free text (tier 2) is POST /embed/intent below, and most
-      // visitors will never reach it.
-      const intents = await liveVisitorIntents(pool, claims.tid);
-
-      // Each live agent contributes its own offers. An agent with no provider
-      // registered contributes an empty list rather than breaking the boot —
-      // that is the Nova case, not an error. The same is true of intents: an
-      // agent whose work is done FOR the tenant declares none and boots fine.
-      const agents = await Promise.all(
-        live.rows.map(async (a: any) => ({
-          code: a.code,
-          name: a.name,
-          offers: OFFER_PROVIDERS[a.code] ? await OFFER_PROVIDERS[a.code](pool, claims.tid) : [],
-          intents: intents
-            .filter((i) => i.agent_code === a.code)
-            .map(({ id, code, label, description }) => ({ id, code, label, description })),
-        })),
-      );
 
       const sessionClaims: EmbedSessionClaims = {
         tid: claims.tid,
@@ -252,8 +278,8 @@ export function createEmbedRouter(pool: Pool): Router {
       const session = jwt.sign(sessionClaims, JWT_SECRET, { expiresIn: EMBED_SESSION_TTL });
 
       res.json({
-        tenant: { name: tenant.rows[0]?.name ?? 'This workspace' },
-        agents,
+        tenant: { name: outcome.tenantName },
+        agents: outcome.agents,
         session,
       });
     } catch (err: any) {

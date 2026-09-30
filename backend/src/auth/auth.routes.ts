@@ -21,6 +21,7 @@ import { register, validateRegisterInput, type RegisterInput } from './auth.serv
 import { login as loginService, type LoginInput } from './login.service';
 import { verifyAccessToken, refreshSession, parseDeviceInfo, type JwtPayload } from './token.service';
 import { emitEvent } from '../agent-core/event.store';
+import { withTenantClient } from '../db';
 
 /* ── Refresh-cookie helpers ─────────────────────────── */
 
@@ -1130,7 +1131,10 @@ export function createTenantRouter(pool: Pool): Router {
       // it edits the allowlist (PATCH below, addressed by id) and shows, per
       // origin, whether the widget has actually booted from it. Declared and
       // observed are different facts and the screen shows both.
-      const result = await pool.query(
+      // Tenant-scoped client: vani_tenant and vani_tenant_domain have RLS, and a
+      // raw pool connection reads zero rows under vanigtm_app — the Install
+      // screen showed no domains for a tenant that had one (2026-09-30).
+      const result = await withTenantClient(pool, jwt.tenant_id, (db) => db.query(
         `SELECT d.id, d.domain, d.purpose, d.verified_at, d.created_at,
                 d.embed_origins, d.boot_pings
            FROM vani_tenant_domain d
@@ -1139,7 +1143,7 @@ export function createTenantRouter(pool: Pool): Router {
           WHERE t.id = $1
           ORDER BY d.created_at`,
         [jwt.tenant_id],
-      );
+      ));
 
       res.json({ domains: result.rows });
     } catch (err: any) {
@@ -1265,6 +1269,9 @@ export function createTenantRouter(pool: Pool): Router {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
+        // After BEGIN (is_local). The read, the UPDATE and the vani_audit_log
+        // insert below are all RLS tables.
+        await client.query('SELECT set_tenant_context($1)', [jwt.tenant_id]);
 
         const current = await client.query(
           `SELECT d.id, d.domain, d.embed_origins

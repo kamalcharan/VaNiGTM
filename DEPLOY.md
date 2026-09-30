@@ -143,6 +143,10 @@ docker exec vani-backend node dist/migrate.js --status   # read-only
 docker exec vani-backend node dist/migrate.js            # apply pending
 ```
 
+The runner connects with `DB_MIGRATE` when it is set, else `DB_PRIMARY`, and
+prints which (`[Migrate] connecting as …`). Once the runtime is `vanigtm_app`
+(§4b), `DB_MIGRATE` must hold the owner's URL — the app role cannot run DDL.
+
 - Run `--status` first; apply only what you expect to see pending. Anything
   unexpected → stop and paste the output.
 - **Never apply from a Windows checkout and never by pasting SQL into
@@ -153,7 +157,9 @@ docker exec vani-backend node dist/migrate.js            # apply pending
   CLAUDE.md → Migrations has the detail.
 - A migration is applied when `--status` says so, not when the commit that
   added it is deployed.
-- Highest = **258**, next = **259**. Two files share 249; never reuse a number.
+- Highest in the repo = **259** (written 2026-09-30, **pending approval**, not on
+  production); production's highest applied = 258. Next new file = **260**.
+  Two files share 249; never reuse a number.
 - Schema changes need Charan's approval before the file is written.
 
 Read-only DB checks from the container (same connection the API uses):
@@ -168,6 +174,102 @@ const c = new Client({ connectionString: process.env.DB_PRIMARY,
   console.log(r.rows); await c.end(); })();
 EOF
 ```
+
+## 4b. Switching the runtime role to `vanigtm_app` (decided 2026-09-30)
+
+Today the API and worker connect as `vikuna_admin` — SUPERUSER + BYPASSRLS —
+so every RLS policy is skipped and tenant isolation is only the
+`WHERE tenant_id = …` in the code. The switch makes the database enforce it.
+**Decided by Charan on 2026-09-30.** Evidence and the blockers found on the way:
+`docs/db/rls-status.md` §14.
+
+Order matters — each step is safe on its own and nothing changes behaviour
+until step 5:
+
+```bash
+cd /opt/vikuna/src/vanigtm
+
+# 1. Deploy the code that makes the switch possible (works under BOTH roles —
+#    verified by running the same probe as each).
+git pull origin main && bash deploy/vani-main-vps/deploy-vani.sh
+
+# 2. Migration 259 (vani_tenant self-provision policy) — needs Charan's yes.
+#    Still running as vikuna_admin here, so the plain command is right:
+docker exec vani-backend node dist/migrate.js --status   # expect 259 pending, nothing else
+docker exec vani-backend node dist/migrate.js
+
+# 3. Grants — idempotent; covers tables added since it last ran.
+#    Runs as vikuna_admin through psql. The Postgres container name: confirm with
+#    docker ps --format '{{.Names}}' | grep -i postgres
+PG=<postgres-container>
+docker exec -i $PG psql -U vikuna_admin -d vani_gtm_db < scripts/grant-vanigtm-app.sql
+
+# 4. Preflight — READ-ONLY. Every row must say OK.
+docker exec -i $PG psql -U vikuna_admin -d vani_gtm_db < deploy/vani-main-vps/vanigtm-app-preflight.sql
+```
+
+5. **The switch** — in the compose `.env` (compose dir, §2):
+   - `DB_PRIMARY` → the same URL with `vanigtm_app` and its password. If nobody
+     has the password, set one as admin: `ALTER ROLE vanigtm_app PASSWORD '…';`
+     — typed into psql, never pasted into a chat or committed.
+   - `DB_MIGRATE` → the current `vikuna_admin` URL (the runner prefers it, so
+     migrations keep running as the owner).
+   - Recreate: `bash deploy/vani-main-vps/deploy-vani.sh` (or `up -d
+     --force-recreate vani-backend vani-worker` from the compose dir).
+
+6. **Prove the role changed** — the API must now be `vanigtm_app`:
+
+```bash
+docker exec -i vani-backend node - <<'EOF'
+const { Client } = require('pg');
+const c = new Client({ connectionString: process.env.DB_PRIMARY,
+  ssl: process.env.DB_PRIMARY_SSL === 'true' ? { rejectUnauthorized: false } : undefined });
+(async () => { await c.connect();
+  console.log((await c.query(`SELECT current_user, r.rolsuper, r.rolbypassrls
+    FROM pg_roles r WHERE r.rolname = current_user`)).rows); await c.end(); })();
+EOF
+# expect [ { current_user: 'vanigtm_app', rolsuper: false, rolbypassrls: false } ]
+docker exec vani-backend node dist/migrate.js --status | head -3
+# expect "[Migrate] connecting as vikuna_admin (DB_MIGRATE)"
+docker logs --tail 50 vani-backend 2>&1 | grep -iE "permission denied|row-level security"   # expect nothing
+```
+
+### What to test after the switch, in the console
+
+Log in as a real tenant and walk these. Each one is a path that reads or
+writes an RLS table; the ones marked ★ were broken before today's fixes and
+are the reason for this list.
+
+| # | Do this | Expect | If it fails it looks like |
+|---|---|---|---|
+| 1 | Log in, log out, log in again; refresh the page after 15 min | Session holds | Bounced to login |
+| 2 | Dashboard, Smart Profile, Knowledge, Knowledge Graph | Same data as before the switch | Empty screens where there was data — the loudest sign of a missed path |
+| 3 | ★ Vara → Install screen | Your domain(s), origins, snippet | "No domains" / "Complete the Domain step first" |
+| 4 | ★ Add, then remove, an origin on Install | Saved; list updates | 500 or unchanged list |
+| 5 | ★ Load a page with the snippet (Phase 4 gate) | Widget boots; boot time appears on Install | "Not available on this site" on an allowlisted page |
+| 6 | Vara: publish or edit a JD, open JD Studio, Prompts | Works as before | "Could not publish this JD" |
+| 7 | Runs, Events, Awaiting (`/runs…`) | Your runs, none of anyone else's | Empty |
+| 8 | Settings → Model: open, test, save the provider | Saves; key hint shown | Save "succeeds" but nothing is stored |
+| 9 | Teach VaNi: submit a URL or a paragraph | Run appears, finishes, entries show in Knowledge | Run completes with 0 entries |
+| 10 | Imports: upload a small CSV, map, stage | Staged rows appear | 500 on upload / empty session |
+| 11 | ★ Sign up a brand-new test tenant, do the Domain step | Completes; Install shows the domain | "Failed to update onboarding step" (= 259 not applied) |
+| 12 | Two tenants, two browsers: compare Runs, Contacts, Knowledge | Each sees only its own | Anything shared |
+
+Watch while testing: `docker logs -f vani-backend 2>&1 | grep -iE "error|denied|security"`.
+
+### Roll back
+
+Put `DB_PRIMARY` back to the `vikuna_admin` URL, remove `DB_MIGRATE`, recreate.
+Nothing in steps 1–4 needs undoing: the code runs under both roles, and 259
+and the grants are inert under a role that bypasses RLS.
+
+### Still running as the owner, on purpose
+
+Operator CLIs read across tenants and are not the runtime: `npm run packs`,
+`cohort`, `research`, `seed`, `intents:embed`. Inside the container they take
+`DB_PRIMARY`, so after the switch run them with the owner's URL:
+`docker exec -e DB_PRIMARY="$DB_MIGRATE" vani-backend …` (or from the VPS
+checkout with the admin URL in the environment).
 
 ## 5. nginx (api.vikuna.io)
 
@@ -212,7 +314,7 @@ Restore on failure: copy the `.bak-…` file back and reload.
 | Docker network | shared, external — name in the compose `.env` as `NETWORK_NAME` *(confirm: `docker inspect vani-backend --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}'`)* |
 | API port | 3001 in the container; public only through nginx |
 | Database | `vani_gtm_db` |
-| Runtime DB role | `vikuna_admin` as read on 2026-09-30 — which is SUPERUSER + BYPASSRLS. CLAUDE.md says the cutover pointed `DB_PRIMARY` at `vanigtm_app`; the box says otherwise. **Open question for Charan** — see `docs/db/rls-status.md` |
+| Runtime DB role | `vikuna_admin` as read on 2026-09-30 (SUPERUSER + BYPASSRLS — RLS is not enforced). **Switching to `vanigtm_app` was decided 2026-09-30** — §4b is the procedure. Update this row when it is done |
 | Console | `vani.vikuna.io` (Vercel, vikunawebsite repo, root `vani-app/`); env `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` |
 | Website | `www.vikuna.io` (Vercel, vikunawebsite repo, root `/`) |
 | Other vhosts on the same nginx | `dristiq.com`, `mcp-db.dristiq.com` (the read-only DB MCP) — not ours to change from here |
@@ -224,7 +326,7 @@ touches most:
 
 | Group | Variables |
 |---|---|
-| Core | `DB_PRIMARY`, `DB_PRIMARY_SSL`, `JWT_SECRET`, `PORT`, `NODE_ENV` |
+| Core | `DB_PRIMARY` (runtime role), `DB_MIGRATE` (owner, migrations only — §4b), `DB_PRIMARY_SSL`, `JWT_SECRET`, `PORT`, `NODE_ENV` |
 | Secrets | `TENANT_SECRET_KEY` (+ `_PREVIOUS` during rotation) — no default, BYOK refuses to save without it |
 | LLM | `LLM_PRIMARY_URL`, `LLM_PRIMARY_MODEL`, `LLM_PRIMARY_KEY`, `LLM_CONTEXT_TOKENS`, `LLM_MAX_CONCURRENT`, `LLM_PRIMARY_TIMEOUT_MS`, `ANTHROPIC_API_KEY`, `LLM_FAILOVER_MODEL`, `HAIKU_DEFAULT` |
 | Worker | `WORKER_POLL_MS`, `WORKER_BATCH_SIZE`, `WORKER_STALE_CLAIM`, `WORKER_MAX_ATTEMPTS`, `WORKER_HEARTBEAT_MS` |

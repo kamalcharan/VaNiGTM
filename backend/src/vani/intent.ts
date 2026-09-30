@@ -40,6 +40,7 @@
 
 import type { Pool, PoolClient } from 'pg';
 import { embedText, toVectorLiteral } from './embed';
+import { withTenantClient } from '../db';
 
 /** Confident enough to act without asking. */
 const HIGH = parseFloat(process.env.VANI_INTENT_HIGH ?? '0.72');
@@ -122,8 +123,11 @@ export function redactQuery(raw: string): string {
  * Used for the catch-all list (which needs no embedding — a chip is a click)
  * and, when embedded, as the router's candidate set.
  */
-export async function liveVisitorIntents(pool: Pool, tenantId: string): Promise<IntentOption[]> {
-  const r = await pool.query(
+export async function liveVisitorIntents(db: PoolClient, tenantId: string): Promise<IntentOption[]> {
+  // A TENANT-SCOPED client (withTenantClient), never the raw pool:
+  // vani_tenant_agent has RLS, and under vanigtm_app a pool connection carries
+  // no tenant GUC and reads zero rows — every widget would boot with no agent.
+  const r = await db.query(
     `SELECT i.id, a.code AS agent_code, i.code, i.label, i.description
        FROM vani_tenant_agent ta
        JOIN vani_agent a        ON a.id = ta.agent_id
@@ -154,7 +158,22 @@ export async function resolveIntent(args: ResolveArgs): Promise<IntentResolution
     throw new IntentRouterError('EMPTY_QUERY', 'resolveIntent called with empty text');
   }
 
-  const all = await liveVisitorIntents(pool, tenantId);
+  // tenantId is a vani_tenant id; vani_current_tenant() resolves it to itself.
+  const { all, embeddedCount } = await withTenantClient(pool, tenantId, async (db) => {
+    const all = await liveVisitorIntents(db, tenantId);
+    if (!all.length) return { all, embeddedCount: '0' };
+    const embedded = await db.query<{ n: string }>(
+      `SELECT count(*)::text AS n
+         FROM vani_tenant_agent ta
+         JOIN vani_agent a        ON a.id = ta.agent_id
+         JOIN vani_agent_intent i ON i.agent_id = a.id
+        WHERE ta.tenant_id = $1 AND ta.status = 'live'
+          AND i.surface = 'visitor' AND i.status = 'active'
+          AND i.embedding IS NOT NULL`,
+      [tenantId],
+    );
+    return { all, embeddedCount: embedded.rows[0].n };
+  });
 
   // Zero visitor intents is a legitimate product state, not a fault: an agent
   // whose whole job is done FOR the tenant declares none, and Nova is expected
@@ -162,22 +181,11 @@ export async function resolveIntent(args: ResolveArgs): Promise<IntentResolution
   // widget says what it can do, which is nothing, and says it plainly.
   if (!all.length) return { outcome: 'unmatched', options: [] };
 
-  const embedded = await pool.query<{ n: string }>(
-    `SELECT count(*)::text AS n
-       FROM vani_tenant_agent ta
-       JOIN vani_agent a        ON a.id = ta.agent_id
-       JOIN vani_agent_intent i ON i.agent_id = a.id
-      WHERE ta.tenant_id = $1 AND ta.status = 'live'
-        AND i.surface = 'visitor' AND i.status = 'active'
-        AND i.embedding IS NOT NULL`,
-    [tenantId],
-  );
-
   // Intents exist but none is embedded: a deployment fault, not a miss. Saying
   // "I did not understand" here would blame the visitor for an unpulled model,
   // and matching against whichever subset happened to be embedded would be the
   // silent-degradation rule 12 exists to forbid.
-  if (embedded.rows[0].n === '0') {
+  if (embeddedCount === '0') {
     throw new IntentRouterError(
       'ROUTER_NOT_EMBEDDED',
       `No live visitor intent has an embedding for tenant ${tenantId}. Run \`npm run intents:embed\`.`,
@@ -189,6 +197,9 @@ export async function resolveIntent(args: ResolveArgs): Promise<IntentResolution
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    // After BEGIN: is_local, so it lasts exactly this transaction. The read
+    // below and the vani_intent_match insert are both RLS tables.
+    await client.query('SELECT set_tenant_context($1)', [tenantId]);
 
     // Cosine similarity, 1.0 = identical. Intents without an embedding are
     // excluded rather than scored as zero — a NULL is "not reachable by text

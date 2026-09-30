@@ -196,17 +196,32 @@ export async function applyStepPayload(
     // from "the payload cleared them". Without it, resubmitting the step to
     // change only the purpose would silently empty the allowlist and
     // de-activate Vara, with nothing saying why.
-    await client.query(
-      `INSERT INTO vani_tenant_domain (tenant_id, domain, purpose, embed_origins)
-       VALUES ($1, $2, $3, COALESCE($4::text[], '{}'))
-       ON CONFLICT (domain) DO UPDATE
-         SET purpose = EXCLUDED.purpose,
-             embed_origins = CASE
-               WHEN $4::text[] IS NULL THEN vani_tenant_domain.embed_origins
-               ELSE $4::text[]
-             END`,
-      [vaniTenantId, domain, purpose, origins],
-    );
+    // Under vanigtm_app the ownership check above cannot SEE another
+    // workspace's row (RLS), so a taken domain reaches the ON CONFLICT and the
+    // policy refuses the update instead (SQLSTATE 42501). Same fact, same
+    // answer: DOMAIN_TAKEN, not a 500. The refusal itself is the isolation
+    // working — the row is never re-pointed.
+    await client.query('SAVEPOINT vani_domain_upsert');
+    try {
+      await client.query(
+        `INSERT INTO vani_tenant_domain (tenant_id, domain, purpose, embed_origins)
+         VALUES ($1, $2, $3, COALESCE($4::text[], '{}'))
+         ON CONFLICT (domain) DO UPDATE
+           SET purpose = EXCLUDED.purpose,
+               embed_origins = CASE
+                 WHEN $4::text[] IS NULL THEN vani_tenant_domain.embed_origins
+                 ELSE $4::text[]
+               END`,
+        [vaniTenantId, domain, purpose, origins],
+      );
+    } catch (err: any) {
+      if (err?.code === '42501') {
+        await client.query('ROLLBACK TO SAVEPOINT vani_domain_upsert');
+        throw new StepPayloadError(409, 'DOMAIN_TAKEN',
+          'That domain is already registered to another workspace');
+      }
+      throw err;
+    }
     return;
   }
 
@@ -345,6 +360,11 @@ export function createOnboardingRouter(pool: Pool): Router {
       }
 
       await client.query('BEGIN');
+      // Tenant context AFTER BEGIN (is_local — it dies at COMMIT). Without it
+      // every read of an RLS table in this transaction sees nothing once the
+      // app runs as vanigtm_app: the Domain step could not find or create the
+      // vani_tenant row (found by running it as that role, 2026-09-30).
+      await client.query('SELECT set_tenant_context($1)', [jwt.tenant_id]);
 
       // The step's own data and the completion mark: one transaction.
       await applyStepPayload(

@@ -976,3 +976,71 @@ without it breaks that route exactly as this one would have.
 
 Extend `rls-two-tenant-test.sql` to cover the spine before forcing anything.
 This whole finding exists because that test does not reach these tables.
+
+---
+
+## 14. The runtime switch, run before it was made (2026-09-30)
+
+**Production's runtime role is still `vikuna_admin`** — read off the API
+container on 2026-09-30 (`current_user = vikuna_admin`). The CLAUDE.md line
+"Cutover is DONE" was wrong and has been corrected. Charan decided the same day
+to switch to `vanigtm_app`; `DEPLOY.md` §4b is the procedure.
+
+Before switching, the API and worker were run **as `vanigtm_app`** against a
+database built from all migrations, with roles shaped like production
+(`vikuna_admin` SUPERUSER BYPASSRLS owning every table; `vanigtm_app`
+NOSUPERUSER NOBYPASSRLS; `scripts/grant-vanigtm-app.sql` applied), and driven
+over HTTP by `backend/scripts/rls-runtime-probe/probe.mjs`.
+
+### 14.1 Why the spine breaks even though it is "unforced"
+
+§11 says the `vani_`/`vara_` spine is not FORCE ROW LEVEL SECURITY. That only
+protects the table's **owner**. In production the owner is `vikuna_admin`, so
+for `vanigtm_app` — a non-owner — every one of the 32 spine policies applies
+the moment `DB_PRIMARY` changes. Every raw `pool.query` against a spine table
+then reads nothing.
+
+### 14.2 What was broken, and what fixed it
+
+| Path | Symptom as `vanigtm_app` | Fix |
+|---|---|---|
+| `PATCH /onboarding/step` (Domain) | `new row violates row-level security policy for table "vani_tenant"`; 500 | the transaction never called `set_tenant_context` — added after BEGIN |
+| same, for a NEW tenant | still refused: `vani_current_tenant()` finds the tenant THROUGH the `vani_tenant` row being created | **migration 259** — a second permissive policy admitting the caller's own slug. **Pending approval** |
+| same, claiming another workspace's domain | 500 (RLS hides the owner row from the pre-check, then refuses the upsert) | 42501 on that upsert → 409 `DOMAIN_TAKEN`. The refusal is the isolation working |
+| `GET /tenant/domains` | empty list | `withTenantClient` |
+| `PATCH /tenant/domains/:id/origins` | would have written nothing (no context; `vani_audit_log` is RLS too) | `set_tenant_context` after BEGIN |
+| `GET /tenant/embed` | `TENANT_NOT_PROVISIONED` for a provisioned tenant | whole route in one `withTenantClient` |
+| `POST /embed/boot` (public) | `EMBED_ORIGIN_NOT_ALLOWED` on every allowlisted site | one `withTenantClient` keyed on the embed token's `vani_tenant` id — `vani_current_tenant()` resolves it to itself |
+| `POST /embed/intent`, `liveVisitorIntents`, `varaOffers` | no intents, no offers; the match-log insert refused | take a scoped client; `set_tenant_context` in the intent transaction |
+
+Result: 25/25 checks pass as `vanigtm_app` — signup → Domain → Install →
+origins → activate → publish JD (Vara goes live) → public boot with offers →
+`boot_pings` → isolation against a second tenant (cannot see, edit or claim
+tenant A's domain; A's token refused from B's origin and vice versa). The same
+probe passes as `vikuna_admin`, so the code ships before the switch.
+
+### 14.3 Swept, and clean
+
+Every raw `pool.query` in `src/` naming an RLS table was listed. Beyond the
+above, what remains is a comment, code already on `withTenantClient`, or an
+operator CLI (`research.ts`, `cohort.ts`, `seed-definition.ts`,
+`verify-assessment-flow.ts`) that runs as the owner by design. Every
+`BEGIN` without `set_tenant_context` was checked: the rest touch only tables
+without RLS (`vn_*`, `vani_domain_pack`, `gt_prompts`, `gt_agent_runs`).
+
+### 14.4 Not exercised locally
+
+LLM-bearing agent runs (ingestion extract → KG writes, profile drafting,
+research, domain packs) — no model in the sandbox. They write through
+`ctx.db` / `createTenantDb`, which set the context; the worker claimed events
+and reached the LLM call as `vanigtm_app` without a permission error. Test 9 in
+DEPLOY.md §4b covers them in production.
+
+### 14.5 Production-only unknowns → `vanigtm-app-preflight.sql`
+
+The local rebuild cannot say whether production's grants cover every table
+added since the grant script last ran, or who owns what there (§3.2: 18 tables
+were owned by `vanigtm_app` once). `deploy/vani-main-vps/vanigtm-app-preflight.sql`
+is read-only and checks both, plus migration 259 and the helper functions.
+Verified to flag a revoked table and a missing 259, and to read all-OK when
+they are restored.

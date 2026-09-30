@@ -118,7 +118,7 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…258 (highest = 258; TWO files are numbered 249)
+  migrations/         — 001…259 (259 pending approval; TWO files are numbered 249)
 frontend/            — ⚠️ RETIRED (2026-09-16). Still on disk, still builds,
                       NOT the product. The frontend is vikunawebsite/vani-app.
                       Kept for reference; do not add features here.
@@ -150,12 +150,18 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   rows OK, "ready for cutover? YES on the schema side"), every known code
   blocker is fixed, and the two-tenant isolation test passes 13/13 locally.
   Full detail in `docs/db/rls-status.md` §8.
-- **Cutover is DONE.** `DB_PRIMARY` points at `vanigtm_app`; the app runs on a
-  non-BYPASSRLS role. `vikuna_admin` is retained only as an emergency rollback.
-- **Outstanding:** signup, login and the skills executor have never been
-  exercised under the restricted role. Run `rls-two-tenant-test.sql` against
-  production and walk those three paths. Until that is done, treat them as
-  unverified.
+- **Cutover is NOT done** (read off the container 2026-09-30:
+  `current_user = vikuna_admin`). An earlier line here said it was. **Charan
+  decided the switch to `vanigtm_app` on 2026-09-30** — procedure and the test
+  list in `DEPLOY.md` §4b. Before it, the API was run as `vanigtm_app` locally
+  and seven broken spine paths were found and fixed (Domain step, Install
+  screen, `/tenant/embed`, the public boot, intents, offers); new-tenant
+  provisioning needs **migration 259 (pending approval)**.
+  `docs/db/rls-status.md` §14. Signup, login and the skills executor now pass
+  as `vanigtm_app` locally (`backend/scripts/rls-runtime-probe/`).
+- **Unforced does not mean exempt.** Production's tables are owned by
+  `vikuna_admin`, so for `vanigtm_app` (a non-owner) every policy applies,
+  forced or not. FORCE only matters for a table's owner.
 - A table's OWNER bypasses its own policies unless `FORCE ROW LEVEL SECURITY`
   is set. 18 tables were owned by `vanigtm_app` — migration 236 forced 17.
 - **The whole `vani_`/`vara_` spine (migrations 240–246) is UNFORCED** and was
@@ -345,11 +351,14 @@ because a date format or a token convention is worth not re-deciding.
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **258**. **Two files
+  status: `npm run db:migrate -- --status`. Highest = **259** (259 is
+  written and tested locally, **pending approval** — not on production). The
+  runner uses `DB_MIGRATE` when set (the owner, once the runtime is the app
+  role), else `DB_PRIMARY`. **Two files
   share the number 249** (`249_ki_import_sessions_needs_review.sql` and
   `249_vara_domain_pack_research_prompt.sql`); the runner keys on the full
   filename, production has both recorded, so they stay as they are — the next
-  migration is 259, and never reuse a number again. 254–258 are the Aug 29
+  migration is 260, and never reuse a number again. 254–258 are the Aug 29
   Platform Channel branch's 247–251, renumbered when it was finally merged on
   2026-09-30 (`boot_pings`, `vara_answer_cache`, `vani_agent_intent`,
   `vani_intent_match`, seed intents).
