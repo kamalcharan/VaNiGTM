@@ -113,6 +113,12 @@ events without running them).
   port the worker does not bind.
 - Env changes (`.env` in the compose dir) need a recreate, not a reload —
   re-run the script, or `docker compose … up -d --force-recreate vani-backend vani-worker`.
+- ⚠️ **After ANY recreate of `vani-backend`, reload nginx** — the script does
+  it; a manual `up -d --force-recreate` does not. The container gets a new
+  internal IP and nginx's `upstream vani_backend` still points at the old one,
+  so `api.vikuna.io` answers **502 while the container says healthy**
+  (2026-09-30, after the role switch):
+  `docker exec vikuna-nginx nginx -t && docker exec vikuna-nginx nginx -s reload`
 
 ### Verify
 

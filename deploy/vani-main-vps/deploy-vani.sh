@@ -84,6 +84,16 @@ docker build --platform linux/amd64 -f deploy/vani-main-vps/Dockerfile -t "$IMAG
 say "Recreating vani-backend and vani-worker"
 ( cd "$COMPOSE_DIR" && docker compose "${FLAGS[@]}" up -d --force-recreate vani-backend vani-worker )
 
+# ── 3b. Reload nginx — every recreate gives vani-backend a NEW internal IP ────
+# api.vikuna.io.conf's `upstream vani_backend { server vani-backend:3001; }`
+# is resolved once, when nginx loads its config. After a recreate nginx keeps
+# sending to the old IP and api.vikuna.io answers 502 while the container
+# reports healthy (2026-09-30, after the vanigtm_app switch). A reload
+# re-resolves it without dropping connections or the other sites nginx serves.
+say "Reloading nginx so it resolves the new vani-backend address"
+docker exec vikuna-nginx nginx -t && docker exec vikuna-nginx nginx -s reload \
+  || die "nginx reload failed — api.vikuna.io will 502 until it is reloaded"
+
 # ── 4. Prove it ─────────────────────────────────────────────────────────────
 say "Verifying"
 API_IMG=$(docker inspect vani-backend --format '{{.Image}}')
@@ -100,6 +110,15 @@ echo "  same image — they cannot be on different code"
   changed in backend/, or the checkout is not on the commit you expected."
 
 docker ps --filter name=vani --format '  {{.Names}}\t{{.Status}}'
+
+# Through nginx, not just the container: a healthy container behind a stale
+# upstream is exactly the failure 3b exists for. Give the API a moment to bind.
+sleep 5
+CODE=$(curl -s -o /dev/null -w '%{http_code}' https://api.vikuna.io/health || true)
+[ "$CODE" = "200" ] \
+  || die "https://api.vikuna.io/health answered $CODE through nginx (expected 200).
+  Container health is not enough — check: docker logs --tail 40 vani-backend"
+echo "  api.vikuna.io/health through nginx: 200"
 
 cat <<'DONE'
 
