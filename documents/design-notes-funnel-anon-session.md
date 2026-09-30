@@ -142,8 +142,8 @@ and token pointing at a shared read result; reusing the card never shares a
 token, so nobody can claim someone else's session. In the schema, the page
 text, draft, status and failure move to a `site read` record keyed by
 `website_host` (one per read), and `vani_anon_session` keeps only the visitor
-side (token, IP hash, the read it points at, binding). Same two-table count
-as a single wide table would need in spirit; decided with D3-h.
+side (token, IP hash, the read it points at, binding). That is one more
+small table than §3.2 showed; it is decided with D3-h.
 
 IP is stored only as `ip_hash` (HMAC, the same keyed approach as D9-b), not
 the raw address: it matches revisits exactly as well, and a hash is not
