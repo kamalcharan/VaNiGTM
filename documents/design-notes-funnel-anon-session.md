@@ -1,6 +1,6 @@
 # D3 — Crawl before signup (Track E1): design for approval · 2026-09-30
 
-> **Status: PROPOSED. Nothing is built; no migration is written.** Schema
+> **Status: APPROVED as recommended (Charan, 2026-09-30: D3-a…h, reuse window 30 days). Being built — see §7.** Schema
 > changes need Charan's approval. §6 lists the decisions, each with a
 > recommendation.
 >

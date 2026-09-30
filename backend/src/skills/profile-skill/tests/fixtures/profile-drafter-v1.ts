@@ -1,3 +1,6 @@
+// VERBATIM copy of profile.drafter.ts at 5579b2d (before the D3 split); only the
+// three import paths are adjusted for this folder. Used by profile-drafter-split.test.ts
+// to prove onboarding sends the model exactly what it sent before. Do not edit.
 /**
  * Profile drafter — turns raw website text into a drafted GTM profile.
  *
@@ -13,9 +16,9 @@
 
 import { z } from 'zod';
 import type { Pool } from 'pg';
-import { callLLMValidated } from '../../agent-core/llm.client';
-import { charBudgetFor } from '../../agent-core/llm.gate';
-import { getProfile, upsertProfile, type TenantProfile } from './profile.service';
+import { callLLMValidated } from '../../../../agent-core/llm.client';
+import { charBudgetFor } from '../../../../agent-core/llm.gate';
+import { getProfile, upsertProfile, type TenantProfile } from '../../profile.service';
 
 /* ── Draft schema — everything optional; the model fills what it can ───── */
 
@@ -91,21 +94,31 @@ function sameValue(a: unknown, b: unknown): boolean {
   return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
-/**
- * The model half of drafting, and ONLY that: website text in, validated draft
- * out, nothing written. Split out of draftProfileFromText (2026-09-30, D3) so
- * the pre-signup funnel can draft a card for a visitor who has no tenant yet;
- * `tenantId` is whose provider and daily budget the call runs under (the
- * funnel's system tenant, before signup). draftProfileFromText calls this
- * with exactly the arguments it always built, so onboarding is unchanged.
- */
-export async function draftFromText(
+export async function draftProfileFromText(
   pool: Pool,
   tenantId: string,
   rawText: string,
   runId: string,
-  baselineContext = '',
-): Promise<ProfileDraft> {
+  options: DraftOptions = {},
+): Promise<DraftResult> {
+  // On an improvement pass, show the model its own previous draft so it
+  // refines with the new material instead of regenerating from scratch.
+  const baseline = options.improveBaseline ?? null;
+  const baselineContext = baseline
+    ? `Current draft (improve any value the new content supports improving; keep values that are already the best available):\n${JSON.stringify({
+        product_name: baseline.product_name,
+        product_tagline: baseline.product_tagline,
+        product_category: baseline.product_category,
+        product_description: baseline.product_description,
+        core_problem: baseline.core_problem,
+        key_differentiators: baseline.key_differentiators,
+        icp_role: baseline.icp_role,
+        icp_company_type: baseline.icp_company_type,
+        icp_industry: baseline.icp_industry,
+        primary_pain_points: baseline.primary_pain_points,
+      }, null, 1)}\n\n`
+    : '';
+
   // How much website text actually fits, AFTER the system prompt, the baseline
   // draft and the 1200 tokens kept for the answer. This was a hardcoded 24,000
   // characters — about 6,000 tokens on its own, so the call was already over
@@ -145,38 +158,6 @@ export async function draftFromText(
     DraftSchema,
     'profile',
   );
-
-  // callLLMValidated types its result as the schema's INPUT (the preprocess
-  // step makes that `unknown`); the value is the parsed output.
-  return draft as ProfileDraft;
-}
-
-export async function draftProfileFromText(
-  pool: Pool,
-  tenantId: string,
-  rawText: string,
-  runId: string,
-  options: DraftOptions = {},
-): Promise<DraftResult> {
-  // On an improvement pass, show the model its own previous draft so it
-  // refines with the new material instead of regenerating from scratch.
-  const baseline = options.improveBaseline ?? null;
-  const baselineContext = baseline
-    ? `Current draft (improve any value the new content supports improving; keep values that are already the best available):\n${JSON.stringify({
-        product_name: baseline.product_name,
-        product_tagline: baseline.product_tagline,
-        product_category: baseline.product_category,
-        product_description: baseline.product_description,
-        core_problem: baseline.core_problem,
-        key_differentiators: baseline.key_differentiators,
-        icp_role: baseline.icp_role,
-        icp_company_type: baseline.icp_company_type,
-        icp_industry: baseline.icp_industry,
-        primary_pain_points: baseline.primary_pain_points,
-      }, null, 1)}\n\n`
-    : '';
-
-  const draft = await draftFromText(pool, tenantId, rawText, runId, baselineContext);
 
   const existing = await getProfile(pool, tenantId);
 
