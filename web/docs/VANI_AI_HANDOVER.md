@@ -1,16 +1,11 @@
 # VaNi AI — Session Handover
 
-> **2026-09-29 (late) — restart pointer.** The live handover is
-> `VaNiGTM/HANDOVER.md` → "RESTART HANDOVER — 2026-09-29, evening". Edge UX is
-> BUILT and merged (`vani-app/src/skills/edge/`, this repo's `main`, live on
-> Vercel). This repo's `main` now carries everything that was on
-> `claude/bold-carson-7stecq` — the earlier note that it was 74 commits behind
-> is stale. **Next is Vara, and its open list is written** (VaNiGTM
-> `HANDOVER.md` §2). It opens with a blocker that lives across both repos:
-> the console's Install screen and embed widget call `/api/v1/tenant/embed`,
-> `/tenant/domains/:id/origins`, `/embed/boot` and `/embed/intent`, which
-> exist only on VaNiGTM `claude/session-setup-qrxev9` — never merged to its
-> `main`, never deployed. Merge that first (migrations renumbered 254–258).
+> **2026-09-30 — restart pointer.** Everything is in `VaNiGTM/HANDOVER.md`
+> (top section, "2026-09-30, end of day"). Both repos' `main` carry the day's
+> work; this repo's console half (dashboard on the Brain, real `/runs`,
+> `/runs/:id`, `/runs/events`, `/runs/awaiting`) deploys from `main` on Vercel.
+> Track H of `VaNiGTM/documents/POA-2026-09-30-platform.md` moves `vani-app/`
+> into VaNiGTM next session.
 
 
 **From:** Claude Code website session (last updated 2026-08-11)
