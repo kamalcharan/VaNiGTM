@@ -322,7 +322,7 @@ Restore on failure: copy the `.bak-…` file back and reload.
 | Containers | `vani-backend`, `vani-worker`, `vikuna-nginx`, the Postgres container on the shared network (`docker ps` to list) |
 | Docker network | shared, external — name in the compose `.env` as `NETWORK_NAME` *(confirm: `docker inspect vani-backend --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}'`)* |
 | API port | 3001 in the container; public only through nginx |
-| Platform LLM (read off the container 2026-09-30) | `qwen3-4b` at `http://vikuna-llm:8080` (a container on the shared network), window 16384, 1 call at a time; failover `claude-haiku-4-5`, automatic (`HAIKU_DEFAULT=true`) |
+| Platform LLM | **Haiku as primary since 2026-09-30 evening (Charan: "let haiku run now")**: `claude-haiku-4-5` at `https://api.anthropic.com/v1`, window 100000, 4 at a time, no system suffix. The qwen settings (`qwen3-4b` at `http://vikuna-llm:8080`, window 16384, 1 at a time, suffix `/no_think`) are kept in the compose dir as `.env.bak-qwen-<date>`; restoring is `cp` of that file + recreate |
 | Database | `vani_gtm_db` |
 | Runtime DB role | `vikuna_admin` as read on 2026-09-30 (SUPERUSER + BYPASSRLS — RLS is not enforced). **Switching to `vanigtm_app` was decided 2026-09-30** — §4b is the procedure. Update this row when it is done |
 | Console | `vani.vikuna.io` (Vercel, vikunawebsite repo, root `vani-app/`); env `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` |
