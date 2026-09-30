@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS vani_anon_session (
   token_hash       text        NOT NULL UNIQUE CHECK (token_hash ~ '^[0-9a-f]{64}$'), -- sha256; the token is never stored
   site_read_id     uuid        NOT NULL REFERENCES vani_anon_site_read(id) ON DELETE CASCADE,
   ip_hash          text        NOT NULL CHECK (ip_hash ~ '^[0-9a-f]{64}$'),           -- HMAC; for limits only
+  started_read     boolean     NOT NULL DEFAULT false,  -- this visit started a NEW read (the only kind the rate limit counts)
   bound_tenant_id  uuid        REFERENCES vn_tenants(id) ON DELETE SET NULL,
   bound_at         timestamptz,
   created_at       timestamptz NOT NULL DEFAULT now(),

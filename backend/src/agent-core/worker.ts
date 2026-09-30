@@ -30,6 +30,7 @@ import { CompetitorResearchAgent } from '../skills/research-skill/research.agent
 import { AccountResearchAgent } from '../skills/research-skill/account.agent';
 import { FitLessonAgent } from '../skills/research-skill/lesson.agent';
 import { DomainPackAgent } from '../skills/domain-pack-skill/domain-pack.agent';
+import { runSiteRead } from '../funnel/funnel.service';
 import { recalculateProfileFromNodes } from '../skills/profile-skill/profile.service';
 import { generateClusters, listClusters } from '../skills/profile-skill/cluster.service';
 
@@ -89,6 +90,12 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
     IngestionAgent.run(pool, tenantId, payload, runId),
   URL_SUBMITTED: (pool, tenantId, payload, runId) =>
     IngestionAgent.run(pool, tenantId, payload, runId),
+
+  // Track E1 — a visitor's homepage + one drafter call, before signup. Runs
+  // under the vikuna-funnel system tenant (its daily cap is the anonymous
+  // ceiling); the data stays in vani_anon_site_read (src/funnel).
+  FUNNEL_SITE_SUBMITTED: (pool, tenantId, payload, runId) =>
+    runSiteRead(pool, tenantId, payload, runId),
 
   // FOLDER_CONNECTED fires immediately after OAuth — folder_id may still
   // be null (tenant hasn't picked a folder yet). Guard the sync call so

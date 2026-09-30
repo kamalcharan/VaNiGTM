@@ -32,6 +32,9 @@ export type EventType =
   | 'FILE_INGESTED'
   // Phase 1 — ingestion pipeline (Addendum 02)
   | 'FILE_UPLOADED'
+  // Track E1 — a visitor's website read before signup (src/funnel), owned by
+  // the vikuna-funnel system tenant
+  | 'FUNNEL_SITE_SUBMITTED'
   | 'URL_SUBMITTED'
   | 'KNOWLEDGE_UPDATED'
   | 'FOLDER_CONNECTED'

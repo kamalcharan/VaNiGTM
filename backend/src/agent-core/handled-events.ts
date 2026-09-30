@@ -34,6 +34,7 @@ export const HANDLED_EVENT_TYPES: readonly EventType[] = [
   'FIT_LESSONS_REQUESTED',
   'KNOWLEDGE_UPDATED',
   'DOMAIN_ENRICHMENT_REQUESTED',
+  'FUNNEL_SITE_SUBMITTED',
 ];
 
 export function isHandledEvent(type: string): boolean {

@@ -203,13 +203,36 @@ agent does).
 | D3-g | `draft` as JSONB | **Yes** — it is the drafter's own validated object, short-lived, copied into the typed profile at claim |
 | D3-h | Revisits (Charan's ask) | **Three layers — browser token, same-website reuse, read-in-progress join — plus IP as a keyed hash for limits and a hint.** Needs the read result split from the visitor session (one extra small table, `vani_anon_site_read`) |
 
-## 7. Build order once approved
+## 7. Build order — status 2026-09-30
 
-1. Split the drafter (§4), with a before/after test.
-2. Migration 261: the table, the system tenant seed, grants.
-3. `funnel` module: submit, status, claim; the funnel agent; rate limits.
-   Tests: rate limit, reuse, failure card, claim moves everything in one
-   transaction, a claimed token cannot be claimed twice, another tenant
-   cannot claim it, expired rows are gone.
-4. nginx: the two public routes go on the public list in the config header.
-5. E2 (the landing page) — after the location decision.
+1. ✅ **Drafter split** — `draftFromText` (model call only) split out of
+   `profile.drafter.ts`; `profile-drafter-split.test.ts` runs the old drafter
+   (verbatim from 5579b2d) beside the new one: same call, same write.
+2. ✅ **Migration 261** — written and tested locally, **NOT applied**. Adds
+   `started_read` on the session (the rate limit counts only new reads).
+3. ✅ **`src/funnel`** — `POST /api/v1/funnel/site`, `GET /site/:token`
+   (public), `POST /claim` (JWT); the `FUNNEL_SITE_SUBMITTED` job; the three
+   reuse layers; per-IP limit; the funnel tenant's cap row set from .env
+   before each new read. 45 tests (34 guard/normalise, 11 end-to-end on the
+   real schema as the restricted role); making reused cards count against the
+   limit fails one.
+   - **Found while building: SSRF.** A public endpoint makes the server fetch
+     any URL, and the existing fetcher (`IngestionAgent.fetchUrlText`) has no
+     guard and follows redirects. The funnel uses its own guarded fetch
+     (`site.ts`): http(s), ports 80/443, no IP-literal hosts, every resolved
+     address public, redirects followed by hand with the same checks.
+     Residual: DNS rebinding. **The tenant ingestion path is unchanged and
+     still unguarded** — reached only by signed-in tenants; a separate fix to
+     decide.
+   - **Deviation from §3.3, stated:** the claim (session locked, knowledge
+     source created, full crawl queued, session bound) is ONE transaction; the
+     card is then written through the normal profile upsert, which has its
+     own transaction. If that write fails the claim stands, the full crawl
+     drafts the profile anyway, and the response says `profile_applied: false`
+     with the reason.
+4. ✅ nginx: the two public routes are on the list in the config header.
+5. E2 (the landing page) — waits on the location decision.
+
+**To go live:** merge; set the six `FUNNEL_*` values in `.env`; apply 261;
+deploy (the worker must restart — it registers the new job type). Until the
+values are set, the routes answer 503 and nothing else changes.
