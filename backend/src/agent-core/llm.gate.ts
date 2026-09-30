@@ -42,14 +42,22 @@
  * have worked — a silent cap is as bad as a silent fallback. Theirs stays
  * loud: their server says no, in its own words.
  *
- * ── What this does NOT do ─────────────────────────────────────────────────
- * The lane is IN-PROCESS. The worker is one process, which is where the five
- * concurrent agents came from, so it covers the failure that happened. It does
- * not span the API process, a second worker, or another box: two workers on
- * one endpoint still make two calls at once. A cross-process limit needs a
- * shared lock (an advisory lock on the endpoint, or the model server's own
- * queue), and that is a decision to raise before building, not a gap to
- * discover later from the same 500.
+ * ── Across processes (POA C5, 2026-09-30) ─────────────────────────────────
+ * The in-process lane alone did not span the API process, a second worker, or
+ * another box — two processes on one endpoint still made two calls at once.
+ * So a PLATFORM call, once through its own process's lane, also takes one of
+ * N Postgres advisory locks for that endpoint (N = LLM_MAX_CONCURRENT, the
+ * same number — it now means "in flight at once, anywhere", not "per
+ * process"). Session-level locks on a dedicated connection: if the process
+ * dies mid-call, Postgres drops the connection and the slot frees itself —
+ * nothing to reclaim, nothing to expire. The in-process lane stays as the fast
+ * path and is what bounds how many DB connections a process can hold for
+ * this: never more than N per endpoint.
+ *
+ * Platform only. The platform endpoint is the shared, self-hosted model this
+ * whole file exists to protect; a tenant's own endpoint is their provider's
+ * to rate-limit, and the Claude failover goes through the Anthropic SDK, not
+ * through here.
  *
  * NEITHER GATE TRUNCATES, SUMMARISES OR RETRIES SMALLER. Trimming a prompt to
  * fit changes the question without saying so, and the answer comes back
@@ -79,6 +87,8 @@ const OVERHEAD_TOKENS = 200;
 /** Kept back by charBudgetFor for the caller's own wrapper around the budgeted text. */
 export const BUDGET_SLACK_TOKENS = 64;
 
+import type { Pool, PoolClient } from 'pg';
+
 interface Lane { running: number; waiting: Array<() => void>; limit: number }
 const lanes = new Map<string, Lane>();
 
@@ -101,7 +111,9 @@ export async function withLlmSlot<T>(
   url: string,
   posture: 'platform' | 'byok',
   fn: () => Promise<T>,
-  onWait?: (waitedMs: number, queueDepth: number) => void,
+  onWait?: (waitedMs: number, queueDepth: number, where: 'process' | 'shared') => void,
+  /** When given, platform calls also take a cross-process slot (see header). */
+  pool?: Pool,
 ): Promise<T> {
   const lane = laneFor(url, posture === 'byok' ? BYOK_MAX : PLATFORM_MAX);
   const startedWaiting = Date.now();
@@ -109,11 +121,14 @@ export async function withLlmSlot<T>(
   if (lane.running >= lane.limit) {
     const depth = lane.waiting.length + 1;
     await new Promise<void>((resolve) => lane.waiting.push(resolve));
-    onWait?.(Date.now() - startedWaiting, depth);
+    onWait?.(Date.now() - startedWaiting, depth, 'process');
   }
 
   lane.running += 1;
   try {
+    if (posture === 'platform' && pool) {
+      return await withSharedSlot(pool, url, lane.limit, fn, onWait);
+    }
     return await fn();
   } finally {
     lane.running -= 1;
@@ -122,6 +137,59 @@ export async function withLlmSlot<T>(
     // the one closest to its own timeout.
     const next = lane.waiting.shift();
     if (next) next();
+  }
+}
+
+/**
+ * One of `limit` advisory locks for this endpoint, held on a dedicated
+ * connection for the length of the call.
+ *
+ * Keys are the two-int form (namespace hash, slot), which never overlaps the
+ * single-bigint `pg_advisory_xact_lock(hashtext(...))` keys used elsewhere.
+ * Try every slot without waiting first; if all are busy, block on one. With
+ * limit 1 — the platform default — that is exact FIFO-by-Postgres. With more,
+ * a blocked caller may wait on a slot while another frees; it is never
+ * admitted over the limit, which is the property that matters.
+ */
+async function withSharedSlot<T>(
+  pool: Pool,
+  url: string,
+  limit: number,
+  fn: () => Promise<T>,
+  onWait?: (waitedMs: number, queueDepth: number, where: 'process' | 'shared') => void,
+): Promise<T> {
+  const client: PoolClient = await pool.connect();
+  const ns = `vani-llm-lane:${url}`;
+  let slot = -1;
+  let broken = false;
+  try {
+    for (let i = 0; i < limit && slot < 0; i++) {
+      const r = await client.query<{ ok: boolean }>(
+        'SELECT pg_try_advisory_lock(hashtext($1), $2) AS ok', [ns, i]);
+      if (r.rows[0]?.ok) slot = i;
+    }
+    if (slot < 0) {
+      const startedWaiting = Date.now();
+      const pick = Math.floor(Math.random() * limit);
+      await client.query('SELECT pg_advisory_lock(hashtext($1), $2)', [ns, pick]);
+      slot = pick;
+      onWait?.(Date.now() - startedWaiting, limit, 'shared');
+    }
+    return await fn();
+  } catch (err) {
+    // A failure of the LOCK query leaves the session in an unknown state;
+    // fn's own failure does not, and is simply rethrown.
+    if (slot < 0) broken = true;
+    throw err;
+  } finally {
+    if (slot >= 0) {
+      try {
+        await client.query('SELECT pg_advisory_unlock(hashtext($1), $2)', [ns, slot]);
+      } catch {
+        broken = true;   // cannot prove the lock is gone — drop the session, which drops it
+      }
+    }
+    client.release(broken);
   }
 }
 

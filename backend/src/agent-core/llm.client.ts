@@ -324,12 +324,16 @@ async function callEndpoint(
         // otherwise the fifth run in the lane times out having never been sent.
         signal:  AbortSignal.timeout(timeoutMs),
       }),
-      (waitedMs, depth) => {
+      (waitedMs, depth, where) => {
         // Visible, because a run that sits for two minutes with no explanation
         // reads as hung. stdout is where the worker's story is told.
-        console.log(`[LLM] waited ${Math.round(waitedMs / 1000)}s behind ${depth} `
-          + `call(s) for ${provider.model} at ${provider.url}`);
+        console.log(where === 'shared'
+          ? `[LLM] waited ${Math.round(waitedMs / 1000)}s for a shared slot (${depth} allowed at once, `
+            + `across every process) for ${provider.model} at ${provider.url}`
+          : `[LLM] waited ${Math.round(waitedMs / 1000)}s behind ${depth} `
+            + `call(s) in this process for ${provider.model} at ${provider.url}`);
       },
+      options.pool,
     );
   } catch (err) {
     const timedOut = /timeout|aborted/i.test(String(err));

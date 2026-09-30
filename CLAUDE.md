@@ -927,10 +927,15 @@ changes the question without saying so and the answer comes back looking like a
 full one (rule 12). Making a prompt smaller is the caller's job, and it can only
 do that job if it is told the real numbers.
 
-**The lane is IN-PROCESS.** It covers the worker, which is where the five
-concurrent agents came from. Two workers, or the API process, still make
-concurrent calls — a cross-process limit needs a shared lock and is a decision
-to raise, not a gap to rediscover from the same 500.
+**The lane spans processes (C5, 2026-09-30).** It was in-process only, so the
+API and a second worker could still call the model at once. Now a platform
+call, once through its process's lane, also holds one of `LLM_MAX_CONCURRENT`
+Postgres advisory locks for that endpoint, on its own connection: the limit
+means "in flight anywhere", and a process that dies frees its slot with its
+connection. Platform only — BYOK endpoints and the Anthropic failover are not
+the shared self-hosted box. `agent-core/tests/llm-lane-shared.db.test.ts`
+proves it with real child processes (spawned as `node --import tsx`, not the
+tsx binary, whose grandchild survives a kill).
 
 ### The budget is the authority — hand-picked caps are not (2026-09-18)
 
