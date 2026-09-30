@@ -1,6 +1,7 @@
 # D9 — Consent and suppression: design for approval · 2026-09-30
 
-> **Status: PROPOSED. Nothing here is built, and no migration is written.**
+> **Status: PROPOSED — partly decided (Charan, 2026-09-30, see §6).
+> Nothing here is built, and no migration is written.**
 > Schema changes need Charan's approval (CLAUDE.md, repo rule). §6 lists the
 > decisions; each has a recommended answer. Once they are answered, the build
 > is §7.
@@ -179,6 +180,60 @@ How rows get written:
 | **D9-e** | What lawful basis does GTM outreach use? | **Needs legal advice — not decidable in code.** India's DPDP Act 2023 is built largely on consent and does not have GDPR's broad "legitimate interest" ground; a work email is still personal data. Until answered, the design keeps GTM at `no_basis` (Activate stays locked) | This is the question that decides whether cold outreach is allowed at all. The suppression list is needed whatever the answer is, so building it is not wasted |
 | **D9-f** | Consent text: new table or not | **New table `vani_consent_text`** (§4.1) | `vani_template` cannot hold it (channel limited to email/whatsapp/sms); `consent_version` today points at nothing |
 
+## 6a. Charan's answers (2026-09-30)
+
+| # | Answer | What it changes |
+|---|---|---|
+| D9-a | **As recommended**: bounce, complaint and erasure are platform-wide; unsubscribe, manual and consent-withdrawn are one tenant only | — |
+| D9-b | Explained; awaiting a yes | — |
+| D9-c | Explained; awaiting a yes | — |
+| D9-d | **Yes — lifted by an admin or by the person themselves** | A `lift` row records who (`actor_type`, `actor_id`) and why. **Open point:** an admin undoing a person's own unsubscribe, complaint or consent withdrawal is what consent rules exist to stop; recommended split: an admin may lift `manual` and `bounced`; `unsubscribed`, `complained` and `consent_withdrawn` are lifted only by the person opting in again. Awaiting confirmation |
+| D9-e | **Configurable per tenant.** When the Smart Profile is built, the tenant is shown what the DPDP Act means for outreach and ticks "I agree"; that switches GTM sending on. Settings can switch it off again | §6b |
+| D9-f | Not answered yet | — |
+
+## 6b. D9-e as decided: the tenant's DPDP acknowledgement
+
+The tenant — not Vikuna — confirms it has a lawful basis to contact the
+people it imports, after being shown what DPDP requires. The platform
+records that confirmation, and GTM's gate checks it.
+
+**What it needs (schema — part of this approval):** one more append-only
+table, same event pattern as suppression, so "was this tenant's
+acknowledgement in force when that email went out?" stays answerable:
+
+```sql
+create table vani_tenant_acknowledgement (
+  id           uuid primary key default gen_random_uuid(),
+  tenant_id    uuid not null references vani_tenant(id) on delete cascade,
+  kind         text not null check (kind in ('gtm_outreach_dpdp')),
+  action       text not null check (action in ('accept','revoke')),
+  notice_id    uuid references vani_consent_text(id),  -- the exact notice shown (accept only)
+  actor_id     uuid not null,                           -- the user who ticked or unticked
+  at           timestamptz not null default now()
+);
+-- append-only; current state = latest row per (tenant, kind)
+```
+
+The notice wording is a `vani_consent_text` row (platform-authored,
+versioned). **A new notice version does not silently carry an old "I agree"
+forward** — the gate treats an acceptance of an older notice as still valid
+only until the tenant is asked again; whether a new version forces
+re-acceptance is a product choice to make when the wording first changes.
+
+**Gate change (§5, step 3):** GTM → allowed only if the latest
+`gtm_outreach_dpdp` row for the tenant is `accept`. Otherwise `no_basis`,
+and the Activate step says why and links to the acknowledgement.
+
+**Where it appears (console, vani-app):** a step at the end of the Smart
+Profile onboarding, and a switch under Settings. Switching it off writes
+`revoke` and locks sending immediately; nothing already sent is affected.
+
+**Stated plainly, so nobody reads more into it:** the tick box records that
+the tenant took responsibility for its lawful basis. It does not make any
+particular send lawful, and the notice text should be reviewed by a lawyer
+before it is shown to a real tenant. Suppression still applies on top of it
+— an acknowledged tenant still cannot contact anyone who opted out.
+
 ## 7. Build order once approved
 
 Each step is small and ends in something testable; nothing sends until step 5.
@@ -197,7 +252,8 @@ Each step is small and ends in something testable; nothing sends until step 5.
 5. **First send path (E8)** — Vara's acknowledgement email through the gate,
    with an unsubscribe link and its public route (which goes on the public
    list in the nginx config header).
-6. **GTM** — only after D9-e is answered.
+6. **GTM** — the acknowledgement step and Settings switch (§6b), then GTM
+   sends pass the same gate.
 
 Console screens (consent text editor, suppression list) are vani-app work and
 follow Track H's rule for console work.
