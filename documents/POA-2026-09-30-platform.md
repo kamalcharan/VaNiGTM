@@ -70,7 +70,7 @@ track stalls on an unanswered question.
 |---|---|---|---|
 | D1 | ~~Merge VaNiGTM `claude/session-setup-qrxev9` with its five migrations renumbered 254–258~~ **DONE 2026-09-30**: merged (06a9635), 254–258 applied on production | — | — |
 | D2 | Pre-signup input is the website URL; the wizard's step 1 is pre-done **[ruled]** | — | E |
-| D3 | Anonymous pre-signup session row, later bound to the tenant | Approve one table (§7) | E1 |
+| D3 | Anonymous pre-signup session row, later bound to the tenant | **Design written 2026-09-30: `documents/design-notes-funnel-anon-session.md` — seven sub-decisions D3-a…g, awaiting Charan** | E1 |
 | D4 | Entitlement / purchase model, one for all agents (Vara, GTM, Edge) | Approve `vani_entitlement` (§7); payment provider later | E3, Edge |
 | D5 | Eval results storage | One table `gt_eval_runs` (§7) | C3 |
 | D6 | Embedding provider (Haiku has no embeddings; Ollama is off the path) | Env-configured OpenAI-compatible `/v1/embeddings` endpoint; provider named in `.env` | D4 |
