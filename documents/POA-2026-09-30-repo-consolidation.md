@@ -1,172 +1,198 @@
-# POA — One repository: UI and API together · 2026-09-30
+# POA — One repository: website, console and API together · 2026-09-30
 
-> Companion to `POA-2026-09-30-platform.md`; this is its Track H. Charan,
-> 2026-09-30: "UX layer and backend layer will have to be merged into a
-> single repository … VaNiGTM UI layer will have to be cleaned."
+> Companion to `POA-2026-09-30-platform.md`; this is its Track H.
+>
+> **Corrected 2026-09-30 (Charan).** The first version of this plan moved only
+> `vani-app/` into VaNiGTM and left the website in its own repo. That was a
+> misreading. The ruling:
+>
+> > VaNiGTM already has a frontend — we are not going to use it. vani-app is
+> > currently in the website repo. We have to clean up VaNiGTM's frontend so
+> > there are no references going forward. web (web + vani-app) + VaNiGTM
+> > (backend) can be part of a single repository — currently they are two.
+>
+> So: **one repository holding the website, the console and the API**, and the
+> retired `frontend/` removed with every reference to it.
 >
 > Facts checked in code on 2026-09-30. Nothing here has been started.
 
-## 0. What is where today, and why it costs
+## 0. What is where today
 
 ```
-kamalcharan/VaNiGTM            kamalcharan/vikunawebsite
-├── backend/      682 files    ├── src/ + public/     100 files   Vite marketing site → www.vikuna.io (Vercel)
-├── frontend/     381 files    ├── vani-app/          336 files   Next.js console   → vani.vikuna.io (Vercel, root dir vani-app)
-│   RETIRED 2026-09-16,        ├── vanigtm/                       git submodule → VaNiGTM, pinned at an old commit
-│   still builds, not run      └── docs/vani/          19 files   product specs (Vara, platform, runbooks)
-├── deploy/  (ProKey per-customer compose: backend + frontend + nginx)
-├── deploy/vani-main-vps/  (the real deploy: backend only → api.vikuna.io)
-└── documents/, docs/
+kamalcharan/VaNiGTM                      kamalcharan/vikunawebsite  (122 commits)
+├── backend/      API + worker → VPS     ├── src/ public/ api/ index.html   Vite site → www.vikuna.io (Vercel)
+├── frontend/     RETIRED 2026-09-16,    │   vercel.json (functions, headers, rewrites, redirects)
+│                 never deployed         ├── vani-app/        Next.js console → vani.vikuna.io (Vercel, root dir vani-app; 46 commits)
+├── deploy/       ProKey compose (uses   ├── vanigtm/         git submodule → VaNiGTM, stale pin
+│                 frontend/) + vani-main-vps  ├── docs/vani/   product specs
+└── documents/, docs/                    └── CLAUDE.md, docs/VANI_AI_HANDOVER.md
 ```
 
-What the split costs, seen this fortnight:
-
-- **Two `main`s that disagree.** The console on Vercel calls four API paths
-  that exist only on an unmerged VaNiGTM branch (HANDOVER §2.0). One repo
-  would have made that a failing build, not a live defect.
-- **Three checkouts on one laptop** (`OpenClaw\VaNiGTM`, `website\
-  vikunawebsite-git` with the submodule, the VPS checkout), and every
-  session has to say which one it means.
-- **A feature is two commits in two repos** with no atomic link; the
-  `vanigtm/` submodule pointer was bumped by hand and is now stale.
-- **Handover lives in two files** that point at each other.
-- **381 files of retired UI** still shape the root: `package.json` scripts
-  run it, `tsconfig.json` includes it, root `dependencies` carry Next and
-  React for it, `build-push.sh` builds it, `deploy/docker-compose.yml` and
-  `deploy/nginx.conf` serve it.
+What the split costs: a feature is two commits in two repos with no atomic
+link; the console on Vercel called API routes that existed only on an
+unmerged branch; handover and CLAUDE.md live in two places that point at each
+other; the submodule pin is bumped by hand and is stale; and 381 files of
+retired UI still shape VaNiGTM's root (scripts, tsconfig, dependencies,
+build-push.sh, the ProKey compose).
 
 ## 1. Target
 
 ```
-kamalcharan/VaNiGTM                       (rename to "vani" is optional and separate — see D4)
-├── backend/            Express API + worker           → VPS   (unchanged deploy)
-├── vani-app/           Next.js console                → Vercel, project re-pointed at this repo, root dir vani-app
-├── deploy/             vani-main-vps only; the ProKey compose retired or moved (D2)
-├── documents/, docs/   one set; vikunawebsite's docs/vani/ folded in
-├── ARCH.md · AGENTS.md · CLAUDE.md   one product CLAUDE.md; vani-app/CLAUDE.md stays as the UI standard
-└── HANDOVER.md         one
+kamalcharan/VaNiGTM   (the home — see D1)
+├── web/              marketing site: src/ public/ api/ index.html vercel.json …  → Vercel project "website", Root Directory web
+├── vani-app/         Next.js console                                            → Vercel project "console", Root Directory vani-app
+├── backend/          Express API + worker                                       → VPS, unchanged
+├── deploy/vani-main-vps/                                                        unchanged
+├── documents/        + documents/vani/ (from vikunawebsite docs/vani/)
+├── docs/
+├── .github/workflows/ci.yml   backend tests + vani-app build + web build, on every PR
+└── CLAUDE.md · ARCH.md · AGENTS.md · DEPLOY.md · HANDOVER.md   one of each
+    web/CLAUDE.md and vani-app/CLAUDE.md stay as the per-app standards
 
-kamalcharan/vikunawebsite                 marketing site only: src/, public/, api/, vercel.json
-                                          no submodule, no product docs, no console
+frontend/          gone, with every reference to it
+kamalcharan/vikunawebsite   archived (read-only) once both Vercel projects deploy from VaNiGTM
 ```
 
-Rules that carry over unchanged: `vani-app/CLAUDE.md` §5 (registry boundary),
-its five states and `useSkillMutation`; everything in ARCH.md once written.
+Each app keeps its own `package.json` and lockfile. No workspaces: the three
+import nothing from each other (checked for vani-app: no `../` beyond its own
+`src/`). Root scripts only orchestrate: `dev:api`, `dev:worker`, `dev:ui`,
+`dev:web`, `install:all`.
 
 ## 2. Decisions
 
 | # | Decision | Default |
 |---|---|---|
-| D1 | Preserve `vani-app` history in the move (filter-repo extract + merge) or squash-import | Preserve. 87 commits of design rulings live in those messages |
-| D2 | `deploy/` ProKey compose (backend + frontend + nginx, `vikuna/prokey-*` images): still used by any customer instance? | If no ProKey instance runs it: delete with `frontend/`. If yes: move to `deploy/prokey/` frozen, with a note that its frontend image is the retired UI |
-| D3 | Salvage list from `frontend/` (§4) — port or drop, item by item | Port the four named; drop the rest |
-| D4 | Rename the repo `VaNiGTM` → `vani` | Not now. GitHub redirects old names, but the VPS checkout path, `deploy-vani.sh`, and every doc mention it. Do it as its own one-line change after the move, or never |
-| D5 | Freeze window for console work while the move lands | One day, announced; any in-flight `vani-app` branch is rebased onto the new location by the person who owns it |
+| D1 | Which repo is the home | **VaNiGTM.** The VPS checkout (`/opt/vikuna/src/vanigtm`), `deploy-vani.sh` and every backend path stay exactly as they are; only Vercel has to be re-pointed, and it has to be re-pointed either way |
+| D2 | `deploy/` ProKey compose (backend + frontend + nginx, `vikuna/prokey-*` images) — still used by any customer instance? | If none: delete with `frontend/`. If one: move to `deploy/prokey/` frozen, noted as serving the retired UI |
+| D3 | Keep history of both repos | **Yes.** Both histories are merged in, website files renamed into `web/`; `git log --follow` works on every moved file |
+| D4 | Rename `VaNiGTM` → `vani` (or similar) now that it holds the website too | Not in this track. GitHub redirects old names, but the VPS path and docs name it; a separate one-line change later, or never |
+| D5 | Freeze window | One announced day with no pushes to vikunawebsite while the merge lands |
+| D6 | Anything in `frontend/` worth porting | **None required** — it was never deployed, so deleting it takes nothing offline. The pre-consolidation tag keeps it readable; items worth porting later (attention queue, pulse widget, storyteller deck share page, the public assessment flow) are listed in §4 as future console stories, not blockers |
 
 ## 3. Phases
 
-### H0 — Before touching anything
+### H0 — Before touching anything (½ hour)
 
-- **B1 first.** Merge `claude/session-setup-qrxev9` into VaNiGTM `main`
-  (platform POA Track B) so the console and the API agree BEFORE they share a
-  repo. Otherwise the first CI run in the merged repo is red for a reason that
-  predates the merge.
-- Tag both repos: `pre-consolidation-2026-xx-xx`. The retired `frontend/`
-  stays reachable at that tag forever; nothing needs to be "kept for
-  reference" on disk.
-- Salvage inventory (§4) written into this file with a decision per item.
+- `main` of both repos is what we move: merge the open working branches first.
+- Tag both repos `pre-consolidation-2026-10-xx` and push the tags. The
+  retired `frontend/` and the pre-move website stay reachable there forever.
 
-### H1 — Move the console (one day, mechanical)
+### H1 — Bring the website repo in, with history (½ day)
 
-1. In a clone of vikunawebsite: `git filter-repo --subdirectory-filter vani-app --path-rename :vani-app/` (keeps only vani-app history, at path `vani-app/`).
-2. In VaNiGTM: `git remote add console <that clone>`; `git merge --allow-unrelated-histories console/main`. No conflicts are possible: the path is new.
-3. Also carry `docs/vani/` from vikunawebsite into `VaNiGTM/documents/vani/` in the same merge (a second filter-repo pass, or a plain copy with a commit that names the source SHA).
-4. Root hygiene in the same PR: `vani-app/` has its own lockfile and tsconfig and imports nothing outside itself (checked: no `../../` beyond `src/`), so the root `package.json` gets **no** workspace wiring. Root scripts become `dev:api`, `dev:worker`, `dev:ui`, `dev:all`; `install:all` covers backend and vani-app.
-5. `.github/workflows/` (neither repo has one today): add one that runs `backend` tests and `vani-app` `next build` on every PR. This is the check the split repos never had.
-6. CLAUDE.md: rewrite the Architecture section (the UI is `vani-app/` here), delete every "in the OTHER repo" sentence, keep `vani-app/CLAUDE.md` as the mandatory UI read. HANDOVER: one file; vikunawebsite's `docs/VANI_AI_HANDOVER.md` becomes a two-line pointer.
+In a fresh clone of vikunawebsite (never the working copy):
 
-### H2 — Re-point Vercel (thirty minutes, plus DNS caution)
+```bash
+git filter-repo \
+  --to-subdirectory-filter web \
+  --path-rename web/vani-app/:vani-app/ \
+  --path-rename web/docs/vani/:documents/vani/ \
+  --path web/vanigtm --path web/.gitmodules --invert-paths
+```
 
-1. Vercel: create the project from VaNiGTM with Root Directory `vani-app` (or re-link the existing `vani-iota` project to the new repo — re-linking keeps the domain and env vars; prefer it).
-2. Env vars: `NEXT_PUBLIC_API_ORIGIN` and the rest re-entered if a new project.
-3. Ignored Build Step: `git diff --quiet HEAD^ HEAD -- vani-app/` so backend-only commits do not rebuild the console.
-4. `vani.vikuna.io` stays on the same project. Nothing on the VPS changes: CORS and nginx already name the domain, not the repo.
-5. Verify: a console commit deploys; a backend-only commit does not; `/login` → `/dashboard` works against `api.vikuna.io`.
+→ every website file under `web/`, the console at `vani-app/`, product docs at
+`documents/vani/`, the submodule gone — all with history. (Verify the result
+with `git log --stat -3` and `ls` before merging; filter-repo applies the
+options in order.)
 
-### H3 — Retire the old UI and clean the root (half a day)
+In VaNiGTM, on a branch:
 
-Delete `frontend/` (381 files). Then, in the same PR:
+```bash
+git remote add website <that filtered clone>
+git fetch website
+git merge --allow-unrelated-histories website/main
+```
 
-| File | Change |
+No conflicts are possible except at the root (`README.md`, `.gitignore`):
+the website's copies are under `web/` after the filter. Check: `ls` shows
+`backend/ vani-app/ web/ documents/ …`.
+
+Same PR:
+- Root `package.json`: `dev:web`, `build:web`, `dev:ui`, `build:ui`, `dev:api`,
+  `dev:worker`, `install:all`.
+- `.github/workflows/ci.yml` (neither repo has one): backend `npm test` +
+  `tsc`, `vani-app` `next build`, `web` `npm run build`, each only when its
+  folder changed.
+- One `HANDOVER.md`; `web/docs/VANI_AI_HANDOVER.md` and the website's VaNi
+  sections of its CLAUDE.md become one-line pointers or are removed.
+
+### H2 — Re-point Vercel (Charan, ~30 min; nothing on the VPS changes)
+
+Both existing projects, **re-linked** (keeps domains and env vars):
+
+| Project | Repo | Root Directory | Ignored Build Step |
+|---|---|---|---|
+| website (www.vikuna.io) | VaNiGTM | `web` | `git diff --quiet HEAD^ HEAD -- web/` |
+| console (vani.vikuna.io) | VaNiGTM | `vani-app` | `git diff --quiet HEAD^ HEAD -- vani-app/` |
+
+`web/vercel.json` and `web/api/*` (the advisor/health functions) are read
+relative to the Root Directory, so they keep working unchanged. Verify: a
+`web/` commit deploys the site only; a `vani-app/` commit deploys the console
+only; a `backend/` commit deploys neither; `/login → /dashboard` works
+against `api.vikuna.io`; `www.vikuna.io/vani` still redirects.
+
+Until the re-link, Vercel keeps deploying from vikunawebsite, so nothing can
+go down during H1.
+
+### H3 — Remove `frontend/` and every reference (½ day)
+
+Delete `frontend/` (381 files). In the same PR:
+
+| Where | Change |
 |---|---|
-| `package.json` (root) | remove `dev`, `dev:frontend`, `build:frontend`, `test:frontend`; remove root `dependencies` `next`, `react`, `react-dom` (they exist only for the retired UI; vani-app has its own); `build` = backend only |
-| `tsconfig.json` (root) | drop `frontend` from `include` |
-| `Dockerfile` (root) | header comment; if it only documents the two images, delete the file (the real Dockerfile is `deploy/vani-main-vps/Dockerfile`) |
-| `build-push.sh` | remove the frontend half, or the whole script per D2 |
-| `deploy/docker-compose.yml`, `deploy/nginx.conf`, `deploy/update.sh`, `deploy/configure.sh` | per D2 |
-| `CLAUDE.md` | remove the "Frontend conventions — RETIRED APP" section; keep the two lines that still describe the API contract (dates `DD-MMM-YYYY`, token names) by moving them to ARCH.md |
-| `documents/design-notes-smartprofile-port.md`, HANDOVER | paths that say `frontend/…` become "retired, see tag" |
+| root `package.json` | drop `dev`, `dev:frontend`, `build:frontend`, `test:frontend` and the root `next`/`react`/`react-dom` dependencies that exist only for it |
+| root `tsconfig.json` | drop `frontend` from `include` |
+| root `Dockerfile`, `build-push.sh` | remove the frontend half, or the files, per D2 |
+| `deploy/docker-compose.yml`, `nginx.conf`, `update.sh`, `configure.sh`, `migrate.sh` | per D2 |
+| `CLAUDE.md` | delete "Frontend conventions — RETIRED APP" and every "frontend/ is retired / in the OTHER repo" note; the UI is `vani-app/` here. The two API-contract facts in that section (dates `DD-MMM-YYYY`, token names) move to ARCH.md |
+| docs, HANDOVER, design notes | `frontend/…` paths become "retired — see tag pre-consolidation-…" |
 
-`documents/gtm-engine-ui/` and `documents/ux-references/` stay: they are
-blueprints, not code.
+Done when `grep -rn "frontend/" --exclude-dir=node_modules .` finds only the
+tag reference.
 
-### H4 — Slim vikunawebsite (half a day)
+### H4 — Retire vikunawebsite (after H2 is verified)
 
-- Remove the `vanigtm/` submodule (`.gitmodules`, the gitlink) and `docs/vani/`.
-- `vercel.json`: the `/vani → vani.vikuna.io` redirect stays.
-- Its CLAUDE.md: delete the "VaNi AI" and "Scope discipline for VaNi work" sections; one line says the product lives in VaNiGTM.
-- The website keeps its own Vercel project; nothing else changes.
+Archive the repo on GitHub (read-only, history kept). No slimming needed —
+nothing deploys from it any more.
 
 ### H5 — Charan's laptop
 
-Retire `website\vikunawebsite-git`'s role as a product checkout. One product
-checkout (`OpenClaw\VaNiGTM`), one website checkout, one VPS checkout. Record
-in HANDOVER §4.
+One checkout of VaNiGTM replaces `OpenClaw\VaNiGTM` and
+`website\vikunawebsite-git`. Record the path in HANDOVER.
 
-## 4. Salvage inventory — `frontend/` things vani-app does not have
+## 4. `frontend/` — what it had that vani-app does not (future stories, not blockers)
 
-From the 2026-09-30 side-by-side (HANDOVER-adjacent audit). Decide each
-before H3 deletes the source.
+Nothing here was ever deployed; deleting it loses nothing that runs. Kept as
+a list so the ideas are not lost with the folder; each is readable at the tag.
 
-| Item in `frontend/` | vani-app today | Default |
-|---|---|---|
-| `/today` Brain-completeness card: weakest section by weight, "Fix X", unlock at 60 | Dashboard is fixtures | **Port** (platform POA B4). ~150 lines of logic; the ring component maps to `platform/vdf` |
-| `components/today/AttentionQueue.tsx` (680 lines; `attention-skill.get_attention` / `decide_attention`, snooze, dismiss, reopen, log touch) | Nothing; the skill exists on the API | **Port**, into `gtm-today` (it already has the route) |
-| `PulseWidget` + `/pulses` (`pulse-skill`) | Nothing | **Port** as a dashboard widget; the skill is live |
-| `/today/storyteller` (deck generation, share token, Q&A) | Nothing; `storyteller-skill` is live on the API | **Port** later, under GTM's story library; record as G-track story |
-| `/war-room/agent-runs`, `/war-room/analytics` | `/runs` is a fixture | Runs: superseded by platform POA B3. Analytics: **drop**; `gtm-analytics-skill` gets a surface when GTM needs it |
-| `/import`, `/import-dashboard`, `/common-pool` | Already re-built as `gtm-imports`, `gtm-pool` this fortnight | **Drop** |
-| `/gtm/audience/*`, `/gtm/journeys`, `/gtm/motion`, `/gtm/people` | Re-built as `gtm-audience`, `gtm-journeys`, `gtm-motion`, `gtm-people` | **Drop**; diff each once for lost affordances before deleting |
-| `/brain/teach`, `/brain/knowledge`, `/brain/offers` | `smart-profile/knowledge`, `/offers` | **Drop** |
-| `(public)/deck/[token]` share page | Nothing | **Port** with the storyteller item |
-| `(public)/design/*` gallery, `/dev-colors`, `/smoketest`, `/demo-data` | — | **Drop** |
-| `(vani)/a/[slug]`, `(vani)/r/[token]` — the VaNi AI public assessment flow and report | Nothing in vani-app; the API routes are live (`/assessment`, `/r/:token`) | **Decide with Charan.** It is the funnel pattern Track E reuses (anonymous token → teaser → capture). Port the flow into vani-app under `(public)` before deleting, or accept that the assessment funnel goes dark |
-| VDF component library (`components/vdf/*`) | `platform/vdf/` re-implemented the ones the wizard needed | **Drop** the rest; port on demand |
+| In `frontend/` | Where it would go |
+|---|---|
+| `components/today/AttentionQueue.tsx` (attention-skill: snooze, dismiss, reopen, log touch) | console `gtm-today` — the skill is live on the API |
+| `PulseWidget` + `/pulses` (pulse-skill) | a dashboard widget |
+| `/today/storyteller` + `(public)/deck/[token]` | GTM story library |
+| `(vani)/a/[slug]`, `(vani)/r/[token]` — public assessment + report | console `(public)` when Track E builds the funnel; API routes `/assessment`, `/r/:token` stay live |
+| Everything else (import, pool, audience, journeys, brain, war-room, design gallery, dev pages, VDF library) | already rebuilt in vani-app, or not wanted — drop |
 
 ## 5. Order and duration
 
 ```
-H0  after B1 lands                     tags + salvage decisions          ½ day
-H1  next day (freeze window, D5)       move + docs + CI                  1 day
-H2  same day                           Vercel re-point + verify          ½ day
-H3  following day                      delete frontend/, clean root      ½ day
-H4  same day                           slim the website repo             ½ day
-H5  whenever Charan is at the laptop   one checkout                      —
+H0  after today's branches are merged     tags                              ½ hour
+H1  freeze day                            merge website in, CI, one handover ½ day
+H2  same day (Charan)                     re-link both Vercel projects       ½ hour
+H3  next day                              delete frontend/, clean refs       ½ day
+H4  after H2 is verified for a day        archive vikunawebsite              —
+H5  at the laptop                         one checkout                       —
 ```
 
-Three days of calendar, one of real work. Do it in week 1 of the platform
-POA, after B1 and before any Track C or D code, so nothing built afterwards
-has to move.
+Backend-only work (Track C, D2) does not wait for any of this — H never moves
+`backend/`. Console and website work waits for H1 so nothing is built in the
+old place.
 
 ## 6. Done when
 
-- `git clone VaNiGTM && npm run install:all && npm run dev:all` brings up API,
-  worker and console on one machine with one `.env` story.
-- A PR that changes a skill function and its screen is ONE PR, and CI runs
-  both halves.
-- `vani.vikuna.io` deploys from VaNiGTM `main`; a backend-only commit does not
-  rebuild it.
-- `frontend/` is gone; `grep -r frontend` at the root finds only the
-  retirement tag in docs.
-- vikunawebsite has no submodule and no product docs.
-- HANDOVER.md is one file in one repo.
+- `git clone VaNiGTM && npm run install:all` then `dev:api`, `dev:worker`,
+  `dev:ui`, `dev:web` bring up everything from one checkout.
+- A change to a skill and its screen is ONE PR, and CI builds both.
+- www.vikuna.io and vani.vikuna.io both deploy from VaNiGTM `main`, each only
+  when its folder changes.
+- `frontend/` is gone and nothing refers to it.
+- vikunawebsite is archived; there is one CLAUDE.md, one HANDOVER.md.

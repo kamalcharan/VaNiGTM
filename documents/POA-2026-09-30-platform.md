@@ -50,9 +50,10 @@ TRACK E  Funnel           landing → pre-signup crawl → signup → agent cata
 TRACK F  Vara             Phase 4 gate · consent · candidate lifecycle · import
 TRACK G  GTM              pool landing · ICP data structure · people · cleanup source
          Edge backend     after the entitlement model (Track E) exists
-TRACK H  One repository   vani-app moves into VaNiGTM; frontend/ retired; website slimmed
-                          — its own plan: POA-2026-09-30-repo-consolidation.md. Lands in
-                          week 1 after B1, before any Track C/D code, so nothing moves twice.
+TRACK H  One repository   website (as web/) + vani-app + backend in VaNiGTM; frontend/
+                          deleted with every reference; vikunawebsite archived (corrected
+                          2026-09-30) — its own plan: POA-2026-09-30-repo-consolidation.md.
+                          Console/website work waits for it; backend work does not.
 ```
 
 A and B start together. C and D start once A is written, because they are
