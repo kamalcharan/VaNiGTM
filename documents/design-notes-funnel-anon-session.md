@@ -117,9 +117,37 @@ All values from `.env`, no defaults (the configuration rule):
 |---|---|
 | Per visitor | At most `FUNNEL_MAX_PER_IP_PER_HOUR` submissions per IP (by `ip_hash`) |
 | Same site | A site read successfully in the last `FUNNEL_REUSE_HOURS` returns that card instead of a new model call. A company website is public, and so is a card drafted from it |
+| Already reading | A second submission of a site that is being read right now waits for that read instead of starting another |
 | Daily ceiling | The system tenant's existing daily token cap. When it is spent, the landing says so honestly ("VaNi is busy, try later") — no silent degradation |
 | Unbound rows | Deleted after `FUNNEL_SESSION_DAYS`; expired sessions are removed whenever a new one is created (there is no scheduler yet — ARCH §6a) |
 | Personal data | None collected before signup except the IP, and that only as a keyed hash that expires with the row. Nothing is emailed to a visitor (D9) |
+
+### 3.4a Revisits never pay twice (Charan, 2026-09-30)
+
+"Capture the IP so a revisit starts from the previous session rather than
+running again" — agreed in intent, and done in three layers, because an IP
+alone is the wrong key: many people share one (an office, a college, a
+mobile carrier), and one person's changes often.
+
+| Layer | Recognises | Model calls |
+|---|---|---|
+| **Browser token** — kept in the visitor's browser after the first visit | the same person, same browser: they land straight on their card | 0 |
+| **Same website, any visitor** — a site read within `FUNNEL_REUSE_HOURS` | the same person on another device or network, or a colleague entering the same site | 0 |
+| **Read in progress** | a refresh or double submit while reading | 0 extra |
+| **IP, as a keyed hash** | rate limiting, and a "welcome back" hint only — never used alone to hand one visitor another visitor's session | — |
+
+What makes the second layer safe: **the read result for a website and a
+visitor's session are separate things.** Each visitor gets their own session
+and token pointing at a shared read result; reusing the card never shares a
+token, so nobody can claim someone else's session. In the schema, the page
+text, draft, status and failure move to a `site read` record keyed by
+`website_host` (one per read), and `vani_anon_session` keeps only the visitor
+side (token, IP hash, the read it points at, binding). Same two-table count
+as a single wide table would need in spirit; decided with D3-h.
+
+IP is stored only as `ip_hash` (HMAC, the same keyed approach as D9-b), not
+the raw address: it matches revisits exactly as well, and a hash is not
+personal data we have to protect or disclose.
 
 ### 3.5 RLS
 
@@ -159,6 +187,7 @@ agent does).
 | D3-e | RLS on the new table | **Disabled by design**, token-hash access through one module, named in the RLS test |
 | D3-f | When the crawl attaches to the new tenant | **A separate claim call right after signup**, one transaction; `register()` untouched |
 | D3-g | `draft` as JSONB | **Yes** — it is the drafter's own validated object, short-lived, copied into the typed profile at claim |
+| D3-h | Revisits (Charan's ask) | **Three layers — browser token, same-website reuse, read-in-progress join — plus IP as a keyed hash for limits and a hint.** Needs the read result split from the visitor session (one extra small table, `vani_anon_site_read`) |
 
 ## 7. Build order once approved
 
