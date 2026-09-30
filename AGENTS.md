@@ -96,9 +96,15 @@ Rules:
 
 - A prompt key is `<skill>.<name>`. It has a **contract**: the variables it
   takes, the **output schema** (zod) the answer must satisfy, and **fixtures**
-  (input → expected output) checked into the skill's `evals/` [deviation →
-  Track C2/C3; today each agent hand-writes its parser and there are no
-  fixtures].
+  (input → expected output) checked into the skill's `evals/`. Built
+  (C2, 2026-09-30): `agent-core/contract.ts` (`defineContract`,
+  `renderContract`, `runContract`), fixtures in
+  `src/skills/<skill>/evals/<name>.json` validated by
+  `agent-core/contract-fixtures.ts` — a test fails if any contract in
+  `src/skills/<skill>/contracts/*.contract.ts` lacks valid fixtures.
+  [deviation → existing agents still hand-write prompts and parsers; they
+  move onto contracts one by one as real fixture material arrives —
+  `docs/fixtures-export.md`.]
 - `callLLMValidated(opts, schema, jsonPath?)` is the only way an agent reads a
   structured answer: fences stripped, optional tag extraction, JSON parse,
   schema parse, ONE correction retry that names the stage and fields, then
@@ -106,7 +112,11 @@ Rules:
 - **Three shared primitives** cover most needs and are preferred over a bespoke
   prompt: **extract** (facts with evidence span + confidence, complete pairs
   only), **classify** (one of N with confidence), **draft** (prose from
-  structured facts in the tenant's voice). [deviation → C2.]
+  structured facts in the tenant's voice). Built in `agent-core/primitives.ts`,
+  each with a grounding check in CODE: extract rejects a fact whose evidence
+  is not verbatim in the source (`EVIDENCE_NOT_IN_SOURCE`), draft rejects a
+  cited fact id it was not given (`UNKNOWN_FACT_ID`) and flags prose citing
+  none (`NO_FACTS_CITED`). Rejections are returned, never dropped.
 - **Every prompt that pastes in crawl text, nodes, search results or another
   model's output sizes it with `charBudgetFor(model, reserveOutput, fixedText)`**
   and says what it trimmed. A cap chosen next to the window drifts from it.
@@ -114,7 +124,7 @@ Rules:
   caller that parses a list checks it, because a cut-off list of facts looks
   exactly like a complete one.
 - Small models ignore soft formatting instructions; `/no_think` is a qwen
-  instruction and is appended only when the model name contains "qwen".
+  instruction, declared as `LLM_PRIMARY_SYSTEM_SUFFIX` in .env (platform only).
 - **Prompt changes are versioned** (append-only, one active per scope) and run
   the fixtures before they go live (§7).
 

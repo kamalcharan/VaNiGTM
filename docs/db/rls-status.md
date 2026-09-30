@@ -1005,7 +1005,7 @@ then reads nothing.
 | Path | Symptom as `vanigtm_app` | Fix |
 |---|---|---|
 | `PATCH /onboarding/step` (Domain) | `new row violates row-level security policy for table "vani_tenant"`; 500 | the transaction never called `set_tenant_context` — added after BEGIN |
-| same, for a NEW tenant | still refused: `vani_current_tenant()` finds the tenant THROUGH the `vani_tenant` row being created | **migration 259** — a second permissive policy admitting the caller's own slug. **Pending approval** |
+| same, for a NEW tenant | still refused: `vani_current_tenant()` finds the tenant THROUGH the `vani_tenant` row being created | **migration 259** — a second permissive policy admitting the caller's own slug. **Applied on production 2026-09-30** |
 | same, claiming another workspace's domain | 500 (RLS hides the owner row from the pre-check, then refuses the upsert) | 42501 on that upsert → 409 `DOMAIN_TAKEN`. The refusal is the isolation working |
 | `GET /tenant/domains` | empty list | `withTenantClient` |
 | `PATCH /tenant/domains/:id/origins` | would have written nothing (no context; `vani_audit_log` is RLS too) | `set_tenant_context` after BEGIN |

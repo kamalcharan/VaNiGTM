@@ -53,8 +53,8 @@ Production still runs as `vikuna_admin` (SUPERUSER + BYPASSRLS). Run as
 `vanigtm_app` locally, seven spine paths broke (Domain step, Install screen,
 `/tenant/embed`, public boot, intents, offers, domain-claim error) — all fixed
 in code, verified under BOTH roles by `backend/scripts/rls-runtime-probe/`
-(25/25). **Migration 259 is written and PENDING APPROVAL** — without it no new
-tenant can finish the Domain step under `vanigtm_app`. Procedure, preflight
+(25/25). **Migration 259 is APPLIED on production (2026-09-30)** — it is what
+lets a new tenant finish the Domain step under `vanigtm_app`. Procedure, preflight
 and the 12-item test list: `DEPLOY.md` §4b. Evidence: `docs/db/rls-status.md` §14.
 
 ## Later on 2026-09-30 — C6, C5, .env-only LLM config (all on `claude/wizardly-darwin-778r2w`, not merged)
@@ -75,8 +75,8 @@ and the 12-item test list: `DEPLOY.md` §4b. Evidence: `docs/db/rls-status.md` �
 - **Track H corrected and parked, no urgency:** ONE repo — website under `web/`,
   `vani-app/`, `backend/` in VaNiGTM; `frontend/` deleted with every reference;
   vikunawebsite archived. `documents/POA-2026-09-30-repo-consolidation.md`.
-- **Still waiting on Charan:** migration 259 approval and the `vanigtm_app`
-  switch (`DEPLOY.md` §4b); the Phase 4 gate; merging this branch to `main`.
+- **Migration 259 is APPLIED (Charan, 2026-09-30).** Still waiting on the
+  `vanigtm_app` switch (`DEPLOY.md` §4b); the Phase 4 gate; merging this branch to `main`.
 
 ## Next session, in order
 

@@ -157,8 +157,8 @@ prints which (`[Migrate] connecting as …`). Once the runtime is `vanigtm_app`
   CLAUDE.md → Migrations has the detail.
 - A migration is applied when `--status` says so, not when the commit that
   added it is deployed.
-- Highest in the repo = **259** (written 2026-09-30, **pending approval**, not on
-  production); production's highest applied = 258. Next new file = **260**.
+- Highest = **259**, applied on production 2026-09-30 (Charan). Next new
+  file = **260**.
   Two files share 249; never reuse a number.
 - Schema changes need Charan's approval before the file is written.
 
@@ -193,10 +193,9 @@ cd /opt/vikuna/src/vanigtm
 #    verified by running the same probe as each).
 git pull origin main && bash deploy/vani-main-vps/deploy-vani.sh
 
-# 2. Migration 259 (vani_tenant self-provision policy) — needs Charan's yes.
-#    Still running as vikuna_admin here, so the plain command is right:
-docker exec vani-backend node dist/migrate.js --status   # expect 259 pending, nothing else
-docker exec vani-backend node dist/migrate.js
+# 2. Migration 259 (vani_tenant self-provision policy) — APPLIED 2026-09-30.
+#    Confirm it reads applied (preflight check 6 checks the policy too):
+docker exec vani-backend node dist/migrate.js --status | tail -3   # 0 pending
 
 # 3. Grants — idempotent; covers tables added since it last ran.
 #    Runs as vikuna_admin through psql. The Postgres container name: confirm with

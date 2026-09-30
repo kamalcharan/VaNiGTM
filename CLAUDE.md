@@ -131,7 +131,7 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…259 (259 pending approval; TWO files are numbered 249)
+  migrations/         — 001…259 (highest applied = 259; TWO files are numbered 249)
 frontend/            — ⚠️ RETIRED (2026-09-16). Still on disk, still builds,
                       NOT the product. The frontend is vikunawebsite/vani-app.
                       Kept for reference; do not add features here.
@@ -169,7 +169,7 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   list in `DEPLOY.md` §4b. Before it, the API was run as `vanigtm_app` locally
   and seven broken spine paths were found and fixed (Domain step, Install
   screen, `/tenant/embed`, the public boot, intents, offers); new-tenant
-  provisioning needs **migration 259 (pending approval)**.
+  provisioning needs **migration 259 — APPLIED on production 2026-09-30 (Charan)**.
   `docs/db/rls-status.md` §14. Signup, login and the skills executor now pass
   as `vanigtm_app` locally (`backend/scripts/rls-runtime-probe/`).
 - **Unforced does not mean exempt.** Production's tables are owned by
@@ -364,8 +364,8 @@ because a date format or a token convention is worth not re-deciding.
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **259** (259 is
-  written and tested locally, **pending approval** — not on production). The
+  status: `npm run db:migrate -- --status`. Highest = **259** (applied on
+  production 2026-09-30). The
   runner uses `DB_MIGRATE` when set (the owner, once the runtime is the app
   role), else `DB_PRIMARY`. **Two files
   share the number 249** (`249_ki_import_sessions_needs_review.sql` and
