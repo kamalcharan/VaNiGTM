@@ -17,7 +17,7 @@ problem at once. The full commented block is in `backend/.env.example`.
 | `LLM_PRIMARY_KEY` | Bearer key; empty = no auth (must still be written) |
 | `LLM_PRIMARY_TIMEOUT_MS` | Floor for every call's timeout |
 | `LLM_PRIMARY_SYSTEM_SUFFIX` | Appended to platform system prompts (`/no_think` for qwen3); empty = none |
-| `LLM_CONTEXT_TOKENS` | The server's real window (its `n_ctx`); 0 = unknown |
+| `LLM_CONTEXT_TOKENS` | The server's real window (its `n_ctx`); 0 = unknown. **Vikuna's qwen: 16384** (Charan, 2026-09-30) — true only with the server on one parallel slot |
 | `LLM_MAX_CONCURRENT` | Platform calls in flight at once, across every process (C5) |
 | `LLM_BYOK_MAX_CONCURRENT` | A tenant endpoint's calls in flight, per process |
 | `LLM_CHARS_PER_TOKEN` | Cold-start guess until the server reports counts |

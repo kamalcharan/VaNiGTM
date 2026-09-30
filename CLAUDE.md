@@ -1044,6 +1044,12 @@ that server is ever the primary again, set `LLM_CONTEXT_TOKENS=4096` — a
 window is a server fact, not a preference — and expect the profile drafter to
 trim hard. It is not the primary now; Haiku is, from `.env`.
 
+**Superseded 2026-09-30 (Charan):** the platform model is qwen on Vikuna's own
+VPS again, with Haiku as the fallback, and its context is **16k**
+(`LLM_CONTEXT_TOKENS=16384`). That holds only while the server runs one slot
+(llama.cpp divides `n_ctx` across `--parallel`), which is why
+`LLM_MAX_CONCURRENT=1` goes with it. Settings: `docs/llm-config.md`.
+
 **A parked run whose source has since been read is SUPERSEDED, and the queue
 says so (2026-09-26).** Run 124 parked on that 400, the same page was then
 read successfully on Haiku, and the Knowledge page showed "vikuna.io · read ·
