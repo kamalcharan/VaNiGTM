@@ -65,6 +65,23 @@ const PLATFORM_ROUTES: Record<string, (params: Record<string, unknown>) => Platf
   // JSON steps after it are declared here so they keep useSkillMutation's
   // guarantees. nginx must expose /api/v1/etl/ for any of this to reach the
   // API (deploy/vani-main-vps/api.vikuna.io.conf).
+  // The public funnel on vani.vikuna.io (src/site/). It runs BEFORE any
+  // account exists, so the JWT skill runner cannot serve it — the same
+  // reason auth is here. Public routes, rate-limited per IP by the server.
+  'funnel.submit_site': (p) => ({
+    method: 'POST',
+    path: '/api/v1/funnel/site',
+    body: { website: p.website, ...(p.token ? { token: p.token } : {}) },
+  }),
+  'funnel.site_status': (p) => ({
+    method: 'GET',
+    path: `/api/v1/funnel/site/${encodeURIComponent(String(p.token))}`,
+  }),
+  'funnel.request_access': (p) => ({
+    method: 'POST',
+    path: '/api/v1/funnel/access-request',
+    body: p,
+  }),
   'etl.headers': (p) => ({
     method: 'GET',
     path: `/api/v1/etl/headers/${encodeURIComponent(String(p.file_id))}`,

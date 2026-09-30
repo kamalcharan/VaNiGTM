@@ -10,6 +10,7 @@
  * document's theme, not this one.
  */
 import type { ReactNode } from 'react';
+import { SiteProviders } from '@/site/SiteProviders';
 
 const LANDING_THEME = { theme: 'vani', mode: 'dark' } as const;
 
@@ -20,7 +21,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       data-mode={LANDING_THEME.mode}
       style={{ background: 'var(--bg)', color: 'var(--tx)', fontFamily: 'var(--sans)', minHeight: '100vh', colorScheme: LANDING_THEME.mode }}
     >
-      {children}
+      <SiteProviders>{children}</SiteProviders>
     </div>
   );
 }
