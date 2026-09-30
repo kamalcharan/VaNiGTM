@@ -21,7 +21,7 @@ const config: Config = {
     '<rootDir>/src/skills', '<rootDir>/src/services', '<rootDir>/src/etl',
     '<rootDir>/src/agent-core', '<rootDir>/src/tests',
     '<rootDir>/src/auth', '<rootDir>/src/onboarding',
-    '<rootDir>/src/vani', '<rootDir>/src/vara',
+    '<rootDir>/src/vani', '<rootDir>/src/vara', '<rootDir>/src/comms',
   ],
   testMatch: ['**/tests/**/*.test.ts'],
   // Explicit LLM settings for every test — production has no defaults (llm.config.ts).

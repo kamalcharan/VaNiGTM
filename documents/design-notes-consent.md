@@ -1,7 +1,7 @@
 # D9 — Consent and suppression: design for approval · 2026-09-30
 
 > **Status: DECIDED (Charan, 2026-09-30, §6a). Migration 260 written, awaiting approval to apply.
-> Nothing reads these tables yet; the gate (comms/may-contact.ts) is the next build step.**
+> Migration 260 applied on production 2026-09-30. The gate (comms/may-contact.ts) is built; nothing calls it yet.**
 > Schema changes need Charan's approval (CLAUDE.md, repo rule). §6 lists the
 > decisions; each has a recommended answer. Once they are answered, the build
 > is §7.
@@ -265,8 +265,18 @@ Each step is small and ends in something testable; nothing sends until step 5.
    `SECURITY DEFINER` writer. Guarded and idempotent. Two-tenant RLS test
    extended to cover them (3-check: own rows / empty / other tenant → 0 rows,
    plus: platform-wide rows visible to all, writable by none).
-2. **`comms/may-contact.ts`** — the gate (§5), with tests for every refusal
-   reason, and the "only the comms service may send" test.
+2. **`comms/may-contact.ts`** — ✅ BUILT 2026-09-30 (not deployed, nothing
+   calls it yet). `mayContact` (suppression → per-agent basis: Vara consent in
+   force and retention, GTM acknowledgement; fails closed), `recordSuppression`
+   (tenant reasons as tenant rows, bounce/complaint/erasure through the
+   platform writer), `liftSuppression` (D9-d: admin undoes only the tenant's
+   `manual`; the person undoes only their own unsubscribe / never-contact /
+   consent-withdrawn; platform blocks never from a tenant). Fingerprints in
+   `comms/identifiers.ts` (`SUPPRESSION_HASH_KEY`, read at call time, not at
+   startup). 13 tests against a database built by the real migration runner,
+   as a restricted role; breaking the agent filter makes one fail. The
+   "only the comms service may send" test lands with the first sender (step 5)
+   — there is nothing to guard until one exists.
 3. **Vara consent capture (V-05, F2)** — publish consent text; the widget
    shows it and stores a `vara_consent` naming the version; `retention_until`
    set. This is what unblocks candidate intake.
