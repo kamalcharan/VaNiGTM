@@ -225,3 +225,42 @@ d('the queue reclaims what a dead worker abandoned', () => {
     expect((await row(two[1].id)).error).toBe('real failure');
   });
 });
+
+d('an event nothing handles waits in the queue (POA C6)', () => {
+  beforeEach(async () => {
+    await pool.query(`DELETE FROM gt_events WHERE event_type IN ('TEST_EVENT', 'NOBODY_LISTENS')`);
+  });
+
+  it('is never claimed, and never blocks what can run behind it', async () => {
+    // The unhandled one is OLDEST, so a claim that took it and put it back
+    // would take it first on every poll.
+    await pool.query(
+      `INSERT INTO gt_events (tenant_id, event_type, created_at)
+       VALUES ($1, 'NOBODY_LISTENS', now() - interval '1 hour')`, [T]);
+    await seed(2);
+
+    const claimed = await pollPendingEvents(pool, 5, ['TEST_EVENT']);
+    expect(claimed.map((e) => e.event_type)).toEqual(['TEST_EVENT', 'TEST_EVENT']);
+
+    const waiting = (await pool.query(
+      `SELECT status, attempts, started_at FROM gt_events WHERE event_type = 'NOBODY_LISTENS'`)).rows[0];
+    // Untouched: no attempt counted, no claim stamp, so the reclaim can never
+    // fail it for "attempts exhausted" — it was never attempted.
+    expect(waiting).toEqual({ status: 'pending', attempts: 0, started_at: null });
+    expect(await pollPendingEvents(pool, 5, ['TEST_EVENT'])).toHaveLength(0);
+  });
+
+  it('runs, backlog included, once a handler exists for it', async () => {
+    await pool.query(
+      `INSERT INTO gt_events (tenant_id, event_type) VALUES ($1, 'NOBODY_LISTENS'), ($1, 'NOBODY_LISTENS')`, [T]);
+    expect(await pollPendingEvents(pool, 5, ['TEST_EVENT'])).toHaveLength(0);
+    // The day an agent subscribes, the waiting events are simply claimable.
+    const now = await pollPendingEvents(pool, 5, ['TEST_EVENT', 'NOBODY_LISTENS']);
+    expect(now).toHaveLength(2);
+  });
+
+  it('an empty handled list claims nothing, rather than everything', async () => {
+    await seed(1);
+    expect(await pollPendingEvents(pool, 5, [])).toHaveLength(0);
+  });
+});

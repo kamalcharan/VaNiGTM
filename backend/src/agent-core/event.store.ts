@@ -103,6 +103,18 @@ export async function emitEvent(
 export async function pollPendingEvents(
   pool: Pool,
   limit = 10,
+  /**
+   * Only claim these event types. The worker passes HANDLED_EVENT_TYPES, so an
+   * event nothing handles is never claimed: it stays `pending`, visible, and is
+   * picked up the day an agent subscribes to it (POA C6, 2026-09-30).
+   *
+   * Filtering at the claim — not claiming and putting back — is the point.
+   * Put back, it would be the oldest pending row on every poll, re-claimed
+   * forever, spending a batch slot each time and failed by the reclaim once
+   * `attempts` hit the cap. Omitted = every type (tests, and any caller that
+   * genuinely means "anything").
+   */
+  types?: readonly string[],
 ): Promise<GTEvent[]> {
   // The CTE form, NOT `WHERE id IN (SELECT ... LIMIT n)`. That reads as
   // though it claims n rows and does not: Postgres plans the sublink as a
@@ -118,6 +130,7 @@ export async function pollPendingEvents(
     `WITH claimed AS (
        SELECT id FROM gt_events
         WHERE status = 'pending'
+          AND ($2::text[] IS NULL OR event_type = ANY($2::text[]))
         ORDER BY created_at ASC
         LIMIT $1
         FOR UPDATE SKIP LOCKED
@@ -129,7 +142,7 @@ export async function pollPendingEvents(
        FROM claimed c
       WHERE e.id = c.id
       RETURNING e.*`,
-    [limit],
+    [limit, types ? [...types] : null],
   );
   return result.rows;
 }

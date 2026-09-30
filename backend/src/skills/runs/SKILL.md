@@ -17,9 +17,12 @@ page was a fixture. These four reads make the runtime visible without a new
 table.
 
 Rule 12 applies to the queue itself: an event with no handler used to be
-resolved `done` by the worker and vanish. `events` now marks it `handled:false`
-so "PROFILE_COMPLETE was emitted and nothing happened" is a thing a person can
-see.
+resolved `done` by the worker and vanish. Since C6 (2026-09-30) the worker only
+CLAIMS event types it can run, so such an event stays `pending` and runs the day
+an agent subscribes. `events` marks it `handled:false` with a `waiting_reason`,
+and counts it separately (`waiting_for_agent`), so "PROFILE_COMPLETE was
+emitted and nothing happened" is a thing a person can see — and a queue of them
+does not read as a jammed worker. Rows from before C6 are `done` with no run.
 
 `gt_agent_runs` has RLS DISABLED by design (migration 237) — every query here
 filters `tenant_id` explicitly.
@@ -39,7 +42,7 @@ One run in full: the step timeline, what it is waiting for, and what it changed 
 ### events
 The bus: every event for the tenant with status, attempts, age, whether a handler exists and whether a run was created for it.
 - Parameters: status (optional, string), limit (optional, number, default 100, max 500)
-- Returns: { events: [...], unconsumed: [...], counts: { pending, processing, done, failed } }
+- Returns: { events: [{ …, handled, consumed, waiting_reason }], unconsumed: [...], counts: { pending, processing, done, failed, waiting_for_agent } }
 
 ### awaiting
 Everything parked on a person: failover questions, profile input, approvals — one queue.

@@ -15,12 +15,12 @@
 |---|---|
 | A Foundations | **DONE.** `ARCH.md`, `AGENTS.md`, `documents/spec/{PLATFORM,VARA,GTM}.md`; May POA, May agent spec, Aug Vara POA marked superseded (A6) |
 | B Unblock | **DONE except the gate.** B1 merged (migrations 254–258; **applied on production by Charan, 2026-09-30**); B2 fixed + DB test; B3 runs/events/awaiting real on both sides; B4 dashboard on the Brain, `vara.journey` and `gtm.journey` real (`edge.journey` stays a labelled preview by design); B5 drift fixed. **Open:** the Phase 4 gate — paste the snippet on a real page and watch a boot land — needs the API deployed from `main` and a person |
-| C Harness | not started; C6 (worker leaves unhandled events visible) is the first slice — the read already reports them |
+| C Harness | **C6 DONE (2026-09-30):** the worker claims only event types it handles; the rest wait in `pending` with a `waiting_reason` and run when an agent subscribes (`runs.events` counts them as `waiting_for_agent`). Next: C1 (needs D14), C2, C3 |
 | D Brain | not started |
 | E Funnel | not started; D2 ruled (website URL, wizard step 1 pre-done) |
 | F Vara | waits on the gate, then D9 consent |
 | G GTM | parked, recorded |
-| H One repo | next: after the gate, before any C/D code |
+| H One repo | next. **Clarified 2026-09-30:** "before any C/D code" means before any CONSOLE code — H moves `vani-app/`, never `backend/`, so backend-only slices (C6, C1–C5, D2) can land before it without moving twice. Console work waits for H |
 
 Both repos: branch `claude/brave-sagan-25311u` merged to `main` on 2026-09-30.
 

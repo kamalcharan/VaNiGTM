@@ -7,10 +7,19 @@
  * and the worker REFUSES TO START if its registry keys differ from it
  * (rule 12: a list that drifts silently is worse than none).
  *
- * `runs.events` uses it to mark an event as `handled: false` — emitted and
- * consumed by nothing. PROFILE_COMPLETE, PRESENTATION_READY and AGENT_FAILED
- * are in that state today (2026-09-30); the console now shows it instead of
- * the worker quietly resolving them `done`.
+ * Two readers:
+ *   - the worker's CLAIM (PostgresEventQueue.poll → pollPendingEvents) takes
+ *     only these types. Anything else stays `pending` until an agent for it is
+ *     registered here and in AGENT_REGISTRY — then it runs, backlog included.
+ *     (POA C6, 2026-09-30. Before it, the worker resolved them `done`.)
+ *   - `runs.events` marks the rest `handled: false` with a waiting_reason.
+ *     PROFILE_COMPLETE, PRESENTATION_READY and AGENT_FAILED are in that state
+ *     today (2026-09-30).
+ *
+ * Adding a type here without a handler is refused at worker start; adding a
+ * handler without the type here is refused too. Once both exist, every
+ * waiting event of that type is picked up — decide whether the backlog should
+ * run before shipping a new consumer (it will, oldest first).
  */
 import type { EventType } from './event.store';
 

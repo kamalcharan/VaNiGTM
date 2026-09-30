@@ -19,9 +19,9 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { createTenantDb } from '../db';
-import { emitEvent, reclaimStaleEvents, heartbeat, type GTEvent } from './event.store';
+import { emitEvent, reclaimStaleEvents, heartbeat, pollPendingEvents, type GTEvent } from './event.store';
 import { createRun, setStatus, appendStep } from './agent.runner';
-import { assertRegistryMatches } from './handled-events';
+import { assertRegistryMatches, HANDLED_EVENT_TYPES } from './handled-events';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
 import { CompetitorResearchAgent } from '../skills/research-skill/research.agent';
@@ -44,39 +44,11 @@ export class PostgresEventQueue implements EventQueue {
   constructor(private readonly pool: Pool) {}
 
   async poll(limit: number): Promise<GTEvent[]> {
-    const result = await this.pool.query<GTEvent>(
-      // started_at and attempts are stamped IN the claim, so the row itself
-      // records that work began. Before migration 253 nothing did, and a
-      // worker that died mid-run left the row 'processing' forever —
-      // indistinguishable from one claimed a second ago.
-      //
-      // The CTE form, NOT `WHERE id IN (SELECT ... LIMIT n)`. That reads as
-      // though it claims n rows and does not: Postgres plans the sublink as a
-      // Nested Loop Semi Join and re-runs the LIMIT subquery per outer row, so
-      // EVERY pending event is claimed. `LIMIT 1` against three pending rows
-      // claimed all three — verified with EXPLAIN, 2026-09-17.
-      //
-      // WORKER_BATCH_SIZE has therefore never been respected. Since
-      // processEvent is fire-and-forget, twenty queued events meant twenty
-      // agents running at once, each holding an LLM call. A CTE is a genuine
-      // optimisation fence: it runs once, and the UPDATE joins its result.
-      `WITH claimed AS (
-         SELECT id FROM gt_events
-          WHERE status = 'pending'
-          ORDER BY created_at ASC
-          LIMIT $1
-          FOR UPDATE SKIP LOCKED
-       )
-       UPDATE gt_events e
-          SET status     = 'processing',
-              started_at = now(),
-              attempts   = e.attempts + 1
-         FROM claimed c
-        WHERE e.id = c.id
-        RETURNING e.*`,
-      [limit],
-    );
-    return result.rows;
+    // One claim, in event.store — this class used to carry a second copy of the
+    // same CTE, which is how two claim sites drift. Only the types this worker
+    // can run are claimed; anything else waits in `pending` (see
+    // pollPendingEvents for why the filter lives in the claim).
+    return pollPendingEvents(this.pool, limit, HANDLED_EVENT_TYPES);
   }
 
   async resolve(eventId: string, status: 'done' | 'failed', error?: string): Promise<void> {
@@ -239,8 +211,13 @@ async function processEvent(
   const handler = AGENT_REGISTRY[event.event_type];
 
   if (!handler) {
-    // No agent registered for this event type yet — mark done and move on.
-    await queue.resolve(event.id, 'done');
+    // Unreachable in normal operation: the claim only takes HANDLED_EVENT_TYPES,
+    // and startWorker refuses to run if that list and this registry disagree.
+    // If it happens anyway it is a bug, and it says so — it is never `done`,
+    // which is what this branch used to write for every event nobody handled.
+    console.error(`[Worker] Claimed ${event.event_type} (${event.id}) but no handler is registered`);
+    await queue.resolve(event.id, 'failed',
+      `NO_HANDLER: no agent is registered for ${event.event_type}`);
     return;
   }
 
