@@ -106,11 +106,22 @@ function platformProvider(): ResolvedProvider {
  * their behalf, and a guessed endpoint for a real API key is worse than an
  * error.
  */
+/**
+ * The MENU a BYOK tenant picks from in Settings → Model. Product content, not
+ * deployment config: approved as an in-code constant by Charan (2026-09-30,
+ * "put menu back to code"). The tenant's own choice, key, model and endpoint
+ * are theirs and live in vani_llm_provider — never here, never in .env.
+ */
+const BYOK_PROVIDER_MENU: Record<string, ByokProvider> = {
+  openai:    { label: 'OpenAI',        baseUrl: 'https://api.openai.com/v1',       defaultModel: 'gpt-4o-mini',            keyRequired: true  },
+  anthropic: { label: 'Anthropic',     baseUrl: 'https://api.anthropic.com/v1',    defaultModel: 'claude-haiku-4-5',       keyRequired: true  },
+  groq:      { label: 'Groq',          baseUrl: 'https://api.groq.com/openai/v1',  defaultModel: 'llama-3.3-70b-versatile', keyRequired: true  },
+  together:  { label: 'Together AI',   baseUrl: 'https://api.together.xyz/v1',     defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', keyRequired: true },
+  custom:    { label: 'Self-hosted',   baseUrl: null,                              defaultModel: '',                        keyRequired: false },
+};
+
 export function providerCatalogueMap(): Record<string, ByokProvider> {
-  // From .env (LLM_BYOK_PROVIDERS, JSON) — which providers a tenant may pick,
-  // their endpoints and suggested models are a deployment decision, not code
-  // (Charan, 2026-09-30). backend/.env.example carries the current list.
-  return readLlmConfig().byokProviders;
+  return BYOK_PROVIDER_MENU;
 }
 
 export function isKnownProvider(code: string): boolean {

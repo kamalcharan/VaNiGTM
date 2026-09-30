@@ -94,9 +94,12 @@ holds and is what the API is shaped around. The routes and the sidebar are
   anywhere without his approval.** Every LLM setting is read by
   `agent-core/llm.config.ts` with NO defaults; the API and worker refuse to
   start and list every missing variable. That includes the budget/timeout
-  arithmetic, the BYOK provider list (`LLM_BYOK_PROVIDERS`, JSON) and the
-  worker's `WORKER_*` settings (`worker.config.ts`) — "it should move to
-  .env" (Charan, same day). `docs/llm-config.md` lists every variable. Never
+  arithmetic and the worker's `WORKER_*` settings (`worker.config.ts`) — "it
+  should move to .env" (Charan, same day). **One approved exception:** the
+  BYOK provider MENU (OpenAI/Anthropic/Groq/Together/Self-hosted, with public
+  base URLs and suggested models) stays in code, `llm.provider.ts` — product
+  content, not deployment config ("put menu back to code"). A tenant's own
+  choice, key and endpoint live in `vani_llm_provider`, never in .env. `docs/llm-config.md` lists every variable. Never
   add `process.env.X ?? '<value>'` for an LLM or worker setting; add it to
   the config module and `.env.example`.
 - **LLM:** VPS/local OpenAI-compatible endpoint (`LLM_PRIMARY_URL`, dev =

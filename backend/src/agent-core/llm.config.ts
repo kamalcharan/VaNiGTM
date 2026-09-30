@@ -23,9 +23,11 @@
  *
  * That includes the numbers inside the algorithms — the tokens reserved for
  * the chat template, the calibration margins, the prefill factor, the default
- * answer size — and the list of providers a BYOK tenant may pick. They were
- * proposed as in-code constants; Charan (2026-09-30): "it should move to
- * .env". docs/llm-config.md explains each one.
+ * answer size. They were proposed as in-code constants; Charan (2026-09-30):
+ * "it should move to .env". docs/llm-config.md explains each one.
+ *
+ * NOT here: the BYOK provider MENU (llm.provider.ts). It is product content,
+ * the same on every deployment, and was approved to stay in code.
  */
 
 /** A provider a BYOK tenant can choose; baseUrl null = the tenant supplies it. */
@@ -86,9 +88,6 @@ export interface LlmConfig {
   extractAnswerDivisor: number;
   extractAnswerMin: number;
   extractAnswerMax: number;
-
-  /** Providers a BYOK tenant may pick (LLM_BYOK_PROVIDERS, JSON). */
-  byokProviders: Record<string, ByokProvider>;
 }
 
 /** Every variable this module reads, in the order .env.example lists them. */
@@ -101,7 +100,6 @@ export const LLM_ENV_VARS = [
   'LLM_CALIBRATION_MIN_SAMPLES', 'LLM_SPEED_MIN_SAMPLE_TOKENS', 'LLM_SPEED_MAX_MULTIPLE',
   'LLM_PREFILL_FACTOR', 'LLM_TIMEOUT_SLACK_MS', 'LLM_DEFAULT_MAX_TOKENS', 'LLM_DEFAULT_TEMPERATURE',
   'LLM_EXTRACT_ANSWER_DIVISOR', 'LLM_EXTRACT_ANSWER_MIN', 'LLM_EXTRACT_ANSWER_MAX',
-  'LLM_BYOK_PROVIDERS',
 ] as const;
 
 export class LlmConfigError extends Error {
@@ -152,27 +150,6 @@ export function readLlmConfig(env: NodeJS.ProcessEnv = process.env): LlmConfig {
     return n;
   };
 
-  const providers = (): Record<string, ByokProvider> => {
-    const raw = str('LLM_BYOK_PROVIDERS');
-    if (raw === '') return {};
-    let parsed: unknown;
-    try { parsed = JSON.parse(raw); } catch {
-      problems.push('LLM_BYOK_PROVIDERS is not valid JSON'); return {};
-    }
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      problems.push('LLM_BYOK_PROVIDERS must be a JSON object keyed by provider code'); return {};
-    }
-    const out: Record<string, ByokProvider> = {};
-    for (const [code, v] of Object.entries(parsed as Record<string, any>)) {
-      const ok = v && typeof v.label === 'string' && v.label.trim()
-        && (v.baseUrl === null || (typeof v.baseUrl === 'string' && /^https?:\/\//.test(v.baseUrl)))
-        && typeof v.defaultModel === 'string' && typeof v.keyRequired === 'boolean';
-      if (!ok) { problems.push(`LLM_BYOK_PROVIDERS.${code} needs {label, baseUrl (http(s) URL or null), defaultModel, keyRequired}`); continue; }
-      out[code] = { label: v.label, baseUrl: v.baseUrl, defaultModel: v.defaultModel, keyRequired: v.keyRequired };
-    }
-    return out;
-  };
-
   const primaryUrl = str('LLM_PRIMARY_URL').replace(/\/+$/, '');
   if (primaryUrl && !/^https?:\/\//.test(primaryUrl)) problems.push(`LLM_PRIMARY_URL=${primaryUrl} is not an http(s) URL`);
 
@@ -203,8 +180,6 @@ export function readLlmConfig(env: NodeJS.ProcessEnv = process.env): LlmConfig {
     extractAnswerDivisor:   num('LLM_EXTRACT_ANSWER_DIVISOR', 0),
     extractAnswerMin:       int('LLM_EXTRACT_ANSWER_MIN', 1),
     extractAnswerMax:       int('LLM_EXTRACT_ANSWER_MAX', 1),
-
-    byokProviders:          providers(),
   };
   if (cfg.extractAnswerMin > cfg.extractAnswerMax) {
     problems.push(`LLM_EXTRACT_ANSWER_MIN (${cfg.extractAnswerMin}) is above LLM_EXTRACT_ANSWER_MAX (${cfg.extractAnswerMax})`);

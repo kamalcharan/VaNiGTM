@@ -49,7 +49,6 @@ All required; the API and worker refuse to start without them.
 | `LLM_DEFAULT_MAX_TOKENS` | 1000 | Answer size when a caller names none |
 | `LLM_DEFAULT_TEMPERATURE` | 0.2 | Temperature when a caller names none |
 | `LLM_EXTRACT_ANSWER_DIVISOR` / `_MIN` / `_MAX` | 8 / 800 / 3000 | Extraction answer reserve = window ÷ divisor, clamped |
-| `LLM_BYOK_PROVIDERS` | the provider catalogue | One line of JSON, single-quoted: `{code: {label, baseUrl or null, defaultModel, keyRequired}}` |
 | `EMBED_DIM` | 768 | Must match the `vector(768)` columns (migration 246); checked at call time with the other EMBED_* |
 | `WORKER_POLL_MS` | 3000 | How often the worker polls |
 | `WORKER_BATCH_SIZE` | 5 | Events claimed per poll |
@@ -57,6 +56,12 @@ All required; the API and worker refuse to start without them.
 | `WORKER_STALE_CLAIM_SECONDS` | "2 minutes" (was `WORKER_STALE_CLAIM`) | A claim with no heartbeat this long is orphaned. Now a number, passed to SQL as a parameter |
 | `WORKER_MAX_ATTEMPTS` | 3 | Claims before an event is failed as poison |
 
-Nothing LLM- or worker-related remains in code as a value. Outside that
+## Approved to stay in code
+
+| Value | Where | Ruling |
+|---|---|---|
+| The BYOK provider **menu** — OpenAI, Anthropic, Groq, Together, Self-hosted, with their public base URLs and suggested models | `agent-core/llm.provider.ts` `BYOK_PROVIDER_MENU` | Charan, 2026-09-30: "put menu back to code". Product content, the same on every deployment. The tenant's own choice, key, model and endpoint are stored per tenant in `vani_llm_provider` (key encrypted) — never in code or .env |
+
+Nothing else LLM- or worker-related remains in code as a value. Outside that
 scope, constants still exist elsewhere in the backend (list sizes, crawl
 limits, the DB pool size); they are not covered by this change.

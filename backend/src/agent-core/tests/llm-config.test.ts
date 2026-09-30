@@ -33,7 +33,6 @@ const FULL: NodeJS.ProcessEnv = {
   LLM_EXTRACT_ANSWER_DIVISOR: '8',
   LLM_EXTRACT_ANSWER_MIN: '800',
   LLM_EXTRACT_ANSWER_MAX: '3000',
-  LLM_BYOK_PROVIDERS: '{"openai":{"label":"OpenAI","baseUrl":"https://api.openai.com/v1","defaultModel":"gpt-4o-mini","keyRequired":true},"custom":{"label":"Self-hosted","baseUrl":null,"defaultModel":"","keyRequired":false}}',
 };
 const without = (...keys: string[]) => Object.fromEntries(Object.entries(FULL).filter(([k]) => !keys.includes(k)));
 const problems = (env: NodeJS.ProcessEnv) => {
@@ -82,7 +81,7 @@ describe('llm.config — everything from .env', () => {
     expect(problems({ ...FULL, LLM_CHARS_PER_TOKEN: 'abc' })[0]).toMatch(/LLM_CHARS_PER_TOKEN=abc/);
   });
 
-  it('reads the budget arithmetic and the BYOK provider list from .env too', () => {
+  it('reads the budget arithmetic from .env too', () => {
     const c = readLlmConfig(FULL);
     expect(c).toMatchObject({
       templateOverheadTokens: 200, budgetSlackTokens: 64, overflowMargin: 0.9, calibrationMinSamples: 3,
@@ -90,14 +89,6 @@ describe('llm.config — everything from .env', () => {
       defaultMaxTokens: 1000, defaultTemperature: 0.2,
       extractAnswerDivisor: 8, extractAnswerMin: 800, extractAnswerMax: 3000,
     });
-    expect(Object.keys(c.byokProviders)).toEqual(['openai', 'custom']);
-    expect(c.byokProviders.custom.baseUrl).toBeNull();
-  });
-
-  it('rejects a provider list that is not valid, naming the entry', () => {
-    expect(problems({ ...FULL, LLM_BYOK_PROVIDERS: 'openai' })).toEqual(['LLM_BYOK_PROVIDERS is not valid JSON']);
-    expect(problems({ ...FULL, LLM_BYOK_PROVIDERS: '{"x":{"label":"X","baseUrl":"ftp://x","defaultModel":"m","keyRequired":true}}' })[0])
-      .toMatch(/LLM_BYOK_PROVIDERS\.x/);
   });
 
   it('rejects an extraction range whose minimum is above its maximum', () => {

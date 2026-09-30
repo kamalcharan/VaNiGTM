@@ -35,13 +35,6 @@ const TEST_LLM_ENV: Record<string, string> = {
   LLM_EXTRACT_ANSWER_DIVISOR: '8',
   LLM_EXTRACT_ANSWER_MIN: '800',
   LLM_EXTRACT_ANSWER_MAX: '3000',
-  LLM_BYOK_PROVIDERS: JSON.stringify({
-    openai: { label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o-mini', keyRequired: true },
-    anthropic: { label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-haiku-4-5', keyRequired: true },
-    groq: { label: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', defaultModel: 'llama-3.3-70b-versatile', keyRequired: true },
-    together: { label: 'Together AI', baseUrl: 'https://api.together.xyz/v1', defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', keyRequired: true },
-    custom: { label: 'Self-hosted', baseUrl: null, defaultModel: '', keyRequired: false },
-  }),
   WORKER_POLL_MS: '3000',
   WORKER_BATCH_SIZE: '5',
   WORKER_HEARTBEAT_MS: '30000',
