@@ -173,7 +173,7 @@ about this document changes when it does.
   themselves. **Agents read it; no agent owns it; no agent stores a copy of
   contacts, offers or brand.** A second copy is a bug.
 - **All agents read it through `brain.context(purpose)`** (`agent-core/brain.context.ts`)
-  [deviation → Track D2: the storyteller is converted; research, the drafter,
+  [deviation → Track D2: storyteller, research and offer drafting are converted;
   domain-pack and Vara (which reads only industry) are not yet]. Retrieval by embedding with vocabulary boost follows (D4) and needs
   one embedding provider, from `.env`.
 - **Provenance per field:** agents write suggestions, humans approve, re-runs

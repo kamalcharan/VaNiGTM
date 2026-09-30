@@ -324,7 +324,7 @@ Restore on failure: copy the `.bak-…` file back and reload.
 | API port | 3001 in the container; public only through nginx |
 | Platform LLM | **Haiku as primary since 2026-09-30 evening (Charan: "let haiku run now")**: `claude-haiku-4-5` at `https://api.anthropic.com/v1`, window 100000, 4 at a time, no system suffix. The qwen settings (`qwen3-4b` at `http://vikuna-llm:8080`, window 16384, 1 at a time, suffix `/no_think`) are kept in the compose dir as `.env.bak-qwen-<date>`; restoring is `cp` of that file + recreate |
 | Database | `vani_gtm_db` |
-| Runtime DB role | `vikuna_admin` as read on 2026-09-30 (SUPERUSER + BYPASSRLS — RLS is not enforced). **Switching to `vanigtm_app` was decided 2026-09-30** — §4b is the procedure. Update this row when it is done |
+| Runtime DB role | **`vanigtm_app`** since 2026-09-30 (switched by Charan per §4b) — RLS is enforced. `DB_MIGRATE` keeps the owner connection for the migration runner. Before the switch: `vikuna_admin` (SUPERUSER + BYPASSRLS) |
 | Console | `vani.vikuna.io` (Vercel, vikunawebsite repo, root `vani-app/`); env `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` |
 | Website | `www.vikuna.io` (Vercel, vikunawebsite repo, root `/`) |
 | Other vhosts on the same nginx | `dristiq.com`, `mcp-db.dristiq.com` (the read-only DB MCP) — not ours to change from here |

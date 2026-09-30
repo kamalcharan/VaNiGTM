@@ -155,18 +155,21 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   (resolved from JWT, never the request body).
 
 ### RLS — current reality (important)
-- Policies exist on tenant-data `gt_` tables, but the runtime still connects as
-  `vikuna_admin` (SUPERUSER **and** BYPASSRLS) — **RLS is dormant**; isolation
-  rests on application-layer `WHERE tenant_id = $tenant_id` filters.
+- **The runtime connects as `vanigtm_app` since 2026-09-30 (Charan switched it
+  per `DEPLOY.md` §4b) — RLS is ENFORCED.** A raw `pool.query` against an RLS
+  table now returns nothing; every tenant read goes through `withTenantClient`
+  / `createTenantDb`. Application-layer `WHERE tenant_id` filters stay as the
+  second layer. Until that day the runtime was `vikuna_admin` (SUPERUSER and
+  BYPASSRLS) and RLS was dormant.
 - **Phase 0 finished the preparation (2026-08-10).** Migrations 234–237 are
   deployed **and verified on production** (post-deploy-check.sql: all seven
   rows OK, "ready for cutover? YES on the schema side"), every known code
   blocker is fixed, and the two-tenant isolation test passes 13/13 locally.
   Full detail in `docs/db/rls-status.md` §8.
-- **Cutover is NOT done** (read off the container 2026-09-30:
-  `current_user = vikuna_admin`). An earlier line here said it was. **Charan
-  decided the switch to `vanigtm_app` on 2026-09-30** — procedure and the test
-  list in `DEPLOY.md` §4b. Before it, the API was run as `vanigtm_app` locally
+- **Cutover DONE 2026-09-30 (Charan).** Earlier that day it was read off the
+  container as `current_user = vikuna_admin`; the switch to `vanigtm_app` was
+  decided and made the same day — procedure and the test list in `DEPLOY.md`
+  §4b. Before it, the API was run as `vanigtm_app` locally
   and seven broken spine paths were found and fixed (Domain step, Install
   screen, `/tenant/embed`, the public boot, intents, offers); new-tenant
   provisioning needs **migration 259 — APPLIED on production 2026-09-30 (Charan)**.

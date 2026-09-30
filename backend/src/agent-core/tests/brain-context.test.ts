@@ -113,4 +113,31 @@ describe('renderBrain', () => {
     expect(renderBrain(data(), 'deck', BIG).profileApproved).toBe(false);
     expect(renderBrain(data({ profile: profile({ approved_at: new Date() }) }), 'deck', BIG).profileApproved).toBe(true);
   });
+
+  it('competitor_research: the gist — product and customer only, long fields clipped visibly', () => {
+    const r = renderBrain(data({
+      profile: profile({ product_description: 'x'.repeat(1000), gtm_stage: 'seed', vision_statement: 'world',
+                         primary_pain_points: ['a', 'b', 'c', 'd', 'e', 'f', 'g'] }),
+      vocabulary: [{ cluster_type: 'category', primary_term: 'invoicing', related_terms: ['billing'] }],
+      offers: [{ offer_key: 'core', name: 'Core', one_line: 'x', who_for: 'y', problem: 'z',
+                 what_we_do: [], price_band: null, proof: null }],
+    }), 'competitor_research', BIG);
+    expect(r.text).toContain(`Description: ${'x'.repeat(400)}…`);
+    expect(r.text).not.toContain('x'.repeat(401));
+    expect(r.text).toContain('Pain points: a, b, c, d, e');
+    expect(r.text).not.toContain(', f');
+    expect(r.text).not.toMatch(/GO-TO-MARKET|VISION|OFFERS/);
+    expect(r.text).toContain('MARKET VOCABULARY (approved)\n- [category] invoicing: billing');
+    expect(r.included).toEqual(['profile', 'vocabulary']);
+    // Offers and brand are not this job's business, so their absence is not reported.
+    expect(r.missing).toEqual([]);
+  });
+
+  it('competitor_research reports when the vocabulary did not fit, so the caller can say so', () => {
+    const vocab = [{ cluster_type: 'category', primary_term: 'invoicing', related_terms: ['billing'] }];
+    const profileLen = renderBrain(data(), 'competitor_check', BIG).text.length;
+    const r = renderBrain(data({ vocabulary: vocab }), 'competitor_research', profileLen + 5);
+    expect(r.included).toEqual(['profile']);
+    expect(r.droppedSections).toEqual(['vocabulary']);
+  });
 });

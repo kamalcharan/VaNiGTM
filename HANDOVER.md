@@ -110,6 +110,22 @@ Tests: `brain-context.test.ts` (renderer) and `brain-context.db.test.ts`
 research (vocabulary framing), drafter, domain-pack, Vara compose/match — each
 adds a purpose to `BRAIN_PURPOSES`. No schema change.
 
+**Same day, later:** competitor research and offer drafting converted too.
+Research frames its searches from `competitor_research` (profile gist +
+approved vocabulary) and judges candidates with `competitor_check`; its run
+step now says when the vocabulary existed but did not fit. Offer drafting
+(`offer_draft`) now sees the confirmed offers and is told the names of
+pending drafts, so a second round stops re-proposing them; its site text is
+sized to the window under the old 12,000-char ceiling (cost unchanged).
+`profile-skill/tests/offer-draft.db.test.ts` checks what the model is shown.
+The profile drafter is not a Brain reader (crawl text in, profile out) — the
+POA listed it by mistake. Left: domain-pack, Vara compose/match.
+
+**Also 2026-09-30 (Charan): the Phase 4 gate passed and the runtime role is
+now `vanigtm_app` — RLS is enforced in production.** Track B is done; Track F
+waits only on D9 (consent). Still to check: the first `[LLM]` line in the
+worker log on Haiku.
+
 Known, not from this change: `story.db.test.ts` and `cadence.db.test.ts` fail
 20 tests on a fresh local DB (`gt_channel_types` missing from their test
 schema) — identical with this change stashed.

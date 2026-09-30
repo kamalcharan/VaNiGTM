@@ -981,7 +981,11 @@ This whole finding exists because that test does not reach these tables.
 
 ## 14. The runtime switch, run before it was made (2026-09-30)
 
-**Production's runtime role is still `vikuna_admin`** — read off the API
+**Update, later on 2026-09-30: switched.** Charan moved the runtime to
+`vanigtm_app` per `DEPLOY.md` §4b; RLS is enforced in production from then on.
+The rest of this section is the record of how it was prepared.
+
+**Production's runtime role was `vikuna_admin`** — read off the API
 container on 2026-09-30 (`current_user = vikuna_admin`). The CLAUDE.md line
 "Cutover is DONE" was wrong and has been corrected. Charan decided the same day
 to switch to `vanigtm_app`; `DEPLOY.md` §4b is the procedure.

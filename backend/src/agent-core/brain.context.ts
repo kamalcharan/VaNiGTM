@@ -99,11 +99,15 @@ export interface BrainData {
 
 export type BrainSection = 'profile' | 'brand' | 'offers' | 'vocabulary' | 'graph';
 
+export type ProfilePart = 'product' | 'customer' | 'gtm' | 'vision';
+
 export interface BrainPurposeSpec {
   /** Sections in priority order; the first is kept longest. `profile` is always first. */
   sections: readonly BrainSection[];
   /** Graph labels in priority order. Labels not listed are not included at all. */
   graphLabels: readonly string[];
+  /** Which parts of the profile, and a per-field character cap. Default: all parts, uncapped. */
+  profile?: { parts: readonly ProfilePart[]; fieldCap?: number; listCap?: number };
 }
 
 export const BRAIN_PURPOSES = {
@@ -114,6 +118,32 @@ export const BRAIN_PURPOSES = {
       'Differentiator', 'CaseStudy', 'Metric', 'Product', 'Feature', 'PainPoint',
       'UseCase', 'ICP', 'Industry', 'Pricing', 'Competitor', 'Team',
     ],
+  },
+  /**
+   * Framing competitor searches: what the product is, who buys it, and the
+   * vocabulary those buyers use. The gist, not the essay — long fields are
+   * clipped, because the same profile block rides beside search results and
+   * candidate websites that need the room more.
+   */
+  competitor_research: {
+    sections: ['profile', 'vocabulary'],
+    graphLabels: [],
+    profile: { parts: ['product', 'customer'], fieldCap: 400, listCap: 5 },
+  },
+  /** Judging a candidate or a search result against the tenant: the profile gist only. */
+  competitor_check: {
+    sections: ['profile'],
+    graphLabels: [],
+    profile: { parts: ['product', 'customer'], fieldCap: 400, listCap: 5 },
+  },
+  /**
+   * Drafting what the tenant sells from their site text: what the product is
+   * and the offers already confirmed, so the draft does not repeat them.
+   */
+  offer_draft: {
+    sections: ['profile', 'offers'],
+    graphLabels: [],
+    profile: { parts: ['product'], fieldCap: 600, listCap: 5 },
   },
 } as const satisfies Record<string, BrainPurposeSpec>;
 
@@ -227,30 +257,35 @@ export function renderBrain(data: BrainData, purpose: BrainPurpose, roomChars: n
   const spec: BrainPurposeSpec = BRAIN_PURPOSES[purpose];
   const profile = data.profile;
 
+  // Reported only for sections this purpose uses — a missing brand is not
+  // news to a job that never reads the brand.
+  const uses = (sec: BrainSection) => spec.sections.includes(sec);
   const missing: string[] = [];
-  if (!data.vocabulary.length) {
+  if (uses('vocabulary') && !data.vocabulary.length) {
     missing.push(data.unconfirmed.clusters
       ? `vocabulary: ${data.unconfirmed.clusters} cluster(s) drafted, none approved`
       : 'vocabulary: none yet');
   }
-  if (!data.offers.length) {
-    missing.push(data.unconfirmed.offers
-      ? `offers: ${data.unconfirmed.offers} drafted, none confirmed`
-      : 'offers: none yet');
-  } else if (data.unconfirmed.offers) {
-    missing.push(`offers: ${data.unconfirmed.offers} more drafted but not confirmed`);
+  if (uses('offers')) {
+    if (!data.offers.length) {
+      missing.push(data.unconfirmed.offers
+        ? `offers: ${data.unconfirmed.offers} drafted, none confirmed`
+        : 'offers: none yet');
+    } else if (data.unconfirmed.offers) {
+      missing.push(`offers: ${data.unconfirmed.offers} more drafted but not confirmed`);
+    }
   }
-  if (!data.brand) missing.push(data.unconfirmed.brand ? 'brand: drafted, not approved' : 'brand: none yet');
+  if (uses('brand') && !data.brand) missing.push(data.unconfirmed.brand ? 'brand: drafted, not approved' : 'brand: none yet');
 
   // Graph nodes eligible for this purpose, in priority order.
   const rank = new Map(spec.graphLabels.map((l, i) => [l, i]));
   const eligible = data.nodes
     .filter((n) => rank.has(n.label))
     .sort((a, b) => (rank.get(a.label)! - rank.get(b.label)!));
-  if (!eligible.length && spec.sections.includes('graph')) missing.push('knowledge graph: nothing relevant yet');
+  if (!eligible.length && uses('graph')) missing.push('knowledge graph: nothing relevant yet');
 
   const blocks: Record<BrainSection, string | null> = {
-    profile:    renderProfile(profile),
+    profile:    renderProfile(profile, spec.profile),
     brand:      data.brand ? renderBrand(data.brand) : null,
     offers:     data.offers.length ? renderOffers(data.offers) : null,
     vocabulary: data.vocabulary.length ? renderVocabulary(data.vocabulary) : null,
@@ -326,24 +361,37 @@ export function renderBrain(data: BrainData, purpose: BrainPurpose, roomChars: n
 
 /* ── Section renderers ───────────────────────────────────────────────────── */
 
-const s = (v: string | null | undefined): string | null => {
+const sv = (v: string | null | undefined): string | null => {
   const t = (v ?? '').toString().trim();
   return t.length ? t : null;
 };
-const list = (a: string[] | null | undefined): string | null => {
+const s = sv;
+const lv = (a: string[] | null | undefined): string | null => {
   if (!a || !a.length) return null;
   const joined = a.map((x) => (x ?? '').trim()).filter((x) => x.length).join(', ');
   return joined.length ? joined : null;
 };
+const list = lv;
 const inline = (parts: (string | null | false)[]): string | null => {
   const kept = parts.filter((p): p is string => !!p);
   return kept.length ? kept.join('  |  ') : null;
 };
 
 /** PRODUCT / IDEAL CUSTOMER / GO-TO-MARKET / VISION — the storyteller's layout, kept. */
-export function renderProfile(p: BrainProfile): string {
+export function renderProfile(
+  p: BrainProfile,
+  opts: { parts: readonly ProfilePart[]; fieldCap?: number; listCap?: number } = { parts: ['product', 'customer', 'gtm', 'vision'] },
+): string {
+  const want = new Set(opts.parts);
+  // Clipping is marked with an ellipsis, so the model can tell a field was cut.
+  const s = (v: string | null | undefined): string | null => {
+    const t = sv(v);
+    return t && opts.fieldCap && t.length > opts.fieldCap ? `${t.slice(0, opts.fieldCap)}…` : t;
+  };
+  const list = (a: string[] | null | undefined): string | null =>
+    lv(opts.listCap && a ? a.slice(0, opts.listCap) : a);
   const sections: string[] = [];
-  {
+  if (want.has('product')) {
     const lines: string[] = [];
     const head = inline([
       s(p.product_name)     && `Name: ${s(p.product_name)}`,
@@ -358,7 +406,7 @@ export function renderProfile(p: BrainProfile): string {
     if (pricing) lines.push(`Pricing: ${pricing}`);
     if (lines.length) sections.push(`PRODUCT\n${lines.join('\n')}`);
   }
-  {
+  if (want.has('customer')) {
     const lines: string[] = [];
     const company = [s(p.icp_company_type), s(p.icp_company_size), s(p.icp_industry)].filter(Boolean).join(', ');
     const head = inline([
@@ -370,7 +418,7 @@ export function renderProfile(p: BrainProfile): string {
     if (list(p.primary_pain_points)) lines.push(`Pain points: ${list(p.primary_pain_points)}`);
     if (lines.length) sections.push(`IDEAL CUSTOMER\n${lines.join('\n')}`);
   }
-  {
+  if (want.has('gtm')) {
     const head = inline([
       s(p.gtm_stage)          && `Stage: ${s(p.gtm_stage)}`,
       list(p.active_channels) && `Channels: ${list(p.active_channels)}`,
@@ -379,7 +427,7 @@ export function renderProfile(p: BrainProfile): string {
     ]);
     if (head) sections.push(`GO-TO-MARKET\n${head}`);
   }
-  {
+  if (want.has('vision')) {
     const head = inline([
       s(p.vision_statement)   && `Statement: ${s(p.vision_statement)}`,
       s(p.target_market_size) && `Market size: ${s(p.target_market_size)}`,
