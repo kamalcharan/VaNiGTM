@@ -172,9 +172,9 @@ about this document changes when it does.
   (vocabulary), offers, brand — is the tenant's single source of truth about
   themselves. **Agents read it; no agent owns it; no agent stores a copy of
   contacts, offers or brand.** A second copy is a bug.
-- **All agents read it through `brain.context(purpose)`** [deviation → Track
-  D2; today three agents paste the whole node list and Vara reads only
-  industry]. Retrieval by embedding with vocabulary boost follows (D4) and needs
+- **All agents read it through `brain.context(purpose)`** (`agent-core/brain.context.ts`)
+  [deviation → Track D2: the storyteller is converted; research, the drafter,
+  domain-pack and Vara (which reads only industry) are not yet]. Retrieval by embedding with vocabulary boost follows (D4) and needs
   one embedding provider, from `.env`.
 - **Provenance per field:** agents write suggestions, humans approve, re-runs
   never touch an approved value [deviation → Track D1, schema pending].

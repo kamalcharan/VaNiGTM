@@ -13,11 +13,9 @@
 import { randomBytes } from 'crypto';
 import type { Pool } from 'pg';
 import { createTenantDb } from '../../db';
-import { getProfile, type TenantProfile } from '../profile-skill/profile.service';
-import { getNodes, type KGNode } from '../../agent-core/kg.store';
+import { brainContext } from '../../agent-core/brain.context';
 import { loadPrompt } from '../../agent-core/prompt.store';
 import { callLLM, callLLMValidated } from '../../agent-core/llm.client';
-import { charBudgetFor } from '../../agent-core/llm.gate';
 import { emitEvent } from '../../agent-core/event.store';
 import { DeckSchema, type Deck } from './deck.schema';
 
@@ -38,28 +36,19 @@ export class StorytellerAgent {
     tenantId: string,
     opts?: { sourceRunId?: number },
   ): Promise<{ presentationId: string }> {
-    // STEP 1 — load inputs. Profile is required; nodes may be empty (thin deck,
-    // not a crash).
-    const profile = await getProfile(pool, tenantId);
-    if (!profile) {
-      throw new Error('PROFILE_NOT_FOUND: cannot build deck without a profile');
-    }
-    const nodes = await getNodes(pool, tenantId);
-
-    // STEP 2 + 3 — load the seeded prompt and generate a validated deck.
+    // STEP 1 + 2 — load the seeded prompt, then read the Brain through
+    // brain.context: profile, approved brand, confirmed offers, the graph
+    // (by label priority for a deck) and approved vocabulary, sized to what
+    // is left of the window after the prompt and the answer. It used to paste
+    // getNodes() whole under its own trimmer; the budget and the "do not claim
+    // completeness" note now live in one place for every agent.
     const system = await loadPrompt(pool, PROMPT_KEY, tenantId);
-
-    // The knowledge graph section is UNBOUNDED — one line per node, and a
-    // tenant who has ingested a document set has hundreds. Nothing capped it,
-    // so the prompt grew with the tenant until it crossed the window and the
-    // server answered 500. The cap is derived from LLM_CONTEXT_TOKENS, which
-    // is the only place the window is declared, so it cannot drift away from
-    // it the way a hand-picked number does.
     const MAX_OUTPUT = 2000;
-    const context = fitContext(
-      profile, nodes,
-      charBudgetFor(undefined, MAX_OUTPUT, system),
-    );
+    const brain = await brainContext(pool, tenantId, {
+      purpose: 'deck', reserveOutputTokens: MAX_OUTPUT, fixedText: system,
+    });
+    const profile = brain.data.profile!;   // brainContext throws PROFILE_NOT_FOUND otherwise
+    const context = brain.text;
 
     const deck: Deck = await callLLMValidated(
       {
@@ -198,134 +187,4 @@ export class StorytellerAgent {
 
     return { answer };
   }
-}
-
-/* ── Helpers ───────────────────────────────────────────────────────────────── */
-
-/**
- * Serialize profile + KG into a lean plain-text block for the prompt.
- * Skips null/empty fields and omits a section header when the whole section is
- * empty. Kept compact — the total context budget is ~4096 tokens.
- */
-/**
- * The context, cut to what the window can hold.
- *
- * DROPS NODES, NEVER THE PROFILE. The profile is the deck's substance — the
- * product, the ICP, the vision — and it is bounded by its own columns. The
- * knowledge graph is the part that grows without limit, so it is the part that
- * gives way, and it gives way from the END, because `getNodes` orders the most
- * recently learned first.
- *
- * It says how many it dropped, in the prompt itself. A deck built on 40 of 300
- * nodes is a legitimate deck; one that quietly claims to have read everything
- * is the silent degradation rule 12 forbids, and the model is the one that
- * needs to know not to speak for what it was not shown.
- */
-function fitContext(profile: TenantProfile, nodes: KGNode[], roomChars: number): string {
-  const full = serializeContext(profile, nodes);
-  if (full.length <= roomChars) return full;
-
-  // Halve the node list until it fits. Binary rather than one-by-one because
-  // this runs on a few hundred nodes and each attempt rebuilds the string.
-  let lo = 0;
-  let hi = nodes.length;
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    if (serializeContext(profile, nodes.slice(0, mid)).length <= roomChars) lo = mid;
-    else hi = mid - 1;
-  }
-
-  const kept = nodes.slice(0, lo);
-  const dropped = nodes.length - kept.length;
-  console.log(`[Storyteller] knowledge graph trimmed: ${kept.length} of ${nodes.length} nodes `
-    + `fit the model window (${roomChars} chars)`);
-  const body = serializeContext(profile, kept);
-  return dropped > 0
-    ? `${body}\n\n[${dropped} further knowledge-graph entries exist and were not included — `
-      + `they did not fit this model's context. Do not claim completeness.]`
-    : body;
-}
-
-function serializeContext(profile: TenantProfile, nodes: KGNode[]): string {
-  const sections: string[] = [];
-
-  // trimmed scalar, or null if empty
-  const s = (v: string | null | undefined): string | null => {
-    const t = (v ?? '').toString().trim();
-    return t.length ? t : null;
-  };
-  // TEXT[] joined with ', ', or null if empty
-  const list = (a: string[] | null | undefined): string | null => {
-    if (!a || a.length === 0) return null;
-    const joined = a.map((x) => (x ?? '').trim()).filter((x) => x.length).join(', ');
-    return joined.length ? joined : null;
-  };
-  // join present labelled parts with a separator, or null if none
-  const inline = (parts: (string | null)[]): string | null => {
-    const kept = parts.filter((p): p is string => !!p);
-    return kept.length ? kept.join('  |  ') : null;
-  };
-
-  // PRODUCT
-  {
-    const lines: string[] = [];
-    const head = inline([
-      s(profile.product_name)     && `Name: ${s(profile.product_name)}`,
-      s(profile.product_tagline)  && `Tagline: ${s(profile.product_tagline)}`,
-      s(profile.product_category) && `Category: ${s(profile.product_category)}`,
-    ]);
-    if (head) lines.push(head);
-    if (s(profile.product_description)) lines.push(`Description: ${s(profile.product_description)}`);
-    if (s(profile.core_problem))        lines.push(`Core problem: ${s(profile.core_problem)}`);
-    if (list(profile.key_differentiators)) lines.push(`Differentiators: ${list(profile.key_differentiators)}`);
-    const pricing = [s(profile.pricing_model), s(profile.pricing_range)].filter(Boolean).join(' / ');
-    if (pricing) lines.push(`Pricing: ${pricing}`);
-    if (lines.length) sections.push(`PRODUCT\n${lines.join('\n')}`);
-  }
-
-  // IDEAL CUSTOMER
-  {
-    const lines: string[] = [];
-    const company = [s(profile.icp_company_type), s(profile.icp_company_size), s(profile.icp_industry)]
-      .filter(Boolean).join(', ');
-    const head = inline([
-      s(profile.icp_role)      && `Role: ${s(profile.icp_role)}`,
-      company                  ? `Company: ${company}` : null,
-      s(profile.icp_geography) && `Geography: ${s(profile.icp_geography)}`,
-    ]);
-    if (head) lines.push(head);
-    if (list(profile.primary_pain_points)) lines.push(`Pain points: ${list(profile.primary_pain_points)}`);
-    if (lines.length) sections.push(`IDEAL CUSTOMER\n${lines.join('\n')}`);
-  }
-
-  // GO-TO-MARKET
-  {
-    const head = inline([
-      s(profile.gtm_stage)          && `Stage: ${s(profile.gtm_stage)}`,
-      list(profile.active_channels) && `Channels: ${list(profile.active_channels)}`,
-      s(profile.current_mrr)        && `MRR: ${s(profile.current_mrr)}`,
-      profile.team_size != null ? `Team: ${profile.team_size}` : null,
-    ]);
-    if (head) sections.push(`GO-TO-MARKET\n${head}`);
-  }
-
-  // VISION
-  {
-    const head = inline([
-      s(profile.vision_statement)   && `Statement: ${s(profile.vision_statement)}`,
-      s(profile.target_market_size) && `Market size: ${s(profile.target_market_size)}`,
-    ]);
-    if (head) sections.push(`VISION\n${head}`);
-  }
-
-  // KNOWLEDGE GRAPH — one line per node; omit null description.
-  {
-    const lines = nodes.map((n) => {
-      const d = s(n.description);
-      return `[${n.label}] ${n.name}${d ? ` — ${d}` : ''}`;
-    });
-    if (lines.length) sections.push(`KNOWLEDGE GRAPH\n${lines.join('\n')}`);
-  }
-
-  return sections.join('\n\n');
 }

@@ -93,6 +93,27 @@ an agent run.
 Runtime DB role is still `vikuna_admin` (the vanigtm_app switch is DEPLOY §4b).
 
 
+## D2 started — `brain.context` (2026-09-30, after the Haiku switch)
+
+`backend/src/agent-core/brain.context.ts`: the one reader of the Brain.
+`brainContext(pool, tenantId, { purpose, reserveOutputTokens, fixedText })`
+loads profile, KG nodes, approved clusters, confirmed active offers and the
+approved brand in ONE `withTenantClient` transaction, then renders them for
+the purpose under `charBudgetFor`: sections dropped whole in reverse priority,
+graph nodes by label priority, the profile never trimmed (too big alone →
+`BRAIN_CONTEXT_TOO_LARGE` with the numbers). Unconfirmed drafts are never
+presented and are listed in `missing`. The storyteller is converted (purpose
+`deck` — it now also sees approved brand, confirmed offers and vocabulary,
+which it never did); its private `fitContext`/`serializeContext` are gone.
+Tests: `brain-context.test.ts` (renderer) and `brain-context.db.test.ts`
+(real migrations, including a non-owner role under RLS). Next conversions:
+research (vocabulary framing), drafter, domain-pack, Vara compose/match — each
+adds a purpose to `BRAIN_PURPOSES`. No schema change.
+
+Known, not from this change: `story.db.test.ts` and `cadence.db.test.ts` fail
+20 tests on a fresh local DB (`gt_channel_types` missing from their test
+schema) — identical with this change stashed.
+
 
 1. **Phase 4 gate** (POA B1, the one open item of Track B): with the API
    deployed, paste the snippet from `/install` on a real page, watch a boot

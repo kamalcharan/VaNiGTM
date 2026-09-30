@@ -41,9 +41,11 @@ Stated once, at registration; the platform reads it, never re-asks.
 ## 3. What an agent CONSUMES, never re-implements
 
 - **The Brain**, through `brain.context(purpose)` — profile, relevant subgraph,
-  vocabulary, offers, brand, under a character budget [deviation → Track D2;
-  today research, storyteller and the drafter paste `getNodes()` whole under
-  `charBudgetFor`, and Vara reads only `industry`].
+  vocabulary, offers, brand, under a character budget (`agent-core/brain.context.ts`; a purpose names the
+  sections and graph labels it needs, in priority order). Only confirmed
+  content is presented; omissions are reported. [deviation → Track D2: the
+  storyteller reads through it; research, the drafter, domain-pack and Vara
+  (which reads only `industry`) are not converted yet].
 - **The prompt store** (`gt_prompts` for GTM-side keys, `vani_prompt` for
   Vara-side keys — two stores is an open decision, PLATFORM §8): system prompt
   plus an optional tenant override, resolved per call.

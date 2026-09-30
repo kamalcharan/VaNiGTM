@@ -41,7 +41,7 @@ const TENANT_B = '33333333-3333-3333-3333-333333333333';
 
 /** Framework tables + trigger function. Not in migrations (managed by the
  *  VN framework); tests need them under them. */
-const FRAMEWORK = `
+export const FRAMEWORK = `
 CREATE TABLE IF NOT EXISTS vn_tenants (
   id UUID PRIMARY KEY,
   slug VARCHAR(80) NOT NULL,
