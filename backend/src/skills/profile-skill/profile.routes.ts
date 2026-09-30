@@ -304,9 +304,11 @@ export function createProfileRouter(pool: Pool): Router {
     try {
       runId = await createRun(pool, jwt.tenant_id, 'brand-skill.generate');
       await setStatus(pool, runId, 'running');
-      const brand = await generateBrand(pool, jwt.tenant_id, runId);
-      await setStatus(pool, runId, 'completed');
-      res.json({ brand });
+      const { filled, ...brand } = await generateBrand(pool, jwt.tenant_id, runId);
+      // What the draft actually changed — the console says this instead of a
+      // blanket "Redrafted", and the run records it.
+      await setStatus(pool, runId, 'completed', { output: { filled } });
+      res.json({ brand, filled });
     } catch (err) {
       if (runId) {
         await setStatus(pool, runId, 'failed', { error_trace: messageOf(err) }).catch(() => {});

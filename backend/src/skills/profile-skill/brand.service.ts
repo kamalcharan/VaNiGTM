@@ -293,7 +293,7 @@ export async function generateBrand(
   pool: Pool,
   tenantId: string,
   runId: string | number,
-): Promise<TenantBrand> {
+): Promise<TenantBrand & { filled: string[] }> {
   const db = createTenantDb(pool, tenantId);
 
   const profile = await getProfile(pool, tenantId);
@@ -393,6 +393,20 @@ export async function generateBrand(
     'brand',
   );
 
+  // What was there before, so the caller can be told what this draft
+  // actually changed — "Redrafted" must never be claimed when nothing moved.
+  const before = await getBrand(pool, tenantId);
+
+  // An agent-only draft is replaced whole. A brand a PERSON has touched
+  // keeps every value they gave; only EMPTY fields (and colour roles) are
+  // filled. Before 2026-09-30 a touched brand was never updated at all, so
+  // one saved edit after a failed first draft left the brand blank for good
+  // while "Regenerate from site" reported success.
+  const listSet = (col: string) => `${col} = CASE
+               WHEN gt_tenant_brand.approved_at IS NOT NULL THEN gt_tenant_brand.${col}
+               WHEN gt_tenant_brand.source = 'agent' THEN EXCLUDED.${col}
+               WHEN COALESCE(cardinality(gt_tenant_brand.${col}), 0) = 0 THEN EXCLUDED.${col}
+               ELSE gt_tenant_brand.${col} END`;
   await db.query(
     `INSERT INTO gt_tenant_brand
          (tenant_id, voice_tone, always_say, never_say, visual, proof, source)
@@ -400,21 +414,15 @@ export async function generateBrand(
          ($tenant_id, $voice_tone::text[], $always_say::text[], $never_say::text[],
           $visual::jsonb, $proof::text[], 'agent')
      ON CONFLICT (tenant_id) DO UPDATE
-         SET voice_tone = CASE
-               WHEN gt_tenant_brand.approved_at IS NULL AND gt_tenant_brand.source = 'agent'
-               THEN EXCLUDED.voice_tone ELSE gt_tenant_brand.voice_tone END,
-             always_say = CASE
-               WHEN gt_tenant_brand.approved_at IS NULL AND gt_tenant_brand.source = 'agent'
-               THEN EXCLUDED.always_say ELSE gt_tenant_brand.always_say END,
-             never_say = CASE
-               WHEN gt_tenant_brand.approved_at IS NULL AND gt_tenant_brand.source = 'agent'
-               THEN EXCLUDED.never_say ELSE gt_tenant_brand.never_say END,
+         SET ${listSet('voice_tone')},
+             ${listSet('always_say')},
+             ${listSet('never_say')},
              visual = CASE
-               WHEN gt_tenant_brand.approved_at IS NULL AND gt_tenant_brand.source = 'agent'
-               THEN EXCLUDED.visual ELSE gt_tenant_brand.visual END,
-             proof = CASE
-               WHEN gt_tenant_brand.approved_at IS NULL AND gt_tenant_brand.source = 'agent'
-               THEN EXCLUDED.proof ELSE gt_tenant_brand.proof END,
+               WHEN gt_tenant_brand.approved_at IS NOT NULL THEN gt_tenant_brand.visual
+               WHEN gt_tenant_brand.source = 'agent' THEN EXCLUDED.visual
+               ELSE COALESCE(EXCLUDED.visual, '{}'::jsonb) || jsonb_strip_nulls(COALESCE(gt_tenant_brand.visual, '{}'::jsonb))
+               END,
+             ${listSet('proof')},
              updated_at = now()`,
     {
       tenant_id:  tenantId,
@@ -426,7 +434,20 @@ export async function generateBrand(
     },
   );
 
-  return (await getBrand(pool, tenantId)) as TenantBrand;
+  const after = (await getBrand(pool, tenantId)) as TenantBrand;
+  return { ...after, filled: changedBrandFields(before, after) };
+}
+
+/** Which fields a draft changed — the honest answer to "did regenerate do anything?". */
+export function changedBrandFields(before: TenantBrand | null, after: TenantBrand): string[] {
+  const out: string[] = [];
+  for (const k of ['voice_tone', 'always_say', 'never_say', 'proof'] as const) {
+    if (JSON.stringify(before?.[k] ?? []) !== JSON.stringify(after[k] ?? [])) out.push(k);
+  }
+  for (const k of ['primary_color', 'secondary_color', 'accent_color', 'logo_url', 'typography'] as const) {
+    if ((before?.visual?.[k] ?? null) !== (after.visual?.[k] ?? null)) out.push(k);
+  }
+  return out;
 }
 
 /* ── Human edits ────────────────────────────────────────────────────────── */
