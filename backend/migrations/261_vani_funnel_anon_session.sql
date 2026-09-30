@@ -86,6 +86,12 @@ CREATE TABLE IF NOT EXISTS vani_anon_session (
   CONSTRAINT session_bound_together CHECK ((bound_tenant_id IS NULL) = (bound_at IS NULL))
 );
 
+-- Self-healing on purpose (2026-09-30): an early copy of this file without
+-- started_read was run by hand on production before it was recorded. CREATE
+-- TABLE IF NOT EXISTS skips an existing table, so the column is added here too.
+ALTER TABLE vani_anon_session
+  ADD COLUMN IF NOT EXISTS started_read boolean NOT NULL DEFAULT false;
+
 CREATE INDEX IF NOT EXISTS idx_anon_session_ip
   ON vani_anon_session (ip_hash, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_anon_session_expiry

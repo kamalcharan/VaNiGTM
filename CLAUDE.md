@@ -367,8 +367,11 @@ because a date format or a token convention is worth not re-deciding.
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest applied = **259** (applied on
-  production 2026-09-30). The
+  status: `npm run db:migrate -- --status`. Highest = **261**. **259, 260 and 261
+  were first run on production by pasting SQL (2026-09-30) and so were NOT
+  recorded; all three are idempotent, and the fix is to let the runner re-apply
+  them (`docker exec vani-backend node dist/migrate.js`) — rehearsed on a copy
+  of that state: 3 applied, 0 pending, data kept.** Next migration is 262. The
   runner uses `DB_MIGRATE` when set (the owner, once the runtime is the app
   role), else `DB_PRIMARY`. **Two files
   share the number 249** (`249_ki_import_sessions_needs_review.sql` and
