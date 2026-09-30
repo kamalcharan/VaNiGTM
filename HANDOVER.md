@@ -7,7 +7,95 @@
 
 ---
 
-# ▶ RESTART HANDOVER — 2026-09-29, evening (read this first)
+# ▶ RESTART HANDOVER — 2026-09-30, end of day (read this first)
+
+**Read in this order:** `ARCH.md` → `AGENTS.md` →
+`documents/POA-2026-09-30-platform.md` (its status table is the truth) →
+`documents/spec/{PLATFORM,VARA,GTM}.md` as needed → this file's older
+sections only for history.
+
+## State
+
+- **Both repos: `claude/brave-sagan-25311u` is merged to `main`** (2026-09-30,
+  fast-forward). VaNiGTM `main` carries: the Aug 29 Vara/Platform-Channel
+  branch (migrations 254–258), the failover-approval fix, the five visibility
+  skills (`runs`, `dashboard`, `agents`, `vara`, `gtm`), ARCH/AGENTS/specs,
+  the two POAs. vikunawebsite `main` carries the console half (dashboard on
+  the Brain, `/runs`, `/runs/:id`, `/runs/events`, `/runs/awaiting`, agents
+  from the registry) and Vercel deploys it.
+- **Migrations 254–258 are APPLIED on production** (Charan, 2026-09-30).
+  Highest = 258, next = 259.
+- **The API on the VPS must be deployed from `main`** (`deploy-vani.sh` from
+  `/opt/vikuna/src/vanigtm`) before the console's Install screen and widget
+  work against it — `/tenant/embed`, `/tenant/domains/:id/origins`,
+  `/embed/boot`, `/embed/intent` exist only from this merge. Confirm with
+  `npm run db:migrate -- --status` on the VPS (all 258 applied) and a
+  `GET /api/v1/tenant/embed` with a session.
+
+## Next session, in order
+
+1. **Phase 4 gate** (POA B1, the one open item of Track B): with the API
+   deployed, paste the snippet from `/install` on a real page, watch a boot
+   land (`boot_pings` on `vani_tenant_domain`), see the widget's chips answer.
+   First real proof the embed channel works end to end.
+2. **Track H — one repository** (`documents/POA-2026-09-30-repo-consolidation.md`):
+   tag both repos, filter-repo `vani-app/` into VaNiGTM with history, re-point
+   Vercel, delete `frontend/` (salvage list first: /today Brain card is now
+   ported; attention queue, pulses, storyteller and the VaNi AI public
+   assessment flow still need a decision), slim the website. Do it BEFORE any
+   Track C/D code so nothing moves twice.
+3. **Track C, starting with C6** (the worker stops resolving unhandled events
+   as `done`; the read already reports them), then C1 (run table cleanup —
+   needs D14), C2 (prompt contracts + the three primitives), C3 (evals).
+4. Track D (per-field provenance needs D8; `brain.context`) and E (funnel;
+   D3 anon session, D4 entitlement) per the POA's week 2–4.
+
+## Decisions still needed from Charan (POA §2)
+
+D3 anon session · D4 entitlement · D5 eval results table · D6 embedding
+provider · D7 vector columns · D8 profile provenance · D9 consent/suppression
+(gates Vara intake AND GTM sending) · D10 seniority · D11 supersede-at-take ·
+D12 lane-aware onboarding + industry list · D13 `vara_jd_position` · D14 run
+table cleanup. Each has a default that applies until overruled.
+
+## Follow-ups recorded this session (none blocking)
+
+- The worker still resolves an event with no handler as `done`
+  (`worker.ts processEvent`); `runs.events` marks them unconsumed. C6.
+- `vani/embed.routes.ts` and `vani/intent.ts` (from the merged branch) use raw
+  `pool.query`; none of their tables is FORCE RLS today. Convert to
+  `withTenantClient` when the spine is forced.
+- `createRun` never sets `gt_agent_runs.is_live` (rows default false).
+  Nothing reads it for runs today; C1 decides whether it means anything.
+- `edge.journey` is a labelled preview: Edge keeps its mission in the browser.
+- `activation-readiness.test.ts` now expects four checks; the checklist grows,
+  never shrinks.
+- Runs are named after the event type (`agent_name = event_type`) until C1.
+
+## Local recipe that worked (2026-09-30)
+
+`service postgresql start` · `apt-get install postgresql-16-pgvector` ·
+`CREATE DATABASE vani_mig` · `DB_PRIMARY=postgresql://root@localhost/vani_mig?host=/var/run/postgresql npm run db:migrate` (all 258) ·
+`npm run db:seed` · tests: `PGHOST=/var/run/postgresql PGPORT=5432 PGUSER=root npx jest`
+(`visibility.db.test.ts` reads `VISIBILITY_TEST_DB`, default `vani_mig`).
+
+## Things that cost time this session — do not repeat
+
+- A commit message with double quotes inside `git commit -m "…"` breaks the
+  shell; write it to a file and use `-F`.
+- `describe.skip` is decided at collection time, before `beforeAll`: a DB
+  availability probe must be SYNCHRONOUS (`execSync psql`), or every case
+  skips and looks green.
+- Express mounts a router at `/api/v1` after `/api/v1/tenant`; `/tenant/embed`
+  falls through to the platform router only because the tenant router has no
+  `/embed`. Keep it that way or move the route.
+- Two conflicting sides can both be right: the Aug branch's readiness body
+  and `main`'s `withTenantClient` signature had to be combined by hand, not
+  picked.
+
+---
+
+# History — RESTART HANDOVER — 2026-09-29, evening
 
 **2026-09-30, later: Tracks A and B of the POA are DONE** (Charan: "complete
 task A + B"). A: `ARCH.md`, `AGENTS.md`, `documents/spec/{PLATFORM,VARA,GTM}.md`;

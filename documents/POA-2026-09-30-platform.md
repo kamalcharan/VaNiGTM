@@ -9,6 +9,21 @@
 > Facts in this plan were checked in code on 2026-09-29/30 (HANDOVER.md §2 has
 > the Vara evidence; the runtime audit is summarised in §4 below).
 
+## Status — 2026-09-30, end of day
+
+| Track | State |
+|---|---|
+| A Foundations | **DONE.** `ARCH.md`, `AGENTS.md`, `documents/spec/{PLATFORM,VARA,GTM}.md`; May POA, May agent spec, Aug Vara POA marked superseded (A6) |
+| B Unblock | **DONE except the gate.** B1 merged (migrations 254–258; **applied on production by Charan, 2026-09-30**); B2 fixed + DB test; B3 runs/events/awaiting real on both sides; B4 dashboard on the Brain, `vara.journey` and `gtm.journey` real (`edge.journey` stays a labelled preview by design); B5 drift fixed. **Open:** the Phase 4 gate — paste the snippet on a real page and watch a boot land — needs the API deployed from `main` and a person |
+| C Harness | not started; C6 (worker leaves unhandled events visible) is the first slice — the read already reports them |
+| D Brain | not started |
+| E Funnel | not started; D2 ruled (website URL, wizard step 1 pre-done) |
+| F Vara | waits on the gate, then D9 consent |
+| G GTM | parked, recorded |
+| H One repo | next: after the gate, before any C/D code |
+
+Both repos: branch `claude/brave-sagan-25311u` merged to `main` on 2026-09-30.
+
 ## 0. Principles
 
 1. Spec is INTENDED. Where the product deviates, the product is corrected
@@ -52,7 +67,7 @@ track stalls on an unanswered question.
 
 | # | Decision | Default | Blocks |
 |---|---|---|---|
-| D1 | Merge VaNiGTM `claude/session-setup-qrxev9` with its five migrations renumbered 254–258 (`boot_pings`, `vara_answer_cache`, `vani_agent_intent`, `vani_intent_match`, seed intents) | Merge; re-approve the five tables in the same breath | B1, F1 |
+| D1 | ~~Merge VaNiGTM `claude/session-setup-qrxev9` with its five migrations renumbered 254–258~~ **DONE 2026-09-30**: merged (06a9635), 254–258 applied on production | — | — |
 | D2 | Pre-signup input is the website URL; the wizard's step 1 is pre-done **[ruled]** | — | E |
 | D3 | Anonymous pre-signup session row, later bound to the tenant | Approve one table (§7) | E1 |
 | D4 | Entitlement / purchase model, one for all agents (Vara, GTM, Edge) | Approve `vani_entitlement` (§7); payment provider later | E3, Edge |
@@ -73,12 +88,12 @@ Outcome: three documents that every later slice is checked against.
 
 | Slice | Deliverable | Done when |
 |---|---|---|
-| A1 | `ARCH.md` at VaNiGTM root, pointed to from both CLAUDE.md files | Covers: tenancy + `is_live`; transport and the skill runner; idempotency store-and-replay (`vani_idempotency`, §7); transactions and prepare→confirm; event claim/heartbeat/reclaim semantics; race rules (stale responses, double submit, ordering); env-only configuration; RLS posture; error contract `{error:{code,message}}` and the "name the failure class" rule |
-| A2 | `AGENTS.md` at VaNiGTM root | Covers: what an agent declares (registry, events, prompts, contracts, journey, activation checklist); what it consumes (Brain via `brain.context`, prompts via store, comms, metering, audit); the harness (run, steps, checkpoint, awaiting, cost); prompt + output contracts; evaluation methodology (§5); visibility rules; nevers |
-| A3 | `documents/spec/PLATFORM.md` | Positioning, personas, funnel (Track E), agent integration contract (from the Aug spec, kept), shared services, Smart Profile as Brain, onboarding lanes, data model `vn_`/`vani_`/`gt_tenant_profile`/KG/clusters/prompts/metering/audit. User stories P-xx. Built-today column |
-| A4 | `documents/spec/VARA.md` | The existing spec corrected to `main`, journey map folded in, decisions D10/D11/D13 recorded. Stories V-xx kept |
-| A5 | `documents/spec/GTM.md` | Written fresh from the standing decisions (HANDOVER §📌), the two journey maps, and the design notes (research, universe, ICP data structure, outreach). Stories G-xx |
-| A6 | Retire: `POA-VaNi-GTM.md`, `vara-execution-poa.md`, `VIKUNA_AGENT_SPEC_V1.md` → marked superseded, kept for history |
+| A1 ✅ | `ARCH.md` at VaNiGTM root, pointed to from both CLAUDE.md files | Covers: tenancy + `is_live`; transport and the skill runner; idempotency store-and-replay (`vani_idempotency`, §7); transactions and prepare→confirm; event claim/heartbeat/reclaim semantics; race rules (stale responses, double submit, ordering); env-only configuration; RLS posture; error contract `{error:{code,message}}` and the "name the failure class" rule |
+| A2 ✅ | `AGENTS.md` at VaNiGTM root | Covers: what an agent declares (registry, events, prompts, contracts, journey, activation checklist); what it consumes (Brain via `brain.context`, prompts via store, comms, metering, audit); the harness (run, steps, checkpoint, awaiting, cost); prompt + output contracts; evaluation methodology (§5); visibility rules; nevers |
+| A3 ✅ | `documents/spec/PLATFORM.md` | Positioning, personas, funnel (Track E), agent integration contract (from the Aug spec, kept), shared services, Smart Profile as Brain, onboarding lanes, data model `vn_`/`vani_`/`gt_tenant_profile`/KG/clusters/prompts/metering/audit. User stories P-xx. Built-today column |
+| A4 ✅ | `documents/spec/VARA.md` | The existing spec corrected to `main`, journey map folded in, decisions D10/D11/D13 recorded. Stories V-xx kept |
+| A5 ✅ | `documents/spec/GTM.md` | Written fresh from the standing decisions (HANDOVER §📌), the two journey maps, and the design notes (research, universe, ICP data structure, outreach). Stories G-xx |
+| A6 ✅ | Retire: `POA-VaNi-GTM.md`, `vara-execution-poa.md`, `VIKUNA_AGENT_SPEC_V1.md` → marked superseded, kept for history |
 
 Order: A1, A2 first (one session), A3 next, A4 and A5 in parallel with Track B.
 
@@ -88,11 +103,11 @@ Outcome: the deployed console and the deployed API agree, and what runs is visib
 
 | Slice | What | Visible result |
 |---|---|---|
-| B1 | Merge `claude/session-setup-qrxev9` (D1). Renumber migrations 254–258. Resolve the three conflicts (`package.json`, `server.ts`, `vara.routes.ts`); keep `main`'s origin normaliser and tests, keep the branch's `PATCH /tenant/domains/:id/origins` because the Install screen calls it; keep the branch's activation-reconciles and purpose-is-not-a-gate; fix the snippet name (`vani.js`). `--status`, deploy, run **Phase 4 gate**: paste the snippet on a real page, watch a boot land | The Vara widget boots on a tenant page. `/install` works |
-| B2 | Failover defect: the worker copies the event payload into `gt_agent_runs.inputs` at `createRun` (or `mayFailOver` reads the event). Test against a real row, not a mocked SQL string | An approved failover actually escalates |
-| B3 | Visibility, no new tables: real `runs.list` / `runs.get` (steps timeline, cost once C4 lands, "what this run changed" from `source_run_id`); `events.list` with status/attempts/age and an **emitted-but-unconsumed** panel; one awaiting queue merging failover questions and human approvals | `/runs` in the console stops being a fixture. `PROFILE_COMPLETE` sitting unconsumed is visible |
-| B4 | Journey readers: `vara.journey`, `gtm.journey`, `edge.journey` as real skill functions over existing data. Dashboard reads the profile completion + weakest Brain section + next action (port of `/today`'s logic) | The dashboard is about the tenant, not a fixture |
-| B5 | Docs drift: CLAUDE.md profile weights (25/20/20/15/10/10), runs named by agent not event (lands with C1) | — |
+| B1 ◐ (gate open) | Merge `claude/session-setup-qrxev9` (D1). Renumber migrations 254–258. Resolve the three conflicts (`package.json`, `server.ts`, `vara.routes.ts`); keep `main`'s origin normaliser and tests, keep the branch's `PATCH /tenant/domains/:id/origins` because the Install screen calls it; keep the branch's activation-reconciles and purpose-is-not-a-gate; fix the snippet name (`vani.js`). `--status`, deploy, run **Phase 4 gate**: paste the snippet on a real page, watch a boot land | The Vara widget boots on a tenant page. `/install` works |
+| B2 ✅ | Failover defect: the worker copies the event payload into `gt_agent_runs.inputs` at `createRun` (or `mayFailOver` reads the event). Test against a real row, not a mocked SQL string | An approved failover actually escalates |
+| B3 ✅ | Visibility, no new tables: real `runs.list` / `runs.get` (steps timeline, cost once C4 lands, "what this run changed" from `source_run_id`); `events.list` with status/attempts/age and an **emitted-but-unconsumed** panel; one awaiting queue merging failover questions and human approvals | `/runs` in the console stops being a fixture. `PROFILE_COMPLETE` sitting unconsumed is visible |
+| B4 ✅ | Journey readers: `vara.journey`, `gtm.journey`, `edge.journey` as real skill functions over existing data. Dashboard reads the profile completion + weakest Brain section + next action (port of `/today`'s logic) | The dashboard is about the tenant, not a fixture |
+| B5 ✅ | Docs drift: CLAUDE.md profile weights (25/20/20/15/10/10), runs named by agent not event (lands with C1) | — |
 
 ## 5. Track C — Harness
 
@@ -153,7 +168,7 @@ Waits on D9 (consent) for anything that sends, and on the ICP data structure app
 
 | Table / column | Track | Why the existing model cannot carry it |
 |---|---|---|
-| Migrations 254–258 (renumbered branch) | B1 | Already approved Aug 27; numbers collided |
+| ~~Migrations 254–258 (renumbered branch)~~ | B1 | **Applied on production 2026-09-30** |
 | `gt_agent_runs` cleanup (retire columns, add cost + parent) | C1 | Cost per run is unanswerable today; May constraint is wrong |
 | `vani_idempotency` (key, tenant, result, expires) | A1/C | Store-and-replay needs a home; advisory lock covers only in-session retries |
 | `gt_eval_runs` | C3 | Eval results must be comparable across prompt and model versions |
@@ -169,7 +184,8 @@ Everything else in this plan is code over existing tables.
 ## 11. Sequencing, first four weeks
 
 ```
-Week 1   A1 ARCH.md · A2 AGENTS.md · B1 merge + Phase 4 gate · B2 failover fix · H1–H4 one repo
+Week 1   A1 ARCH.md · A2 AGENTS.md · B1 merge · B2 failover fix   ✅ 2026-09-30
+         Phase 4 gate (deploy + a person) · H1–H4 one repo          ← next session opens here
 Week 2   A3 PLATFORM spec · B3 visibility · B4 journey readers + dashboard · C1 run table
 Week 3   A4/A5 Vara + GTM specs · C2 contracts + primitives · D1 provenance · D2 brain.context
 Week 4   C3 evals · C5 lanes · D3 Vara in the graph · E1/E2 funnel front half
