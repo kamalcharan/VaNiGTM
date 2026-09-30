@@ -21,6 +21,7 @@ import { Pool } from 'pg';
 import { createTenantDb } from '../db';
 import { emitEvent, reclaimStaleEvents, heartbeat, type GTEvent } from './event.store';
 import { createRun, setStatus, appendStep } from './agent.runner';
+import { assertRegistryMatches } from './handled-events';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
 import { CompetitorResearchAgent } from '../skills/research-skill/research.agent';
@@ -370,6 +371,10 @@ async function pollOnce(pool: Pool, queue: EventQueue): Promise<void> {
 }
 
 export function startWorker(pool: Pool, queue: EventQueue): void {
+  // Refuse to start on a stale declaration: runs.events marks an event as
+  // unconsumed from HANDLED_EVENT_TYPES, and a list that drifts from this
+  // registry would report the wrong thing while looking authoritative.
+  assertRegistryMatches(Object.keys(AGENT_REGISTRY));
   console.log(
     `[Worker] Starting — polling every ${POLL_INTERVAL_MS}ms, batch size ${POLL_BATCH_SIZE}`,
   );

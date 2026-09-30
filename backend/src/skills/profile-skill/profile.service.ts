@@ -199,13 +199,22 @@ function scoreBrand(inputs: ScoreInputs, weight: number): number {
   return Math.min(weight, Math.round(voice + always + never + visualPts + proofPts));
 }
 
+/**
+ * The Brain sections and their weights, exported so the dashboard reads the
+ * SAME numbers the score is computed from. The retired frontend copied this
+ * table by hand ("keep both in sync"); CLAUDE.md drifted to 40/30/20/10.
+ */
+export const BRAIN_WEIGHTS: Record<'icp' | 'brand' | 'offers' | 'competitors' | 'vocabulary' | 'research', number> = {
+  icp: 25, brand: 20, offers: 20, competitors: 15, vocabulary: 10, research: 10,
+};
+
 const BRAIN_SCORERS: BrainScorer[] = [
-  { key: 'icp',         weight: 25, score: (i) => scoreIcp(i, 25) },
-  { key: 'brand',       weight: 20, score: (i) => scoreBrand(i, 20) },
-  { key: 'offers',      weight: 20, score: (i) => scoreOffers(i, 20) },
-  { key: 'competitors', weight: 15, score: (i) => scoreCompetitors(i, 15) },
-  { key: 'vocabulary',  weight: 10, score: (i) => scoreVocabulary(i, 10) },
-  { key: 'research',    weight: 10, score: (i) => scoreResearch(i, 10) },
+  { key: 'icp', weight: BRAIN_WEIGHTS.icp, score: (i) => scoreIcp(i, BRAIN_WEIGHTS.icp) },
+  { key: 'brand', weight: BRAIN_WEIGHTS.brand, score: (i) => scoreBrand(i, BRAIN_WEIGHTS.brand) },
+  { key: 'offers', weight: BRAIN_WEIGHTS.offers, score: (i) => scoreOffers(i, BRAIN_WEIGHTS.offers) },
+  { key: 'competitors', weight: BRAIN_WEIGHTS.competitors, score: (i) => scoreCompetitors(i, BRAIN_WEIGHTS.competitors) },
+  { key: 'vocabulary', weight: BRAIN_WEIGHTS.vocabulary, score: (i) => scoreVocabulary(i, BRAIN_WEIGHTS.vocabulary) },
+  { key: 'research', weight: BRAIN_WEIGHTS.research, score: (i) => scoreResearch(i, BRAIN_WEIGHTS.research) },
 ];
 
 export function calculateProfileScoreV2(
