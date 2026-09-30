@@ -24,6 +24,11 @@ Note: `npm run lint` is genuinely broken (ESLint flat config invoked with the re
 > `VaNiGTM/documents/POA-2026-09-30-platform.md`, whose Track H moves
 > `vani-app/` into that repo. Work under `vani-app/` still obeys
 > `vani-app/CLAUDE.md`.
+>
+> **Production and the VPS:** `VaNiGTM/DEPLOY.md` — where the API, worker,
+> nginx and console run, and every deploy / migrate / rollback command. The
+> console calls `api.vikuna.io` directly, so any API route it needs must be
+> reachable through that nginx config (DEPLOY.md §5).
 
 **VaNi AI is NOT built in this repo.** The plan changed on 2026-07-31 (Option A, in-repo lazy routes, was superseded twice on the same day). The assessment funnel — public flow, report, console, backend, database — lives in `kamalcharan/VaNiGTM`, attached here as a submodule at `vanigtm/`. This repo now holds only the handover record and the governing documents.
 
