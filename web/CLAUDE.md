@@ -18,6 +18,13 @@ Note: `npm run lint` is genuinely broken (ESLint flat config invoked with the re
 
 ## VaNi AI (in progress)
 
+> **2026-09-30:** the product's architecture and agent contract are
+> `VaNiGTM/ARCH.md` and `VaNiGTM/AGENTS.md`; the specs are
+> `VaNiGTM/documents/spec/{PLATFORM,VARA,GTM}.md`; the plan is
+> `VaNiGTM/documents/POA-2026-09-30-platform.md`, whose Track H moves
+> `vani-app/` into that repo. Work under `vani-app/` still obeys
+> `vani-app/CLAUDE.md`.
+
 **VaNi AI is NOT built in this repo.** The plan changed on 2026-07-31 (Option A, in-repo lazy routes, was superseded twice on the same day). The assessment funnel — public flow, report, console, backend, database — lives in `kamalcharan/VaNiGTM`, attached here as a submodule at `vanigtm/`. This repo now holds only the handover record and the governing documents.
 
 Before touching anything VaNi-related, read `docs/VANI_AI_HANDOVER.md` — phase status, guardrails (no Supabase for VaNi data, config-driven survey engine, deterministic SQL scoring), and what is waiting on whom. For code or database work, read `vanigtm/CLAUDE.md` and `vanigtm/docs/db/*.md` instead; the latter document what the schema does behind the application's back, and exist so the next session does not rediscover it the hard way.

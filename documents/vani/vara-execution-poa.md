@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-09-30** by `VaNiGTM/documents/POA-2026-09-30-platform.md` (Track F) and `VaNiGTM/documents/spec/VARA.md`. Its migration numbers (247–251) never landed under those numbers; the branch merged on 2026-09-30 as 254–258. Kept for history.
+
 # Vara — Execution POA
 
 **Date:** 2026-08-27 (Phase 4 landed + hardened; Platform Channel slice approved)
