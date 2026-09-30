@@ -121,7 +121,9 @@ async function main() {
 
   app.post('/api/v1/skills/:skillName/:functionName', async (req, res) => {
     const { skillName, functionName } = req.params;
-    const params = req.body.params || {};
+    // `?.`: a request without a JSON body leaves req.body undefined, and this
+    // line runs before the try — it answered 500 instead of 401 (2026-09-30).
+    const params = req.body?.params || {};
 
     // JWT auth — extract tenant_id from token
     const authHeader = req.headers.authorization;

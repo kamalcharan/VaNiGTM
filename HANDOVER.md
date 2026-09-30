@@ -32,6 +32,20 @@ sections only for history.
   `npm run db:migrate -- --status` on the VPS (all 258 applied) and a
   `GET /api/v1/tenant/embed` with a session.
 
+## Deployed 2026-09-30 (afternoon)
+
+- **API + worker deployed from `main`** on the Main VPS (`deploy-vani.sh`),
+  same image, worker polling with no errors.
+- **`vn_migrations` reconciled** — 153 applied, 0 pending, no ⚠. Nothing was
+  re-run; see CLAUDE.md → Migrations for what was wrong and why.
+- **nginx: catch-all `location /api/v1/` added**, backup
+  `api.vikuna.io.conf.bak-20260930-1415` on the box. `/embed/boot` answers
+  from the API; CORS echoes `https://vani.vikuna.io`. The live file is now
+  the repo's `deploy/vani-main-vps/api.vikuna.io.conf`.
+- **Not deployed yet:** `server.ts` `req.body?.params` (a body-less skill call
+  answered 500 instead of 401). Rides the next deploy.
+- **Phase 4 gate: still to run** — it is now purely console + a real page.
+
 ## Next session, in order
 
 1. **Phase 4 gate** (POA B1, the one open item of Track B): with the API

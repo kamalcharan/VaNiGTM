@@ -7,6 +7,10 @@
 > plan is `documents/POA-2026-09-30-platform.md` (+ `-repo-consolidation.md`).
 > This file is the working notebook — rulings, traps, recipes — and defers to
 > those where they overlap.
+>
+> **Deploying or touching the VPS: read `DEPLOY.md`** — what runs where, the
+> folder layout on the box, deploy / migrate / nginx commands, rollback, and
+> the VPS reference. Keep it current when any of that changes.
 
 ## What is this repo?
 VaNi GTM — a multi-tenant, agent-powered go-to-market engine. A tenant (each
@@ -255,6 +259,20 @@ Each skill in `backend/src/skills/<name>/`:
 | pulse-skill | follow-ups + meeting workflow (funnel) | ✅ retargeted to contacts |
 | etl (src/etl) | import pipeline (staging works) | ⚠️ processing = 501 until prospect-skill |
 
+## nginx on api.vikuna.io — the whole API, not an allowlist (2026-09-30)
+
+The browser calls `api.vikuna.io` directly, so an API path nginx does not
+proxy is a path the console cannot reach, and it answers **nginx's own 404**
+(HTML, `nginx/1.29.7`) — not the API's JSON. Until 2026-09-30 only eight
+prefixes were proxied, so `/skills/*` (all but assessment), `/vara`, `/etl`,
+`/embed` and `/llm-provider` all 404'd in production. A catch-all
+`location /api/v1/` fixed it. The live file is now in the repo,
+`deploy/vani-main-vps/api.vikuna.io.conf` + `vani-cors.inc`: edit there, then
+copy (`DEPLOY.md` §5). Its header lists the routes that are public by design; a new
+unauthenticated route belongs in that list. In production CORS is enforced by
+nginx's `$cors_origin` map, not the container's `CORS_ORIGIN` (unset there,
+so it prints `http://localhost:3000` at startup — harmless).
+
 ## CORS — a list, not a string (fixed 2026-09-16)
 
 `CORS_ORIGIN` is **comma-separated**; `cors-origins.ts` parses it and
@@ -335,6 +353,16 @@ because a date format or a token convention is worth not re-deciding.
   Platform Channel branch's 247–251, renumbered when it was finally merged on
   2026-09-30 (`boot_pings`, `vara_answer_cache`, `vani_agent_intent`,
   `vani_intent_match`, seed intents).
+- **Production's `vn_migrations` was reconciled on 2026-09-30.** `--status`
+  in the container listed 249_ki and 253–258 as pending although every object
+  existed: 254–258 had been applied on 2026-08-29 under the branch's OLD names
+  (247–251, content byte-identical), and 249_ki + 253 were run by hand and
+  never recorded. The rows were renamed/recorded after checking each object,
+  and nine CRLF checksums (249_vara–252, 255–258) were set to the LF hash of
+  the same file. Result: 153 applied, 0 pending, no ⚠. **Apply migrations
+  with `docker exec vani-backend node dist/migrate.js` on the VPS**, never
+  from a Windows checkout and never by pasting SQL — both leave the record
+  wrong, and a wrong record reads exactly like an unapplied migration.
 - **`⚠ modified` on a Windows checkout is line endings, not an edit.** The
   checksum is MD5 of the file bytes; a CRLF checkout of 239 hashes to
   f43d515a…, the LF file and the DB both say 6e6c8dca… (verified 2026-09-29).

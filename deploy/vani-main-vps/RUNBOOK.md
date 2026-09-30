@@ -6,7 +6,7 @@ For Charan to run. Every command below runs ON THE MAIN VPS (or against it)
 output back for debugging if any step fails.
 
 Everything referenced (`Dockerfile`, `docker-compose.vani.yml`,
-`api.vikuna.io.conf`, `vani-cors.conf`, `.env.example`) lives in
+`api.vikuna.io.conf`, `vani-cors.inc`, `.env.example`) lives in
 `deploy/vani-main-vps/` on branch `claude/vani-ai-assessment-skill`. Pull
 that branch onto the VPS (or merge it to `main` first, your call) before
 starting.
@@ -139,25 +139,25 @@ if you'd already run it.
 
 ## 6. Deploy the Nginx config
 
-```
-# Copy both files into whatever host directory is bind-mounted to
-# vikuna-nginx's /etc/nginx/conf.d/ and /etc/nginx/snippets/ — confirm the
-# real mount paths with:
-docker inspect vikuna-nginx --format '{{json .Mounts}}'
+The two files in this directory ARE the live config (copied off the box
+2026-09-30). The host directory is bind-mounted to the container's conf.d:
 
-cp deploy/vani-main-vps/api.vikuna.io.conf  <that conf.d mount>/
-cp deploy/vani-main-vps/vani-cors.conf      <that snippets mount>/   # or conf.d/, adjust the `include` path in api.vikuna.io.conf to match
+```
+F=/opt/vikuna/docker/docker/config/nginx/conf.d
+cp "$F/api.vikuna.io.conf" "$F/api.vikuna.io.conf.bak-$(date +%Y%m%d-%H%M)"
+cp deploy/vani-main-vps/api.vikuna.io.conf deploy/vani-main-vps/vani-cors.inc "$F/"
 
 docker exec vikuna-nginx nginx -t          # syntax check BEFORE reload
 docker exec vikuna-nginx nginx -s reload
 ```
-Once DNS (prereq 3) resolves and you're ready for HTTPS:
+`vani-cors.inc` must stay `.inc` — nginx.conf includes `conf.d/*.conf`.
+The cert already exists (`/etc/letsencrypt/live/api.vikuna.io/`).
+
+Check the API answers through nginx, not nginx's own 404:
 ```
-certbot --nginx -d api.vikuna.io
+curl -s -X POST https://api.vikuna.io/api/v1/embed/boot -H 'Content-Type: application/json' -d '{}'
+# {"error":{"code":"INVALID_INPUT",...}}
 ```
-(or however this VPS already issues certs for its other vhosts — I don't
-know that tooling, only that `CLAUDE.md` noted no cert existed yet for
-Nginx as of the last inspection.)
 
 ## 7. Verify
 
@@ -210,7 +210,7 @@ database since the backup.
 
 - **Shared Docker network name** — I don't know it; `docker-compose.vani.yml` has a placeholder (`NETWORK_NAME` in `.env`).
 - **Whether the Main VPS builds images locally or pulls from a registry** — I assumed local build (no registry credentials needed); ProKey's convention (Docker Hub, `vikuna/prokey-backend`) may or may not be what the other Main VPS containers actually follow.
-- **vikuna-nginx's config layout** — assumed standard `nginx:alpine` with a bind-mounted `conf.d/` directory scanned via `include`. If it's configured differently, the *content* of `api.vikuna.io.conf`/`vani-cors.conf` should still be correct; only the drop-in mechanics (step 6) would need adjusting.
+- **vikuna-nginx's config layout** — assumed standard `nginx:alpine` with a bind-mounted `conf.d/` directory scanned via `include`. If it's configured differently, the *content* of `api.vikuna.io.conf`/`vani-cors.inc` should still be correct; only the drop-in mechanics (step 6) would need adjusting.
 - **SSL/certbot tooling** — assumed standard `certbot --nginx`; this VPS may already have its own cert-issuance process for other vhosts that I don't know about.
 - **Vercel preview origin pattern** — guessed `https://vikunawebsite-<anything>.vercel.app` (Vercel's default naming, and this repo's actual name). Confirm against a real preview deploy URL and tighten/widen the regex in `api.vikuna.io.conf` if it doesn't match.
 - **`pg_dump`/`psql` invocation** — assumed a `<db_user>` credential exists inside/reachable from the `vikuna-postgres` container the same way the rest of this stack already uses it; I don't have that value.
