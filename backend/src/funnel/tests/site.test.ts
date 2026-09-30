@@ -38,7 +38,7 @@ describe('isPrivateAddress', () => {
 
 describe('fetchPublicHtml refuses internal targets before any request', () => {
   it.each([
-    ['http://localhost/', /does not point at a public website/],
+    ['http://localhost/', /does not point at a public address/],
     ['http://127.0.0.1/', /given as a number/],
     ['http://169.254.169.254/latest/meta-data/', /given as a number/],
     ['http://example.com:5432/', /refused port 5432/],

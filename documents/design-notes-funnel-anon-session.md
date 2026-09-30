@@ -221,9 +221,14 @@ agent does).
      guard and follows redirects. The funnel uses its own guarded fetch
      (`site.ts`): http(s), ports 80/443, no IP-literal hosts, every resolved
      address public, redirects followed by hand with the same checks.
-     Residual: DNS rebinding. **The tenant ingestion path is unchanged and
-     still unguarded** — reached only by signed-in tenants; a separate fix to
-     decide.
+     Residual: DNS rebinding. **Tenant paths guarded too (same day):** the
+     guard moved to `lib/public-fetch.ts` and `IngestionAgent.fetchUrlText`
+     (ingestion, site crawl, brand, competitor and account research), the
+     brand stylesheet fetch and `renderPageViaN8n` all go through it; a
+     refusal is `URL_NOT_PUBLIC` with the reason. Still unguarded, on
+     purpose for now: the BYOK "test connection" call to a tenant-supplied
+     model URL (`vani/llm-provider.service.ts`) — a self-hosted model may
+     legitimately be private; it needs its own decision.
    - **Deviation from §3.3, stated:** the claim (session locked, knowledge
      source created, full crawl queued, session bound) is ONE transaction; the
      card is then written through the normal profile upsert, which has its

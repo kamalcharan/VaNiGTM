@@ -144,8 +144,10 @@ through the runner (idempotent, rehearsed first). `.env` gained
 `SUPPRESSION_HASH_KEY`, `FUNNEL_IP_HASH_KEY` and five `FUNNEL_*` values
 (suggested: 5 new reads/IP/hour, 500,000 tokens/day, 7 days, 10 min timeout,
 720 h reuse — Charan's to change). Nothing visible to visitors until E2 (the
-landing page) exists. Open: the tenant ingestion fetch has no SSRF guard
-(src/funnel/site.ts has one).
+landing page) exists. The tenant fetches are now guarded too (`lib/public-fetch.ts`: ingestion,
+crawl, brand incl. stylesheets, competitor + account research, the n8n
+renderer) — on the branch, not yet deployed. Open: the BYOK test-connection
+call to a tenant-supplied URL is still unguarded (needs a decision).
 
 **Also 2026-09-30 (Charan): the Phase 4 gate passed and the runtime role is
 now `vanigtm_app` — RLS is enforced in production.** Track B is done; Track F

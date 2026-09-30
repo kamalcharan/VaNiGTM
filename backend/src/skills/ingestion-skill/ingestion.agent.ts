@@ -21,6 +21,7 @@ import { emitEvent } from '../../agent-core/event.store';
 import { upsertNode, upsertEdge } from '../../agent-core/kg.store';
 
 import type { Parser } from './parsers/parser.interface';
+import { assertPublicUrl, fetchPublic, NotPublicError } from '../../lib/public-fetch';
 import { PdfParser }  from './parsers/pdf.parser';
 import { DocxParser } from './parsers/docx.parser';
 import { PptxParser } from './parsers/pptx.parser';
@@ -836,6 +837,12 @@ export class IngestionAgent {
    */
   /** Public for the same reason as extractFromHtml — see its comment. */
   static async renderPageViaN8n(url: string): Promise<string> {
+    // n8n fetches whatever we hand it — the same guard applies before we do.
+    try { await assertPublicUrl(url); }
+    catch (err) {
+      if (err instanceof NotPublicError) throw new Error(`URL_NOT_PUBLIC: ${url} — ${err.message}`);
+      throw err;
+    }
     const base = process.env.N8N_RENDER_URL;
     const secret = process.env.N8N_RENDER_SECRET;
     if (!base || !secret) {
@@ -932,20 +939,23 @@ export class IngestionAgent {
     html: string;
     health: { present: string[]; missing: string[]; summary: string };
   }> {
+    // Through the SSRF guard (lib/public-fetch, 2026-09-30): these URLs come
+    // from tenants, from links inside pages and from web search results, and
+    // an unguarded fetch followed redirects to internal addresses too.
     let response: Response;
     try {
-      response = await fetch(url, {
+      ({ response } = await fetchPublic(url, {
         headers: {
           // Browser-like UA — plain bot UAs get 403'd by common CDN bot rules.
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 VaNiGTM-Ingestion/1.0',
           Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5',
           'Accept-Language': 'en',
         },
-        redirect: 'follow',
-        signal: AbortSignal.timeout(30_000),
-      });
+        timeoutMs: 30_000,
+      }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      if (err instanceof NotPublicError) throw new Error(`URL_NOT_PUBLIC: ${url} — ${msg}`);
       throw new Error(`URL_FETCH_FAILED: ${url} — ${msg}`);
     }
 

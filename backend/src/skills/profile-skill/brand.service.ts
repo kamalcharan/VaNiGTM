@@ -18,6 +18,7 @@ import { createTenantDb } from '../../db';
 import { callLLMValidated } from '../../agent-core/llm.client';
 import { loadPrompt } from '../../agent-core/prompt.store';
 import { IngestionAgent } from '../ingestion-skill/ingestion.agent';
+import { fetchPublic } from '../../lib/public-fetch';
 import { appendStep } from '../../agent-core/agent.runner';
 import { getProfile, recomputeProfileScore } from './profile.service';
 
@@ -182,10 +183,12 @@ function extractStylesheetLinks(html: string, baseUrl: string, limit = 2): strin
  *  fewer color source, never a hard failure for the whole brand draft. */
 async function fetchCssText(url: string): Promise<string> {
   try {
-    const res = await fetch(url, {
+    // Stylesheet URLs come from INSIDE the page — guarded like every fetch
+    // of a URL someone else chose (lib/public-fetch). A refusal is caught
+    // below like any other failure: one fewer colour source.
+    const { response: res } = await fetchPublic(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) VaNiGTM-Brand/1.0' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(8_000),
+      timeoutMs: 8_000,
     });
     if (!res.ok) return '';
     return (await res.text()).slice(0, 300_000);
