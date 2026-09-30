@@ -1,15 +1,13 @@
 /**
  * Text embedding — 768-dim vectors for the semantic layer.
  *
- * One primary path (Ollama-compatible endpoint, same LLM_PRIMARY_URL as the
- * chat client). No silent fallback if the endpoint is unreachable or the
+ * One primary path: an Ollama-compatible endpoint at EMBED_URL. No silent fallback if the endpoint is unreachable or the
  * model is missing — the caller sees the real cause and stops, per
  * VaNiGTM rule 12.
  *
  * ── Model choice ─────────────────────────────────────────────────────────
- * Default is `nomic-embed-text` (768-dim, no auth, runs on Ollama beside
- * the chat model). Override with EMBED_MODEL env if the tenant deployment
- * uses a different one. Dimension MUST match the vector(768) column shape
+ * EMBED_MODEL in .env (e.g. `nomic-embed-text`, 768-dim, on Ollama).
+ * Dimension MUST match the vector(768) column shape
  * in migration 246 — a different-dim vector fails the pgvector CHECK at
  * insert time.
  *
@@ -24,10 +22,36 @@
  *   (Phase 2) is a one-line import.
  */
 
-const EMBED_URL   = process.env.LLM_PRIMARY_URL   ?? 'http://localhost:11434';
-const EMBED_MODEL = process.env.EMBED_MODEL       ?? 'nomic-embed-text';
-const EMBED_KEY   = process.env.LLM_PRIMARY_KEY   ?? '';
-const EMBED_TIMEOUT_MS = parseInt(process.env.EMBED_TIMEOUT_MS ?? '30000', 10);
+/**
+ * From .env, read at call time, no defaults (Charan, 2026-09-30: "no
+ * hardcoding … everything comes from .env"). This used to fall back to
+ * LLM_PRIMARY_URL → localhost:11434 and `nomic-embed-text`: the chat server
+ * and the embedding server are not necessarily the same box, and which
+ * embedding provider to use is still an open decision (POA D6).
+ *
+ * Unlike the chat settings this does NOT stop the process at start: nothing
+ * but free-text intent routing uses it today, and that path already answers
+ * "free-text questions are unavailable" (503) on any EmbedError. Missing
+ * settings arrive there as EMBED_NOT_CONFIGURED, naming them.
+ */
+function embedConfig(): { url: string; model: string; key: string; timeoutMs: number } {
+  const missing = ['EMBED_URL', 'EMBED_MODEL', 'EMBED_TIMEOUT_MS']
+    .filter((k) => !(process.env[k] ?? '').trim());
+  const timeoutMs = Number(process.env.EMBED_TIMEOUT_MS);
+  if (!missing.length && (!Number.isInteger(timeoutMs) || timeoutMs < 1000)) {
+    missing.push(`EMBED_TIMEOUT_MS=${process.env.EMBED_TIMEOUT_MS} (whole ms ≥ 1000)`);
+  }
+  if (missing.length) {
+    throw new EmbedError('EMBED_NOT_CONFIGURED',
+      `Embeddings are not configured: ${missing.join(', ')}. Set them in .env (backend/.env.example).`);
+  }
+  return {
+    url: process.env.EMBED_URL!.trim().replace(/\/+$/, ''),
+    model: process.env.EMBED_MODEL!.trim(),
+    key: (process.env.EMBED_KEY ?? '').trim(),
+    timeoutMs,
+  };
+}
 
 /** Dimension the vector(768) columns expect. Kept as a constant so the
  *  runtime check catches a wrong-model deployment loudly instead of
@@ -57,9 +81,10 @@ export async function embedText(text: string): Promise<number[]> {
   if (!text || !text.trim()) {
     throw new EmbedError('EMPTY_INPUT', 'embedText called with empty text');
   }
-  const url = `${EMBED_URL.replace(/\/$/, '')}/api/embeddings`;
+  const cfg = embedConfig();
+  const url = `${cfg.url}/api/embeddings`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), EMBED_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
 
   let res: Response;
   try {
@@ -67,9 +92,9 @@ export async function embedText(text: string): Promise<number[]> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(EMBED_KEY ? { Authorization: `Bearer ${EMBED_KEY}` } : {}),
+        ...(cfg.key ? { Authorization: `Bearer ${cfg.key}` } : {}),
       },
-      body: JSON.stringify({ model: EMBED_MODEL, prompt: text }),
+      body: JSON.stringify({ model: cfg.model, prompt: text }),
       signal: controller.signal,
     });
   } catch (err) {
@@ -91,7 +116,7 @@ export async function embedText(text: string): Promise<number[]> {
   if (vec.length !== EMBED_DIM) {
     throw new EmbedError(
       'EMBED_WRONG_DIM',
-      `Model ${EMBED_MODEL} returned ${vec.length}-dim vector; migration 246 expects ${EMBED_DIM}`,
+      `Model ${cfg.model} returned ${vec.length}-dim vector; migration 246 expects ${EMBED_DIM}`,
     );
   }
   return vec as number[];

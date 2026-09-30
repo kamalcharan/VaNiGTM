@@ -91,6 +91,9 @@ beforeEach(() => {
   process.env.LLM_PRIMARY_URL    = 'http://platform.internal:11434/v1';
   process.env.LLM_PRIMARY_MODEL  = 'qwen3:8b';
   process.env.LLM_PRIMARY_KEY    = '';
+  // Declared, as production declares it (llm.config.ts) — no longer inferred
+  // from "qwen" in the model name.
+  process.env.LLM_PRIMARY_SYSTEM_SUFFIX = '/no_think';
   process.env.ANTHROPIC_API_KEY  = 'sk-ant-test';
   resetKeyCache();
   invalidateAllProviders();

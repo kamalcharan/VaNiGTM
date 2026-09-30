@@ -11,8 +11,8 @@
  * broken outright, which is the same mistake llm-byok.test.ts calls out about
  * its own control.
  *
- * HAIKU_DEFAULT is read at module load, so each direction re-imports the
- * client under a fresh module registry rather than mutating a constant.
+ * HAIKU_DEFAULT is read from .env on every call (llm.config.ts); each case
+ * still re-imports the client so no module state leaks between them.
  */
 
 const TENANT = '11111111-1111-1111-1111-111111111111';
@@ -81,14 +81,17 @@ describe('HAIKU_DEFAULT=true — escalation is automatic', () => {
     expect(claudeCalls).toHaveLength(1);
   });
 
-  it('is the default when the variable is unset', async () => {
-    // The flag must not change behaviour for a deployment that never sets it.
+  it('refuses to run at all when the variable is unset', async () => {
+    // It used to mean "true" — spend automatically — for any deployment that
+    // never set it. Charan, 2026-09-30: no defaults, everything from .env. So
+    // unset is a configuration error that names the variable, and nothing is
+    // billed.
     delete process.env.HAIKU_DEFAULT;
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { callLLM } = require('../llm.client');
 
-    const r = await callLLM(opts(poolWithApproval(false)));
-    expect(r.source).toBe('escalation');
+    await expect(callLLM(opts(poolWithApproval(false)))).rejects.toThrow(/LLM_CONFIG_INVALID.*HAIKU_DEFAULT is not set/);
+    expect(claudeCalls).toHaveLength(0);
   });
 });
 

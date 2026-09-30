@@ -26,7 +26,7 @@ import { DocxParser } from './parsers/docx.parser';
 import { PptxParser } from './parsers/pptx.parser';
 import { TextParser } from './parsers/text.parser';
 import { chunkText } from './pipeline/chunker';
-import { extractFromChunks, EXTRACTION_PROMPT, EXTRACT_MAX_TOKENS, type SourcedChunk } from './pipeline/extractor';
+import { extractFromChunks, EXTRACTION_PROMPT, extractMaxTokens, type SourcedChunk } from './pipeline/extractor';
 import { charBudgetFor } from '../../agent-core/llm.gate';
 import { draftProfileFromText } from '../profile-skill/profile.drafter';
 
@@ -349,10 +349,10 @@ export class IngestionAgent {
       // answer now fits inside it — or the run fails here, with the numbers,
       // before a single call is spent.
       const CHUNK_CAP = 4_000;
-      const room = charBudgetFor(undefined, EXTRACT_MAX_TOKENS, EXTRACTION_PROMPT);
+      const room = charBudgetFor(undefined, extractMaxTokens(), EXTRACTION_PROMPT);
       if (room < 400) {
         throw new Error(
-          `LLM_WINDOW_TOO_SMALL: the extraction prompt plus ${EXTRACT_MAX_TOKENS} reserved output tokens `
+          `LLM_WINDOW_TOO_SMALL: the extraction prompt plus ${extractMaxTokens()} reserved output tokens `
           + `leave ${room} chars for text inside LLM_CONTEXT_TOKENS — raise it to the server's real window.`,
         );
       }
@@ -418,7 +418,7 @@ export class IngestionAgent {
           + (truncatedChunks.length
             ? ` — INCOMPLETE: the answer for chunk${truncatedChunks.length === 1 ? '' : 's'} `
               + `${truncatedChunks.map((i) => i + 1).join(', ')} of ${chunks.length} was cut off at `
-              + `${EXTRACT_MAX_TOKENS} tokens; entries after the cut are missing. Raise LLM_CONTEXT_TOKENS `
+              + `${extractMaxTokens()} tokens; entries after the cut are missing. Raise LLM_CONTEXT_TOKENS `
               + `(the reserve is derived from it) and read the source again`
             : ''),
         // Rule 12: a partial extraction is labelled, not passed off as whole.

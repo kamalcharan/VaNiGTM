@@ -35,11 +35,13 @@ import type { Chunk } from './chunker';
  * without a trace. With a 100k window there is no reason to keep the answer
  * that short. An eighth of the window, between 800 and 3,000.
  */
-export const EXTRACT_MAX_TOKENS = (() => {
+export function extractMaxTokens(): number {
+  // A function, not a value computed at import: the window comes from .env
+  // at call time (llm.config.ts), like every other LLM setting.
   const window = platformContextTokens();
   if (window <= 0) return 3000;
   return Math.min(3000, Math.max(800, Math.floor(window / 8)));
-})();
+}
 
 export interface SourcedChunk extends Chunk {
   /** URL of the page this chunk came from (null for pasted text / files). */
@@ -131,7 +133,7 @@ export async function extractFromChunks(
         runId,
         system:    EXTRACTION_PROMPT,
         messages:  [{ role: 'user', content: chunk.text }],
-        maxTokens: EXTRACT_MAX_TOKENS,
+        maxTokens: extractMaxTokens(),
       });
       if (result.truncated) {
         // What was parsed below is real; what came after the cut is gone.
@@ -139,7 +141,7 @@ export async function extractFromChunks(
         // the worker's stdout says it next to the [LLM] line that caused it.
         truncatedChunks.push(chunkIndex);
         console.warn(`[Ingestion] chunk ${chunkIndex + 1}/${chunks.length}: extraction answer cut off at `
-          + `${EXTRACT_MAX_TOKENS} tokens — entries after the cut were not captured`);
+          + `${extractMaxTokens()} tokens — entries after the cut were not captured`);
       }
 
       const nodeMatches = [...result.text.matchAll(/<extract>([\s\S]*?)<\/extract>/g)];

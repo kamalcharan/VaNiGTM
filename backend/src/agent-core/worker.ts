@@ -22,6 +22,7 @@ import { createTenantDb } from '../db';
 import { emitEvent, reclaimStaleEvents, heartbeat, pollPendingEvents, type GTEvent } from './event.store';
 import { createRun, setStatus, appendStep } from './agent.runner';
 import { assertRegistryMatches, HANDLED_EVENT_TYPES } from './handled-events';
+import { readLlmConfig, assertLlmConfig } from './llm.config';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
 import { CompetitorResearchAgent } from '../skills/research-skill/research.agent';
@@ -274,7 +275,7 @@ async function processEvent(
           kind: 'llm_failover_approval',
           event_id: event.id,
           event_type: event.event_type,
-          failover_model: process.env.LLM_FAILOVER_MODEL ?? 'claude-haiku-4-5',
+          failover_model: readLlmConfig().failoverModel,
           vps_error: cause,
           question: 'The platform model did not answer. Run this on Vikuna\'s '
             + 'Claude key instead? It will finish, and Vikuna is billed for it.',
@@ -352,6 +353,10 @@ export function startWorker(pool: Pool, queue: EventQueue): void {
   // unconsumed from HANDLED_EVENT_TYPES, and a list that drifts from this
   // registry would report the wrong thing while looking authoritative.
   assertRegistryMatches(Object.keys(AGENT_REGISTRY));
+  // Every LLM setting from .env, checked before the first claim: a worker that
+  // starts on a missing model URL claims events and fails each one, which is
+  // the same outage reported N times instead of once, here.
+  assertLlmConfig('Worker');
   console.log(
     `[Worker] Starting — polling every ${POLL_INTERVAL_MS}ms, batch size ${POLL_BATCH_SIZE}`,
   );

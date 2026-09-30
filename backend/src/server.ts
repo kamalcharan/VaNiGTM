@@ -18,6 +18,7 @@ import { createAssessmentRouter } from './skills/assessment-skill/assessment.rou
 import { createVaraRouter } from './vara/vara.routes';
 import { createLlmProviderRouter } from './vani/llm-provider.routes';
 import { createEmbedRouter } from './vani/embed.routes';
+import { assertLlmConfig } from './agent-core/llm.config';
 import { verifyAccessToken } from './auth/token.service';
 import { resolveAuth } from './auth/auth-context';
 import { parseCorsOrigins } from './cors-origins';
@@ -58,6 +59,11 @@ app.get('/health', async (_req, res) => {
 /* ── Main ───────────────────────────────────────────── */
 
 async function main() {
+  // Every LLM setting comes from .env, with no defaults (llm.config.ts). A
+  // missing one stops the API here, with the full list, rather than on the
+  // first request that needs a model.
+  assertLlmConfig('VaNi-GTM');
+
   // Initialize DB pool
   const pool = getPool();
 

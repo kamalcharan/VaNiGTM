@@ -24,6 +24,8 @@ const config: Config = {
     '<rootDir>/src/vani', '<rootDir>/src/vara',
   ],
   testMatch: ['**/tests/**/*.test.ts'],
+  // Explicit LLM settings for every test — production has no defaults (llm.config.ts).
+  setupFiles: ['<rootDir>/jest.llm-env.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {
     '^.+\\.ts$': ['ts-jest', { diagnostics: { ignoreCodes: [151002] } }],

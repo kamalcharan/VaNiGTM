@@ -44,6 +44,7 @@
  * sign a request. It is never logged and never leaves this process.
  */
 
+import { readLlmConfig } from './llm.config';
 import type { Pool } from 'pg';
 import { withTenantClient } from '../db';
 import { decryptSecret } from './secret.crypto';
@@ -81,12 +82,15 @@ export interface ProviderSummary {
 /* ── Platform defaults (what every tenant used before BYOK) ──────────────── */
 
 function platformProvider(): ResolvedProvider {
+  // From .env, no fallbacks (llm.config.ts). This used to default to
+  // localhost:11434 / qwen2.5 — the default the Main VPS silently ran on.
+  const c = readLlmConfig();
   return {
     posture:      'platform',
-    url:          (process.env.LLM_PRIMARY_URL ?? 'http://localhost:11434').replace(/\/+$/, ''),
-    model:        process.env.LLM_PRIMARY_MODEL ?? 'qwen2.5',
-    key:          process.env.LLM_PRIMARY_KEY || '',
-    timeoutMs:    parseInt(process.env.LLM_PRIMARY_TIMEOUT_MS ?? '60000', 10),
+    url:          c.primaryUrl,
+    model:        c.primaryModel,
+    key:          c.primaryKey,
+    timeoutMs:    c.primaryTimeoutMs,
     providerCode: 'platform',
   };
 }
@@ -228,7 +232,7 @@ export async function resolveProvider(
       url:          baseUrl.replace(/\/+$/, ''),
       model:        stored.model || catalogue?.defaultModel || '',
       key:          stored.key ?? '',
-      timeoutMs:    parseInt(process.env.LLM_PRIMARY_TIMEOUT_MS ?? '60000', 10),
+      timeoutMs:    readLlmConfig().primaryTimeoutMs,
       providerCode: row.provider_code,
     };
 

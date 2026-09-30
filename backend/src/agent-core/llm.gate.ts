@@ -66,18 +66,20 @@
  * it is told the real numbers.
  */
 
-const PLATFORM_MAX = Math.max(1, parseInt(process.env.LLM_MAX_CONCURRENT ?? '1', 10) || 1);
-const BYOK_MAX = Math.max(1, parseInt(process.env.LLM_BYOK_MAX_CONCURRENT ?? '4', 10) || 4);
+// Every setting below is read from .env through llm.config.ts at call time —
+// no value in this file stands in for a missing one (Charan, 2026-09-30).
+const cfg = () => readLlmConfig();
 
 /**
- * The platform model's context window, in tokens. 8192 is qwen3:8b's default
- * under Ollama; set it to what the deployed server is actually configured for.
- * Zero or unset disables the check rather than guessing.
+ * The platform model's context window, in tokens — LLM_CONTEXT_TOKENS, set to
+ * what the deployed server is actually configured for (its n_ctx). 0 means
+ * "unknown" and disables the budget and the check; it is a declared value, not
+ * a missing one.
  */
-const PLATFORM_CONTEXT = Math.max(0, parseInt(process.env.LLM_CONTEXT_TOKENS ?? '8192', 10) || 0);
+const platformContext = () => cfg().contextTokens;
 
 /** The platform window as configured (0 = unknown), for callers that size an answer reserve from it. */
-export function platformContextTokens(): number { return PLATFORM_CONTEXT; }
+export function platformContextTokens(): number { return platformContext(); }
 
 /**
  * Headroom left for the chat template, role markers and the server's own
@@ -88,6 +90,7 @@ const OVERHEAD_TOKENS = 200;
 export const BUDGET_SLACK_TOKENS = 64;
 
 import type { Pool, PoolClient } from 'pg';
+import { readLlmConfig } from './llm.config';
 
 interface Lane { running: number; waiting: Array<() => void>; limit: number }
 const lanes = new Map<string, Lane>();
@@ -115,7 +118,7 @@ export async function withLlmSlot<T>(
   /** When given, platform calls also take a cross-process slot (see header). */
   pool?: Pool,
 ): Promise<T> {
-  const lane = laneFor(url, posture === 'byok' ? BYOK_MAX : PLATFORM_MAX);
+  const lane = laneFor(url, posture === 'byok' ? cfg().byokMaxConcurrent : cfg().maxConcurrent);
   const startedWaiting = Date.now();
 
   if (lane.running >= lane.limit) {
@@ -237,7 +240,7 @@ const observed = new Map<string, { minRatio: number; samples: number }>();
  * send. Pessimism here costs a shorter first prompt; optimism costs a 500.
  * `LLM_CHARS_PER_TOKEN` overrides it for a model known to be looser or denser.
  */
-const DEFAULT_CHARS_PER_TOKEN = Math.max(1, Number(process.env.LLM_CHARS_PER_TOKEN) || 3);
+const coldCharsPerToken = () => cfg().charsPerToken;
 
 export function noteObservedTokens(model: string, chars: number, promptTokens: number): void {
   // A zero or missing count means the server did not report usage — learning
@@ -263,8 +266,9 @@ export function noteObservedTokens(model: string, chars: number, promptTokens: n
  * Platform only: a tenant's own window is unknown, so no bound can be derived.
  */
 export function noteContextOverflow(model: string, chars: number, reservedOutputTokens: number): void {
-  if (!model || chars <= 0 || PLATFORM_CONTEXT <= 0) return;
-  const room = PLATFORM_CONTEXT - OVERHEAD_TOKENS - Math.max(0, reservedOutputTokens);
+  const window = platformContext();
+  if (!model || chars <= 0 || window <= 0) return;
+  const room = window - OVERHEAD_TOKENS - Math.max(0, reservedOutputTokens);
   if (room <= 0) return;
   const bound = (chars / room) * 0.9;
   if (!Number.isFinite(bound) || bound < 1) return;
@@ -281,7 +285,7 @@ export function noteContextOverflow(model: string, chars: number, reservedOutput
  * from the slowest generation speed this model has shown is a measurement.
  * `LLM_TOKENS_PER_SEC` is the cold-start guess (qwen3-4b on the VPS: ~12).
  */
-const DEFAULT_TOKENS_PER_SEC = Math.max(1, Number(process.env.LLM_TOKENS_PER_SEC) || 10);
+const coldTokensPerSec = () => cfg().tokensPerSec;
 const speed = new Map<string, { minTps: number; samples: number }>();
 
 export function noteObservedSpeed(model: string, completionTokens: number, ms: number): void {
@@ -297,13 +301,14 @@ export function noteObservedSpeed(model: string, completionTokens: number, ms: n
 /** The slowest generation speed seen for this model, or the guess. */
 export function tokensPerSec(model?: string): number {
   const o = model ? speed.get(model) : undefined;
-  return o ? Math.min(o.minTps, DEFAULT_TOKENS_PER_SEC * 4) : DEFAULT_TOKENS_PER_SEC;
+  const guess = coldTokensPerSec();
+  return o ? Math.min(o.minTps, guess * 4) : guess;
 }
 
 /** Never trust a learned ratio to be MORE generous than the heuristic without
  *  evidence from several calls — one short prompt is not a calibration. */
 const effective = (o: { minRatio: number; samples: number }) =>
-  (o.samples >= 3 ? o.minRatio : Math.min(o.minRatio, DEFAULT_CHARS_PER_TOKEN));
+  (o.samples >= 3 ? o.minRatio : Math.min(o.minRatio, coldCharsPerToken()));
 
 /**
  * Chars per token: the densest ratio seen for this model, or the heuristic.
@@ -319,7 +324,7 @@ const effective = (o: { minRatio: number; samples: number }) =>
 export function charsPerToken(model?: string): number {
   const o = model ? observed.get(model) : undefined;
   if (o) return effective(o);
-  let densest = DEFAULT_CHARS_PER_TOKEN;
+  let densest = coldCharsPerToken();
   for (const x of observed.values()) densest = Math.min(densest, effective(x));
   return densest;
 }
@@ -349,10 +354,11 @@ export function charBudgetFor(
   reserveOutputTokens: number,
   fixedText: string,
 ): number {
-  if (PLATFORM_CONTEXT <= 0) return Number.MAX_SAFE_INTEGER;   // window unknown, do not cap
+  const window = platformContext();
+  if (window <= 0) return Number.MAX_SAFE_INTEGER;   // window unknown, do not cap
   // Slack for what the caller wraps around the text it budgets — a heading,
   // a role line — which the check will count and the budget did not see.
-  const usable = PLATFORM_CONTEXT - OVERHEAD_TOKENS - reserveOutputTokens - BUDGET_SLACK_TOKENS;
+  const usable = window - OVERHEAD_TOKENS - reserveOutputTokens - BUDGET_SLACK_TOKENS;
   const left = usable - estimateTokens(fixedText, model);
   return left <= 0 ? 0 : Math.floor(left * charsPerToken(model));
 }
@@ -379,9 +385,10 @@ export function checkContext(
   maxTokens: number,
   model?: string,
 ): ContextCheck | null {
-  if (posture !== 'platform' || PLATFORM_CONTEXT <= 0) return null;
+  const window = platformContext();
+  if (posture !== 'platform' || window <= 0) return null;
   const estimatedPromptTokens = estimateTokens(text, model);
-  const budgetTokens = PLATFORM_CONTEXT - OVERHEAD_TOKENS;
+  const budgetTokens = window - OVERHEAD_TOKENS;
   return {
     estimatedPromptTokens,
     reservedOutputTokens: maxTokens,

@@ -61,13 +61,15 @@ beforeAll(async () => {
 
 afterAll(async () => { if (pool) await pool.end(); });
 
+// HAIKU_DEFAULT is read from .env on every call (llm.config.ts), so the case's
+// setting must stay in force while the gate runs; it is restored after each.
+const envBefore = { ...process.env };
+afterEach(() => { process.env = { ...envBefore }; });
+
 async function gateFor(env: Record<string, string | undefined>) {
-  // llm.client reads HAIKU_DEFAULT at module load; isolate per case.
   jest.resetModules();
-  const saved = { ...process.env };
-  process.env = { ...saved, ...env };
+  process.env = { ...process.env, ...env };
   const mod = await import('../llm.client');
-  process.env = saved;
   return mod.mayFailOver;
 }
 

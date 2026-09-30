@@ -328,8 +328,9 @@ touches most:
 |---|---|
 | Core | `DB_PRIMARY` (runtime role), `DB_MIGRATE` (owner, migrations only — §4b), `DB_PRIMARY_SSL`, `JWT_SECRET`, `PORT`, `NODE_ENV` |
 | Secrets | `TENANT_SECRET_KEY` (+ `_PREVIOUS` during rotation) — no default, BYOK refuses to save without it |
-| LLM | `LLM_PRIMARY_URL`, `LLM_PRIMARY_MODEL`, `LLM_PRIMARY_KEY`, `LLM_CONTEXT_TOKENS`, `LLM_MAX_CONCURRENT`, `LLM_PRIMARY_TIMEOUT_MS`, `ANTHROPIC_API_KEY`, `LLM_FAILOVER_MODEL`, `HAIKU_DEFAULT` |
+| LLM — **all required, no defaults** (API and worker refuse to start and list what is missing) | `LLM_PRIMARY_URL`, `LLM_PRIMARY_MODEL`, `LLM_PRIMARY_KEY` (may be empty), `LLM_PRIMARY_TIMEOUT_MS`, `LLM_PRIMARY_SYSTEM_SUFFIX` (may be empty), `LLM_CONTEXT_TOKENS`, `LLM_MAX_CONCURRENT`, `LLM_BYOK_MAX_CONCURRENT`, `LLM_CHARS_PER_TOKEN`, `LLM_TOKENS_PER_SEC`, `HAIKU_DEFAULT`, `ANTHROPIC_API_KEY` (empty = no fallback), `LLM_FAILOVER_MODEL` (required with the key). `docs/llm-config.md` |
 | Worker | `WORKER_POLL_MS`, `WORKER_BATCH_SIZE`, `WORKER_STALE_CLAIM`, `WORKER_MAX_ATTEMPTS`, `WORKER_HEARTBEAT_MS` |
+| Embeddings (checked at call time) | `EMBED_URL`, `EMBED_MODEL`, `EMBED_TIMEOUT_MS`, `EMBED_KEY` |
 | Integrations | `SEARXNG_URL`, `N8N_RENDER_URL`, `N8N_RENDER_SECRET`, `N8N_ENV`, `GDRIVE_*` |
 | CORS (dev only) | `CORS_ORIGIN` — comma-separated; production uses nginx instead |
 

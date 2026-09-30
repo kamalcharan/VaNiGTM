@@ -89,6 +89,14 @@ holds and is what the API is shaped around. The routes and the sidebar are
   and dispatching agents.
 - **Stack:** React + TypeScript frontend, Node.js + Express + TypeScript
   backend, PostgreSQL on VPS (`vani_gtm_db` — connection via `DB_PRIMARY`).
+- **LLM configuration — .env only (Charan, 2026-09-30).** qwen on Vikuna's own
+  VPS is the platform model; Haiku is the fallback; **no hardcoded value
+  anywhere without his approval.** Every LLM setting is read by
+  `agent-core/llm.config.ts` with NO defaults; the API and worker refuse to
+  start and list every missing variable. The in-code constants that remain
+  (template overhead, calibration margins) are listed for approval in
+  `docs/llm-config.md`. Never add `process.env.X ?? '<value>'` for an LLM
+  setting; add it to llm.config.ts and `.env.example`.
 - **LLM:** VPS/local OpenAI-compatible endpoint (`LLM_PRIMARY_URL`, dev =
   Ollama). Working dev model: `qwen3:8b` (pre-warm with `keep_alive:"24h"`;
   `llm.client.ts` appends `/no_think` and sends `Authorization: Bearer

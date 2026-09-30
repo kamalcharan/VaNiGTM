@@ -89,11 +89,27 @@ const vani = async (vn: string) =>
   (await client.query(`SELECT vt.id FROM vani_tenant vt JOIN vn_tenants t ON t.slug = vt.slug
                         WHERE t.id = $1`, [vn])).rows[0]?.id as string;
 
+/**
+ * applyStepPayload runs INSIDE the caller's transaction (its contract, and
+ * what PATCH /onboarding/step does), so the test gives it one — the Domain
+ * step takes a SAVEPOINT, which Postgres refuses outside a transaction.
+ */
+const step = async (...args: Parameters<typeof applyStepPayload> extends [unknown, ...infer R] ? R : never) => {
+  await client.query('BEGIN');
+  try {
+    await applyStepPayload(client, ...args);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  }
+};
+
 const d = available ? describe : describe.skip;
 
 d('activation readiness', () => {
   it('starts with nothing passing', async () => {
-    await applyStepPayload(client, 'vani:domain', A, U,
+    await step('vani:domain', A, U,
       { domain: 'careers.acme.io', purpose: 'workspace' });
     const c = await readinessChecklist(client, await vani(A), A);
     expect(c.ready).toBe(false);
@@ -104,7 +120,7 @@ d('activation readiness', () => {
   it('a candidate domain with an origin passes the first two checks', async () => {
     // The regression. Before embed_origins was writable, check 2 could not
     // pass no matter what the tenant did, so ready was unreachable.
-    await applyStepPayload(client, 'vani:domain', A, U, {
+    await step('vani:domain', A, U, {
       domain: 'careers.acme.io', purpose: 'candidate',
       embed_origins: ['https://careers.acme.io'],
     });
@@ -117,7 +133,7 @@ d('activation readiness', () => {
 
   it('reaches ready once a JD is published', async () => {
     const vt = async () => {
-      await applyStepPayload(client, 'vani:domain', A, U, {
+      await step('vani:domain', A, U, {
         domain: 'careers.acme.io', purpose: 'candidate',
         embed_origins: 'careers.acme.io',
       });
@@ -134,7 +150,7 @@ d('activation readiness', () => {
   });
 
   it('normalises on the way in, so the stored value matches an Origin header', async () => {
-    await applyStepPayload(client, 'vani:domain', A, U, {
+    await step('vani:domain', A, U, {
       domain: 'careers.acme.io', purpose: 'candidate',
       embed_origins: ['CAREERS.acme.io/jobs?src=li'],
     });
@@ -145,22 +161,22 @@ d('activation readiness', () => {
   it('keeps the allowlist when a resubmit does not mention origins', async () => {
     // The trap: re-running the step to change only the purpose would otherwise
     // empty the allowlist and de-activate Vara with nothing saying why.
-    await applyStepPayload(client, 'vani:domain', A, U, {
+    await step('vani:domain', A, U, {
       domain: 'careers.acme.io', purpose: 'candidate',
       embed_origins: ['https://careers.acme.io'],
     });
-    await applyStepPayload(client, 'vani:domain', A, U,
+    await step('vani:domain', A, U,
       { domain: 'careers.acme.io', purpose: 'candidate' });
     const c = await readinessChecklist(client, await vani(A), A);
     expect(c.checks.find((x) => x.id === 'embed_origins')!.pass).toBe(true);
   });
 
   it('clears the allowlist only when asked explicitly', async () => {
-    await applyStepPayload(client, 'vani:domain', A, U, {
+    await step('vani:domain', A, U, {
       domain: 'careers.acme.io', purpose: 'candidate',
       embed_origins: ['https://careers.acme.io'],
     });
-    await applyStepPayload(client, 'vani:domain', A, U, {
+    await step('vani:domain', A, U, {
       domain: 'careers.acme.io', purpose: 'candidate', embed_origins: [],
     });
     const c = await readinessChecklist(client, await vani(A), A);
@@ -168,7 +184,7 @@ d('activation readiness', () => {
   });
 
   it('refuses an http origin rather than allowlisting it', async () => {
-    await expect(applyStepPayload(client, 'vani:domain', A, U, {
+    await expect(step('vani:domain', A, U, {
       domain: 'careers.acme.io', purpose: 'candidate',
       embed_origins: ['http://careers.acme.io'],
     })).rejects.toThrow(/must be https/);
@@ -177,11 +193,11 @@ d('activation readiness', () => {
   });
 
   it("does not let one tenant's readiness be satisfied by another's domain", async () => {
-    await applyStepPayload(client, 'vani:domain', A, U, {
+    await step('vani:domain', A, U, {
       domain: 'careers.acme.io', purpose: 'candidate',
       embed_origins: ['https://careers.acme.io'],
     });
-    await applyStepPayload(client, 'vani:domain', B, U,
+    await step('vani:domain', B, U,
       { domain: 'other.example.com', purpose: 'workspace' });
     const c = await readinessChecklist(client, await vani(B), B);
     // B declared its own (workspace) domain, so domain_declared is true for B — but

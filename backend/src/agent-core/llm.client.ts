@@ -10,7 +10,7 @@
  *          call fails at the TRANSPORT level (LLM_VPS_UNREACHABLE timeout
  *          or LLM_VPS_ERROR non-200) and ANTHROPIC_API_KEY is configured,
  *          the SAME call is retried once on the Claude API
- *          (LLM_FAILOVER_MODEL, default claude-haiku-4-5). Per-call only —
+ *          (LLM_FAILOVER_MODEL from .env, required with the key). Per-call only —
  *          the next call goes back to the VPS primary. NEVER silent:
  *          every failover run gets a visible 'llm_failover' step in
  *          gt_agent_runs.steps carrying the real VPS error, and tokens are
@@ -43,6 +43,7 @@ import type { Pool } from 'pg';
 import { createTenantDb } from '../db';
 import { appendStep } from './agent.runner';
 import { resolveProvider, type ResolvedProvider } from './llm.provider';
+import { readLlmConfig } from './llm.config';
 import { withLlmSlot, checkContext, contextError, noteObservedTokens, noteContextOverflow, noteObservedSpeed, tokensPerSec, estimateTokens, charsPerToken } from './llm.gate';
 
 const charsPerTokenLabel = (model?: string) => charsPerToken(model).toFixed(2);
@@ -67,7 +68,14 @@ const PREFILL_FACTOR = 10;
 
 /* ── Claude failover config ──────────────────────────────────────────────── */
 
-const FAILOVER_MODEL = process.env.LLM_FAILOVER_MODEL ?? 'claude-haiku-4-5';
+// The failover model comes from .env (LLM_FAILOVER_MODEL, required whenever
+// ANTHROPIC_API_KEY is set) — which Claude model spends Vikuna's money is not
+// the code's decision. llm.config.ts.
+const failoverModel = (): string => {
+  const m = readLlmConfig().failoverModel;
+  if (!m) throw new Error('CLAUDE_NOT_CONFIGURED: ANTHROPIC_API_KEY is not set');
+  return m;
+};
 
 let anthropicClient: Anthropic | null = null;
 function getAnthropic(): Anthropic | null {
@@ -250,14 +258,14 @@ async function callEndpoint(
 ): Promise<LLMResult> {
   const { tenantId, pool, system, messages, maxTokens = 1000, temperature = 0.2 } = options;
 
-  // Qwen3 thinking suppression: append /no_think unless already present.
-  // Only when the model IS a qwen — it is a qwen-ism, and any other model
-  // (a tenant's GPT endpoint, or Haiku as the platform model via
-  // LLM_PRIMARY_URL=https://api.anthropic.com/v1) would receive it as a
-  // literal instruction in the system prompt.
+  // A platform-only system suffix, declared in .env (LLM_PRIMARY_SYSTEM_SUFFIX,
+  // e.g. `/no_think` for qwen3). It was appended whenever the model name
+  // contained "qwen" — model behaviour keyed on a string match. Declared now;
+  // empty means none. Never sent to a tenant's own endpoint.
+  const suffix = provider.posture === 'platform' ? readLlmConfig().primarySystemSuffix : '';
   const systemContent =
-    /qwen/i.test(provider.model) && !system.includes('/no_think')
-      ? `${system.trim()} /no_think`
+    suffix && !system.includes(suffix)
+      ? `${system.trim()} ${suffix}`
       : system;
 
   const body = {
@@ -406,11 +414,17 @@ async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
     throw new Error('CLAUDE_NOT_CONFIGURED: ANTHROPIC_API_KEY is not set');
   }
 
-  // The /no_think suffix is a qwen-ism — strip it for Claude.
-  const systemContent = system.replace(/\s*\/no_think\s*$/, '').trim();
+  // The platform suffix (e.g. qwen's /no_think) is an instruction for the
+  // platform model only — Claude would read it as text. Strip it if a caller
+  // put it there itself.
+  const suffix = readLlmConfig().primarySystemSuffix;
+  const systemContent = (suffix && system.trimEnd().endsWith(suffix)
+    ? system.trimEnd().slice(0, -suffix.length)
+    : system).trim();
+  const model = failoverModel();
 
   const response = await client.messages.create({
-    model:      FAILOVER_MODEL,
+    model,
     max_tokens: maxTokens,
     system:     systemContent,
     messages,
@@ -450,7 +464,10 @@ const failoverNotedRuns = new Set<string>();
  * allowed shape exactly — an explicit user-chosen alternate path offered after
  * a visible failure, rather than a fallback that hides the outage.
  */
-const HAIKU_DEFAULT = process.env.HAIKU_DEFAULT !== 'false';
+// HAIKU_DEFAULT is REQUIRED in .env (true/false). Unset used to mean "true" —
+// i.e. spend automatically — which is the one default a deployment that never
+// thought about it should not get.
+const haikuDefault = (): boolean => readLlmConfig().haikuDefault;
 
 /**
  * Per-run permission, read from the run rather than threaded through every
@@ -461,7 +478,7 @@ const HAIKU_DEFAULT = process.env.HAIKU_DEFAULT !== 'false';
 const failoverAllowed = new Map<string, boolean>();
 
 export async function mayFailOver(pool: Pool, runId: string | number): Promise<boolean> {
-  if (HAIKU_DEFAULT) return true;
+  if (haikuDefault()) return true;
   const key = String(runId);
   const cached = failoverAllowed.get(key);
   if (cached !== undefined) return cached;
@@ -488,7 +505,7 @@ async function noteFailover(
   vpsError: string,
 ): Promise<void> {
   const cause = vpsError.split('\n')[0].slice(0, 200);
-  console.warn(`[LLM] VPS failed — failing over to ${FAILOVER_MODEL} (run ${runId}): ${cause}`);
+  console.warn(`[LLM] VPS failed — failing over to ${failoverModel()} (run ${runId}): ${cause}`);
 
   const key = String(runId);
   if (failoverNotedRuns.has(key)) return;
@@ -498,7 +515,7 @@ async function noteFailover(
   try {
     await appendStep(pool, runId, {
       step_name:      'llm_failover',
-      action:         `VPS model unavailable — ${FAILOVER_MODEL} took over for this run's failed calls`,
+      action:         `VPS model unavailable — ${failoverModel()} took over for this run's failed calls`,
       output_summary: cause,
       status:         'ok',
     });
