@@ -17,6 +17,7 @@ import { createStorytellerRouter } from './skills/storyteller-skill/storyteller.
 import { createAssessmentRouter } from './skills/assessment-skill/assessment.routes';
 import { createVaraRouter } from './vara/vara.routes';
 import { createLlmProviderRouter } from './vani/llm-provider.routes';
+import { createEmbedRouter } from './vani/embed.routes';
 import { verifyAccessToken } from './auth/token.service';
 import { resolveAuth } from './auth/auth-context';
 import { parseCorsOrigins } from './cors-origins';
@@ -85,6 +86,10 @@ async function main() {
   // platform session exists. See vara/vara.routes.ts for the threat model.
   app.use('/api/v1/vara', createVaraRouter(pool));
   app.use('/api/v1/llm-provider', createLlmProviderRouter(pool));
+  // Platform-owned embed channel. Mounted at /api/v1 because it owns two paths
+  // in that namespace — /tenant/embed (workspace) and /embed/boot (public) —
+  // and belongs to no agent.
+  app.use('/api/v1', createEmbedRouter(pool));
   console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /vani, /ingest, /profile, /storyteller, /assessment, /vara');
 
   // Build skill registry

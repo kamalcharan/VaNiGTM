@@ -1,7 +1,7 @@
 /**
  * Does the domain step actually make Vara activatable?
  *
- * `readinessChecklist` gates `POST /vara/activate` on three checks, and one of
+ * `readinessChecklist` reports four checks (industry, a declared domain, an allowlisted origin, a published JD), and one of
  * them — `embed_origins` — was satisfiable by no code path in the repo. The
  * column has existed since migration 240; nothing wrote it; so every tenant
  * sat permanently at 2 of 3 and activation refused them all. Nothing failed
@@ -95,9 +95,10 @@ d('activation readiness', () => {
   it('starts with nothing passing', async () => {
     await applyStepPayload(client, 'vani:domain', A, U,
       { domain: 'careers.acme.io', purpose: 'workspace' });
-    const c = await readinessChecklist(client, await vani(A));
+    const c = await readinessChecklist(client, await vani(A), A);
     expect(c.ready).toBe(false);
-    expect(c.checks.map((x) => x.pass)).toEqual([false, false, false]);
+    // industry unset · a domain IS declared (purpose no longer gates, 2026-08-26) · no origin · no JD
+    expect(c.checks.map((x) => x.pass)).toEqual([false, true, false, false]);
   });
 
   it('a candidate domain with an origin passes the first two checks', async () => {
@@ -107,8 +108,8 @@ d('activation readiness', () => {
       domain: 'careers.acme.io', purpose: 'candidate',
       embed_origins: ['https://careers.acme.io'],
     });
-    const c = await readinessChecklist(client, await vani(A));
-    expect(c.checks.find((x) => x.id === 'candidate_domain')!.pass).toBe(true);
+    const c = await readinessChecklist(client, await vani(A), A);
+    expect(c.checks.find((x) => x.id === 'domain_declared')!.pass).toBe(true);
     expect(c.checks.find((x) => x.id === 'embed_origins')!.pass).toBe(true);
     expect(c.checks.find((x) => x.id === 'first_jd_published')!.pass).toBe(false);
     expect(c.ready).toBe(false);
@@ -123,10 +124,11 @@ d('activation readiness', () => {
       return vani(A);
     };
     const id = await vt();
+    await client.query(`UPDATE vn_tenant_profiles SET industry = 'Technology & SaaS' WHERE tenant_id = $1`, [A]);
     await client.query(
       `INSERT INTO vara_jd (tenant_id, title, status) VALUES ($1,'Full Stack Developer','published')`,
       [id]);
-    const c = await readinessChecklist(client, id);
+    const c = await readinessChecklist(client, id, A);
     expect(c.ready).toBe(true);
     expect(c.checks.every((x) => x.pass)).toBe(true);
   });
@@ -149,7 +151,7 @@ d('activation readiness', () => {
     });
     await applyStepPayload(client, 'vani:domain', A, U,
       { domain: 'careers.acme.io', purpose: 'candidate' });
-    const c = await readinessChecklist(client, await vani(A));
+    const c = await readinessChecklist(client, await vani(A), A);
     expect(c.checks.find((x) => x.id === 'embed_origins')!.pass).toBe(true);
   });
 
@@ -161,7 +163,7 @@ d('activation readiness', () => {
     await applyStepPayload(client, 'vani:domain', A, U, {
       domain: 'careers.acme.io', purpose: 'candidate', embed_origins: [],
     });
-    const c = await readinessChecklist(client, await vani(A));
+    const c = await readinessChecklist(client, await vani(A), A);
     expect(c.checks.find((x) => x.id === 'embed_origins')!.pass).toBe(false);
   });
 
@@ -181,7 +183,9 @@ d('activation readiness', () => {
     });
     await applyStepPayload(client, 'vani:domain', B, U,
       { domain: 'other.example.com', purpose: 'workspace' });
-    const c = await readinessChecklist(client, await vani(B));
-    expect(c.checks.map((x) => x.pass)).toEqual([false, false, false]);
+    const c = await readinessChecklist(client, await vani(B), B);
+    // B declared its own (workspace) domain, so domain_declared is true for B — but
+    // A's origin must not leak into B's embed_origins check.
+    expect(c.checks.map((x) => x.pass)).toEqual([false, true, false, false]);
   });
 });

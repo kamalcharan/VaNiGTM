@@ -88,7 +88,8 @@ const EMBED_SESSION_TTL = '30m';
 
 interface EmbedTokenClaims {
   tid: string; // vani_tenant.id
-  scope: 'vara-embed';
+  /** Platform scope, not Vara's — one token serves every live agent. */
+  scope: 'vani-embed';
 }
 
 /**
@@ -116,13 +117,37 @@ async function vaniTenantFor(db: PoolClient, vnTenantId: string): Promise<{ id: 
  * each item this list omits is named in the channels doc as arriving with its
  * feature. Grows with the build; never shrinks.
  */
-export async function readinessChecklist(db: PoolClient, vaniTenantId: string) {
+export async function readinessChecklist(db: PoolClient, vaniTenantId: string, vnTenantId: string) {
+  // Industry comes FIRST because it is the earliest thing that can be missing
+  // and the only one that blocks the doorway itself: /onboarding/context
+  // refuses with NO_INDUSTRY before a family can be chosen, so a tenant
+  // without it cannot publish a JD and therefore cannot ever go live. It was
+  // absent from this list until 2026-08-26, which made the Install screen
+  // report "publish your first JD" while omitting the reason that was
+  // impossible — and then link to a screen that dead-ends. Naming the real
+  // blocker is the whole job of a checklist.
+  const profile = await db.query(
+    `SELECT industry FROM vn_tenant_profiles WHERE tenant_id = $1`,
+    [vnTenantId],
+  );
+  const industrySet = String(profile.rows[0]?.industry ?? '').trim().length > 0;
+
   const domains = await db.query(
-    `SELECT domain, purpose, embed_origins FROM vani_tenant_domain WHERE tenant_id = $1`,
+    `SELECT domain, embed_origins FROM vani_tenant_domain WHERE tenant_id = $1`,
     [vaniTenantId],
   );
-  const candidate = domains.rows.filter((d: any) => d.purpose === 'candidate');
-  const origins = candidate.flatMap((d: any) => d.embed_origins ?? []);
+  // Vara does NOT filter on purpose (Charan's ruling, 2026-08-26): the domain
+  // declared in the Smart Profile counts, whatever it is labelled.
+  //
+  // The old `purpose = 'candidate'` filter was a trap, not a control. The
+  // Domain step defaults purpose to 'workspace', so the ordinary way of
+  // declaring a domain produced one Vara silently refused — and purpose
+  // secures nothing anyway: what authorises a boot is the ORIGIN ALLOWLIST
+  // (`embed_origins`), checked on every call. A tenant who has added an
+  // origin has stated their intent far more precisely than a dropdown does.
+  // `purpose` remains a tenant declaration; it is simply no longer a gate.
+  const anyDomain = domains.rows.length > 0;
+  const origins = domains.rows.flatMap((d: any) => d.embed_origins ?? []);
   const jds = await db.query(
     `SELECT 1 FROM vara_jd WHERE tenant_id = $1 AND status = 'published' LIMIT 1`,
     [vaniTenantId],
@@ -131,13 +156,18 @@ export async function readinessChecklist(db: PoolClient, vaniTenantId: string) {
   return {
     checks: [
       {
-        id: 'candidate_domain',
-        label: 'A candidate-facing domain is declared',
-        pass: candidate.length > 0,
+        id: 'industry_set',
+        label: 'Your organisation’s industry is set',
+        pass: industrySet,
+      },
+      {
+        id: 'domain_declared',
+        label: 'A domain is declared in your Smart Profile',
+        pass: anyDomain,
       },
       {
         id: 'embed_origins',
-        label: 'At least one embed origin is allowlisted on it',
+        label: 'At least one site origin is allowlisted on it',
         pass: origins.length > 0,
       },
       {
@@ -146,7 +176,7 @@ export async function readinessChecklist(db: PoolClient, vaniTenantId: string) {
         pass: firstJdPublished,
       },
     ],
-    ready: candidate.length > 0 && origins.length > 0 && firstJdPublished,
+    ready: industrySet && anyDomain && origins.length > 0 && firstJdPublished,
   };
 }
 
@@ -169,7 +199,7 @@ export function createVaraRouter(pool: Pool): Router {
         if (!vani) {
           throw new VaraError(409, 'TENANT_NOT_PROVISIONED', 'Complete the Domain step first');
         }
-        const checklist = await readinessChecklist(db, vani.id);
+        const checklist = await readinessChecklist(db, vani.id, auth.tenant_id);
         const sub = await db.query(
           `SELECT ta.status FROM vani_tenant_agent ta
              JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
@@ -217,19 +247,43 @@ export function createVaraRouter(pool: Pool): Router {
           throw new VaraError(500, 'AGENT_MISSING', 'Vara is not in the agent registry');
         }
 
-      // Decision 2026-08-17: a correct activation code marks the subscription
-      // `activating` — code accepted, Vara onboarding pending. Going `live` is
-      // the ONBOARDING lane's finish line (flow being designed), not this
-      // call's. The readiness checklist moves there with it; an already-live
-      // subscription is left alone.
+        // Decision 2026-08-17: a correct activation code marks the subscription
+        // `activating` — code accepted, Vara onboarding pending. Going `live` is
+        // the ONBOARDING lane's finish line, not this call's.
+        //
+        // ── But it RECONCILES, it does not just set a flag (2026-08-27) ──────
+        // The flip to `live` fires inside POST /vara/jd/compose, and only when
+        // the status is already `activating`. That assumed activation always
+        // comes first. Publish before activating and you were trapped for good:
+        // the JD existed, the code was accepted, and the only thing that could
+        // ever flip the flag was ANOTHER publish. Found on a real workspace —
+        // `activating` with one published JD, stuck.
+        //
+        // So the finish line is a CONDITION, not an event: a correct code plus
+        // a published JD means live, whichever order they happened in. The gate
+        // is untouched — the phrase is still checked above, and a workspace with
+        // no published JD still lands on `activating`.
+        const published = await db.query(
+          `SELECT 1 FROM vara_jd WHERE tenant_id = $1 AND status = 'published' LIMIT 1`,
+          [vani.id],
+        );
+        const target = published.rows.length ? 'live' : 'activating';
+
         const row = await db.query(
-          `INSERT INTO vani_tenant_agent (tenant_id, agent_id, status)
-           VALUES ($1, $2, 'activating')
+          `INSERT INTO vani_tenant_agent (tenant_id, agent_id, status, activated_at)
+           VALUES ($1, $2, $3, CASE WHEN $3 = 'live' THEN now() END)
            ON CONFLICT (tenant_id, agent_id) DO UPDATE
              SET status = CASE WHEN vani_tenant_agent.status = 'live'
-                               THEN 'live' ELSE 'activating' END
+                               THEN 'live' ELSE excluded.status END,
+                 -- Stamp once, the first time this row is live, and never move
+                 -- it. Nothing wrote this column before today, so every existing
+                 -- row reads null until it next goes live.
+                 activated_at = COALESCE(
+                   vani_tenant_agent.activated_at,
+                   CASE WHEN vani_tenant_agent.status = 'live' OR excluded.status = 'live'
+                        THEN now() END)
            RETURNING status, activated_at`,
-          [vani.id, agentId],
+          [vani.id, agentId, target],
         );
 
         await db.query(
@@ -244,129 +298,6 @@ export function createVaraRouter(pool: Pool): Router {
       res.json(out);
     } catch (err: any) {
       fail(res, err, 'activate', { code: 'ACTIVATE_FAILED', message: 'Could not activate Vara' });
-    }
-  });
-
-  /* ── GET /api/v1/vara/embed ────────────────────────────────────────────
-   * Workspace. The snippet the tenant pastes into their site — Wix, WordPress,
-   * hand-written HTML; anything that carries a <script> tag. Also answers the
-   * checklist and subscription state so the console can render setup honestly. */
-  router.get('/embed', async (req, res) => {
-    try {
-      const auth = extractJwt(req);
-      if (!auth) {
-        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
-        return;
-      }
-      const out = await withTenantClient(pool, auth.tenant_id, async (db) => {
-        const vani = await vaniTenantFor(db, auth.tenant_id);
-        if (!vani) {
-          throw new VaraError(409, 'TENANT_NOT_PROVISIONED', 'Complete the Domain step first');
-        }
-
-        const claims: EmbedTokenClaims = { tid: vani.id, scope: 'vara-embed' };
-        const token = jwt.sign(claims, JWT_SECRET, { expiresIn: EMBED_TOKEN_TTL });
-
-        const checklist = await readinessChecklist(db, vani.id);
-        const sub = await db.query(
-          `SELECT ta.status FROM vani_tenant_agent ta
-             JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
-            WHERE ta.tenant_id = $1`,
-          [vani.id],
-        );
-
-        const origins = await db.query(
-          `SELECT embed_origins FROM vani_tenant_domain WHERE tenant_id = $1 AND purpose = 'candidate'`,
-          [vani.id],
-        );
-
-        return {
-          token,
-          subscription: sub.rows[0]?.status ?? 'none',
-          checklist,
-          embed_origins: origins.rows.flatMap((r: any) => r.embed_origins ?? []),
-          // The console substitutes its own origin for CONSOLE_ORIGIN at render
-          // time — the API does not know where the widget assets are served from.
-          snippet:
-            `<script src="CONSOLE_ORIGIN/embed/vara.js" data-vara-token="${token}" defer></script>`,
-        };
-      });
-
-      res.json(out);
-    } catch (err: any) {
-      fail(res, err, 'embed', { code: 'EMBED_FAILED', message: 'Could not issue the embed token' });
-    }
-  });
-
-  /* ── POST /api/v1/vara/embed/boot ──────────────────────────────────────
-   * PUBLIC. The widget's first call from inside the tenant's page. Returns
-   * only what that page could already show its visitors: the tenant's name
-   * and published roles — plus a short-lived session for the calls after. */
-  router.post('/embed/boot', async (req, res) => {
-    try {
-      const { token, parent_origin } = req.body ?? {};
-      if (typeof token !== 'string' || typeof parent_origin !== 'string') {
-        res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'token and parent_origin required' } });
-        return;
-      }
-
-      let claims: EmbedTokenClaims;
-      try {
-        claims = jwt.verify(token, JWT_SECRET) as EmbedTokenClaims;
-        if (claims.scope !== 'vara-embed') throw new Error('wrong scope');
-      } catch {
-        res.status(401).json({ error: { code: 'EMBED_TOKEN_INVALID', message: 'The embed token is not valid' } });
-        return;
-      }
-
-      // PUBLIC route, so the tenant comes from the token, not a session.
-      // claims.tid is a vani_tenant.id — vani_current_tenant() accepts either
-      // spelling (migration 248), so the scoped client resolves it to itself.
-      const out = await withTenantClient(pool, claims.tid, async (db) => {
-        // The allowlist check — every boot, so removing an origin takes effect
-        // immediately. Exact string match on scheme+host(+port), as stored.
-        const allowed = await db.query(
-          `SELECT 1 FROM vani_tenant_domain
-            WHERE tenant_id = $1 AND purpose = 'candidate' AND $2 = ANY(embed_origins)`,
-          [claims.tid, parent_origin],
-        );
-        if (!allowed.rows.length) {
-          throw new VaraError(403, 'EMBED_ORIGIN_NOT_ALLOWED',
-            'This site is not allowlisted for the workspace');
-        }
-
-        const live = await db.query(
-          `SELECT 1 FROM vani_tenant_agent ta
-             JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
-            WHERE ta.tenant_id = $1 AND ta.status = 'live'`,
-          [claims.tid],
-        );
-        if (!live.rows.length) {
-          throw new VaraError(403, 'AGENT_NOT_LIVE', 'Vara is not live for this workspace yet');
-        }
-
-        const tenant = await db.query(`SELECT name FROM vani_tenant WHERE id = $1`, [claims.tid]);
-        const roles = await db.query(
-          `SELECT id, title FROM vara_jd WHERE tenant_id = $1 AND status = 'published' ORDER BY created_at DESC`,
-          [claims.tid],
-        );
-
-        const session = jwt.sign(
-          { tid: claims.tid, scope: 'vara-candidate', origin: parent_origin },
-          JWT_SECRET,
-          { expiresIn: EMBED_SESSION_TTL },
-        );
-
-        return {
-          tenant: { name: tenant.rows[0]?.name ?? 'This workspace' },
-          roles: roles.rows,
-          session,
-        };
-      });
-
-      res.json(out);
-    } catch (err: any) {
-      fail(res, err, 'embed:boot', { code: 'BOOT_FAILED', message: 'Could not boot the widget' });
     }
   });
 
@@ -773,7 +704,9 @@ export function createVaraRouter(pool: Pool): Router {
         const status = sub.rows[0]?.status ?? null;
         if (status === 'activating') {
           await client.query(
-            `UPDATE vani_tenant_agent SET status = 'live'
+            `UPDATE vani_tenant_agent
+                SET status = 'live',
+                    activated_at = COALESCE(activated_at, now())
               WHERE tenant_id = $1 AND agent_id = $2`,
             [vaniTenantId, agentId],
           );
