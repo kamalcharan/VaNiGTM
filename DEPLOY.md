@@ -83,6 +83,16 @@ VaNiGTM/
 
 ## 3. Deploy the API + worker (the normal case)
 
+> **Update `.env` BEFORE deploying a change that adds settings.** Since
+> 2026-09-30 every LLM and worker setting is required with no defaults; a
+> missing one stops both containers at start (`LLM_CONFIG_INVALID` /
+> `WORKER_CONFIG_INVALID`, listing every missing key) and the API answers 502
+> until it is fixed. That happened on the first deploy of it: three keys
+> (`LLM_CONTEXT_TOKENS`, `LLM_MAX_CONCURRENT`, `HAIKU_DEFAULT`) had never been
+> set on the box because the code used to default them. Compare the compose
+> `.env` against `backend/.env.example` first; a fix is an `.env` edit plus
+> `docker compose … up -d --force-recreate vani-backend vani-worker`, no rebuild.
+
 ```bash
 cd /opt/vikuna/src/vanigtm
 git status                          # must be clean
@@ -312,6 +322,7 @@ Restore on failure: copy the `.bak-…` file back and reload.
 | Containers | `vani-backend`, `vani-worker`, `vikuna-nginx`, the Postgres container on the shared network (`docker ps` to list) |
 | Docker network | shared, external — name in the compose `.env` as `NETWORK_NAME` *(confirm: `docker inspect vani-backend --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}'`)* |
 | API port | 3001 in the container; public only through nginx |
+| Platform LLM (read off the container 2026-09-30) | `qwen3-4b` at `http://vikuna-llm:8080` (a container on the shared network), window 16384, 1 call at a time; failover `claude-haiku-4-5`, automatic (`HAIKU_DEFAULT=true`) |
 | Database | `vani_gtm_db` |
 | Runtime DB role | `vikuna_admin` as read on 2026-09-30 (SUPERUSER + BYPASSRLS — RLS is not enforced). **Switching to `vanigtm_app` was decided 2026-09-30** — §4b is the procedure. Update this row when it is done |
 | Console | `vani.vikuna.io` (Vercel, vikunawebsite repo, root `vani-app/`); env `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` |

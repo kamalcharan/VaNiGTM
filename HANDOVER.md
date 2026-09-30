@@ -78,7 +78,18 @@ and the 12-item test list: `DEPLOY.md` §4b. Evidence: `docs/db/rls-status.md` �
 - **Migration 259 is APPLIED (Charan, 2026-09-30).** Still waiting on the
   `vanigtm_app` switch (`DEPLOY.md` §4b); the Phase 4 gate; merging this branch to `main`.
 
-## Next session, in order
+## Deployed 2026-09-30 (evening) — `main` at f60fc00 on the Main VPS
+
+C6, C5, the .env-only LLM/worker config and the C2 contract layer are live.
+The first start failed on three keys the box had never set
+(`LLM_CONTEXT_TOKENS`, `LLM_MAX_CONCURRENT`, `HAIKU_DEFAULT`) → 502 for a few
+minutes, fixed with an `.env` edit and a recreate. In force now:
+`qwen3-4b @ http://vikuna-llm:8080, window 16384, concurrent 1, failover
+claude-haiku-4-5 automatic`. Not yet seen: a real qwen call through the new
+code — check the first `[LLM]` line in the worker log after an agent run.
+Runtime DB role is still `vikuna_admin` (the vanigtm_app switch is DEPLOY §4b).
+
+
 
 1. **Phase 4 gate** (POA B1, the one open item of Track B): with the API
    deployed, paste the snippet from `/install` on a real page, watch a boot
