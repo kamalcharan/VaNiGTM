@@ -6,7 +6,7 @@ pitch deck, then serves it (and live audience Q&A).
 ## What it does
 - **Triggers:** `PROFILE_COMPLETE` event (wired in the worker at Stage 6) and a
   manual `POST /build` route.
-- **Reads:** the Brain through `agent-core/brain.context` (purpose `deck`): `gt_tenant_profile`, `gt_kg_nodes`, approved brand, confirmed offers, approved vocabulary — sized to the model window, omissions reported.
+- **Reads:** `gt_tenant_profile` + `gt_kg_nodes` through `agent-core/brain.context` (purpose `deck`), trimmed from the end to the model window — the same text the agent built before the move (tested against its old code).
 - **Generates:** a deck via the **seeded** prompt key `vani-skill.generate_slides`
   — note the namespace: it lives under `vani-skill.*` and is reused **as-is**,
   not re-keyed to `storyteller-skill.*`.

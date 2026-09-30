@@ -1,10 +1,11 @@
 /**
- * generateOfferDrafts reads the Brain through brain.context.
+ * generateOfferDrafts reads the profile through brain.context (D2).
  *
- * The model is mocked; what is checked is what it is SHOWN and what is
- * written back: the product profile, the confirmed offers as the tenant's
- * own, pending drafts only named as "do not repeat", the site text under the
- * old 12,000-character ceiling, and a draft that lands unconfirmed.
+ * The move must not change what the model is sent. The model is mocked and
+ * the message it receives is compared with the one the pre-D2 code built
+ * (main at 5579b2d): the same JSON, the same fields, site text cut at 12,000.
+ * Plus the three checks: valid data drafts, no profile refuses, and another
+ * tenant's profile is never read.
  */
 import { execSync } from 'child_process';
 import fs from 'fs';
@@ -39,6 +40,7 @@ const available = (() => {
 
 let pool: Pool;
 let A: string;
+let B: string;
 
 beforeAll(async () => {
   if (!available) return;
@@ -56,7 +58,7 @@ beforeAll(async () => {
   for (const m of ['181_gt_agent_infrastructure.sql', '182_gt_ingestion.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
-  ({ A } = await bootstrapSchema(pool, [
+  ({ A, B } = await bootstrapSchema(pool, [
     '184_gt_tenant_profile.sql', '192_gt_semantic_clusters.sql',
     '193_gt_tenant_brand.sql', '239_gt_offers_confirmed.sql',
   ]));
@@ -78,21 +80,29 @@ afterAll(async () => { if (pool) await pool.end(); });
 const d = available ? describe : describe.skip;
 
 d('generateOfferDrafts through brain.context', () => {
-  it('shows the product, the confirmed offers, names pending drafts, and caps the site text', async () => {
+  beforeEach(() => { calls.length = 0; });
+
+  it('sends the model exactly what it sent before the move', async () => {
     const drafted = await generateOfferDrafts(pool, A, 1);
     expect(drafted).toEqual([{ offer_key: 'site-audits', name: 'Site Audits' }]);
 
-    const { content } = calls[0];
-    expect(content).toContain('Name: Acme');
-    expect(content).not.toContain('IDEAL CUSTOMER');           // product part only
-    expect(content).toContain('OFFERS (confirmed)\nCore Invoicing — Invoices');
-    expect(content).not.toMatch(/OFFERS \(confirmed\)[\s\S]*Payment Chasing —/);
-    expect(content).toContain('do not propose again: Payment Chasing.');
-    const site = content.slice(content.indexOf('Site text:\n\n') + 'Site text:\n\n'.length);
-    expect(site).toBe('S'.repeat(12_000));
+    const expected = `Company context:\n${JSON.stringify({
+      product_name: 'Acme',
+      product_description: 'Invoices for plumbers',
+      core_problem: null,
+      key_differentiators: [],
+      site_text: 'S'.repeat(12_000),
+    }, null, 2)}`;
+    expect(calls[0].system).toBe('SYSTEM PROMPT');
+    expect(calls[0].content).toBe(expected);
 
     const r = await pool.query(
       `SELECT source, confirmed_at FROM gt_offers WHERE tenant_id = $1 AND offer_key = 'site-audits'`, [A]);
     expect(r.rows[0]).toEqual({ source: 'agent', confirmed_at: null });
+  });
+
+  it('refuses a tenant with no profile, and never reads another tenant\'s', async () => {
+    await expect(generateOfferDrafts(pool, B, 1)).rejects.toThrow(/PROFILE_NOT_FOUND/);
+    expect(calls).toHaveLength(0);
   });
 });

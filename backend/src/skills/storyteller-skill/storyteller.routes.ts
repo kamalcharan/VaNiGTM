@@ -93,13 +93,6 @@ export function createStorytellerRouter(pool: Pool): Router {
         });
         return;
       }
-      if (msg.startsWith('BRAIN_CONTEXT_TOO_LARGE')) {
-        // The profile alone does not fit the model's window — a configuration
-        // fact (LLM_CONTEXT_TOKENS vs the prompt), not something a retry fixes.
-        console.error('[Storyteller:/build]', msg);
-        res.status(422).json({ error: { code: 'BRAIN_CONTEXT_TOO_LARGE', message: msg } });
-        return;
-      }
       console.error('[Storyteller:/build]', msg);
       res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: msg } });
     }

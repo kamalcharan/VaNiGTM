@@ -40,12 +40,15 @@ Stated once, at registration; the platform reads it, never re-asks.
 
 ## 3. What an agent CONSUMES, never re-implements
 
-- **The Brain**, through `brain.context(purpose)` — profile, relevant subgraph,
-  vocabulary, offers, brand, under a character budget (`agent-core/brain.context.ts`; a purpose names the
-  sections and graph labels it needs, in priority order). Only confirmed
-  content is presented; omissions are reported. [deviation → Track D2: the
-  storyteller, competitor research and offer drafting read through it;
-  domain-pack and Vara (which reads only `industry`) are not converted yet].
+- **The Brain**, through `agent-core/brain.context.ts` — `loadBrain` reads
+  profile, graph and approved vocabulary in one tenant transaction;
+  `brainContext(purpose)` renders it under a character budget, reporting what
+  it trimmed. Moving an agent onto it must not change what the agent sends
+  the model (Charan, 2026-09-30). [deviation → Track D2: storyteller (rendered
+  `deck`, proven identical), competitor research and offer drafting (data
+  only) are converted; domain-pack and Vara (which reads only `industry`) are
+  not. Offers and brand join with the first agent that needs them, after its
+  output change is agreed].
 - **The prompt store** (`gt_prompts` for GTM-side keys, `vani_prompt` for
   Vara-side keys — two stores is an open decision, PLATFORM §8): system prompt
   plus an optional tenant override, resolved per call.

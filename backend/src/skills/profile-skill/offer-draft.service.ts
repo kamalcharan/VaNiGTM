@@ -22,8 +22,7 @@ import { createTenantDb } from '../../db';
 import { callLLMValidated } from '../../agent-core/llm.client';
 import { loadPrompt } from '../../agent-core/prompt.store';
 import { recomputeProfileScore } from './profile.service';
-import { loadBrain, renderBrain } from '../../agent-core/brain.context';
-import { charBudgetFor } from '../../agent-core/llm.gate';
+import { loadBrain } from '../../agent-core/brain.context';
 
 const OfferDraftsSchema = z.object({
   offers: z.array(z.object({
@@ -36,9 +35,6 @@ const OfferDraftsSchema = z.object({
     disqualifiers: z.array(z.string()).default([]),
   })).min(1).max(3),
 });
-
-/** The most site text a draft call has ever sent — see generateOfferDrafts. */
-const SITE_TEXT_MAX = 12_000;
 
 const slugify = (s: string): string =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
@@ -61,9 +57,10 @@ export async function generateOfferDrafts(
 ): Promise<DraftedOffer[]> {
   const db = createTenantDb(pool, tenantId);
 
-  const brain = await loadBrain(pool, tenantId);
-  const profile = brain.profile;
-  if (!profile || (!profile.product_name && !profile.product_description)) {
+  // Read through brain.context (D2) — the data only; the prompt is laid out
+  // exactly as before.
+  const profile = (await loadBrain(pool, tenantId, { graph: false })).profile;
+  if (!profile?.product_name && !profile?.product_description) {
     throw new Error('PROFILE_NOT_FOUND: cannot draft offers without a drafted profile');
   }
 
@@ -78,52 +75,30 @@ export async function generateOfferDrafts(
 
   const system = await loadPrompt(pool, 'profile-skill.offers', tenantId);
 
-  // Every offer already on file, confirmed or not: the draft must not
-  // propose them again. Confirmed ones reach the model through brain.context
-  // as the tenant's own; unconfirmed drafts are only NAMED, as things not to
-  // repeat — they are this agent's earlier guesses, not the tenant's word.
-  const existingResult = await db.query<{ offer_key: string; name: string; confirmed: boolean }>(
-    `SELECT offer_key, name, confirmed_at IS NOT NULL AS confirmed
-       FROM gt_offers WHERE tenant_id = $tenant_id`,
-    { tenant_id: tenantId },
-  );
-  const pendingNames = existingResult.rows.filter((r) => !r.confirmed).map((r) => r.name);
-
-  const MAX_OUTPUT = 1500;
-  const brainText = renderBrain(brain, 'offer_draft', charBudgetFor(undefined, MAX_OUTPUT, system)).text;
-  const guard = [
-    brain.offers.length ? 'Offers under OFFERS (confirmed) already exist — do not propose them again.' : null,
-    pendingNames.length ? `Already drafted and awaiting confirmation — do not propose again: ${pendingNames.join('; ')}.` : null,
-  ].filter(Boolean).join('\n');
-  const head = `${brainText}${guard ? `\n\n${guard}` : ''}\n\nSite text:\n\n`;
-
-  // Site text fills what is left of the window, never more than the 12,000
-  // characters this has always sent (the cap keeps a Haiku call's cost where
-  // it was; the budget keeps a small window from being overrun).
-  const room = Math.min(SITE_TEXT_MAX, charBudgetFor(undefined, MAX_OUTPUT, system + head));
-  if (room === 0) {
-    throw new Error(
-      'LLM_CONTEXT_TOO_LARGE: the prompt and the profile already fill the model\'s window, '
-      + 'so there is no room for the site text. Raise LLM_CONTEXT_TOKENS to match the deployed server.',
-    );
-  }
-  const siteSlice = siteText.slice(0, room);
-  if (siteSlice.length < Math.min(siteText.length, SITE_TEXT_MAX)) {
-    console.log(`[Offers:draft] site text trimmed ${siteText.length} → ${siteSlice.length} chars to fit the model window`);
-  }
+  const context = JSON.stringify({
+    product_name: profile.product_name,
+    product_description: profile.product_description,
+    core_problem: profile.core_problem,
+    key_differentiators: (profile.key_differentiators ?? []).slice(0, 5),
+    site_text: siteText.slice(0, 12_000),
+  }, null, 2);
 
   const drafted = await callLLMValidated(
     {
       pool, tenantId, runId,
       system,
-      messages: [{ role: 'user', content: `${head}${siteSlice}` }],
-      maxTokens: MAX_OUTPUT,
+      messages: [{ role: 'user', content: `Company context:\n${context}` }],
+      maxTokens: 1500,
     },
     OfferDraftsSchema,
     'offers',
   );
 
-  const existingKeys = new Set(existingResult.rows.map((r) => r.offer_key));
+  const existingKeysResult = await db.query<{ offer_key: string }>(
+    `SELECT offer_key FROM gt_offers WHERE tenant_id = $tenant_id`,
+    { tenant_id: tenantId },
+  );
+  const existingKeys = new Set(existingKeysResult.rows.map((r) => r.offer_key));
 
   const inserted: DraftedOffer[] = [];
 

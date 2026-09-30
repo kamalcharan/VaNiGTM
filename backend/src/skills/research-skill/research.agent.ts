@@ -39,8 +39,7 @@ import { callLLMValidated } from '../../agent-core/llm.client';
 import { searchWeb, type WebSearchResult } from '../../agent-core/search.client';
 import { upsertNode, upsertEdge } from '../../agent-core/kg.store';
 import { IngestionAgent } from '../ingestion-skill/ingestion.agent';
-import { loadBrain, renderBrain } from '../../agent-core/brain.context';
-import { charBudgetFor } from '../../agent-core/llm.gate';
+import { loadBrain } from '../../agent-core/brain.context';
 
 export const RESEARCH_AGENT_NAME = 'COMPETITOR_RESEARCH_REQUESTED';
 
@@ -53,30 +52,11 @@ const SHORTLIST_RESULTS_CAP = 20;  // results shown to the shortlist prompt
 const SNIPPET_CAP = 160;           // chars of each result snippet in-prompt
 const MAX_VERIFY = 6;              // candidates whose sites we actually read
 const SITE_TEXT_CAP = 2_500;       // chars of candidate-site text per verify call
+const FIELD_CAP = 400;             // chars per long profile field in-prompt
 
 const QueriesSchema = z.object({
   queries: z.array(z.string().min(3)).min(1).max(MAX_QUERIES),
 });
-
-// Query framing. The user message is brain.context's `competitor_research`
-// rendering: PRODUCT and IDEAL CUSTOMER, then MARKET VOCABULARY (approved)
-// as "- [cluster_type] term: related, terms" when it fits.
-const FRAME_SYSTEM_GROUNDED =
-  'You are a competitive-intelligence researcher. The company has ' +
-  'confirmed the vocabulary its buyers actually use (MARKET VOCABULARY) — build the ' +
-  'searches from THOSE terms, not from broader words you would ' +
-  'otherwise reach for. Anchor on the "category" clusters, and ' +
-  'use related terms verbatim where they read like something a ' +
-  'buyer would type. Aim at direct peers, not the largest firms ' +
-  'in an adjacent category. Respond with ONLY JSON inside ' +
-  `<queries> tags: <queries>{"queries": ["...", "..."]}</queries>. Max ${MAX_QUERIES} queries.`;
-
-const FRAME_SYSTEM_PROFILE_ONLY =
-  'You are a competitive-intelligence researcher. Given a company profile, ' +
-  'write web-search queries that will surface its direct competitors — ' +
-  'vendors a buyer would evaluate instead. Use the company\'s OWN specific ' +
-  'category and buyer, never a broad umbrella term. Respond with ONLY JSON ' +
-  `inside <queries> tags: <queries>{"queries": ["...", "..."]}</queries>. Max ${MAX_QUERIES} queries.`;
 
 const CandidatesSchema = z.object({
   candidates: z.array(z.object({
@@ -92,6 +72,17 @@ const AssessmentSchema = z.object({
   positioning: z.string(),
   angle: z.string(),
 });
+
+interface ProfileRow {
+  product_name: string | null;
+  product_description: string | null;
+  core_problem: string | null;
+  key_differentiators: string[] | null;
+  icp_role: string | null;
+  icp_company_type: string | null;
+  icp_industry: string | null;
+  primary_pain_points: string[] | null;
+}
 
 interface Candidate {
   name: string;
@@ -152,13 +143,14 @@ export class CompetitorResearchAgent {
       await saveCheckpoint(pool, runId, cp as Record<string, unknown>);
     }
 
-    // 1. THE BRAIN — research is framed by the profile and the approved
-    //    vocabulary, read through brain.context like every agent. Always
-    //    loaded fresh (cheap, and edits since the failed run should be
-    //    honoured).
-    const brain = await loadBrain(pool, tenantId);
-    const profile = brain.profile;
-    if (!profile || (!profile.product_name && !profile.product_description)) {
+    // 1. PROFILE — research is framed by it; without one there is nothing
+    //    to research against. Always loaded fresh (cheap, and edits since
+    //    the failed run should be honoured). Read through brain.context
+    //    (D2) — the data only; the prompts below are laid out exactly as
+    //    before.
+    const brain = await loadBrain(pool, tenantId, { graph: false });
+    const profile: ProfileRow | undefined = brain.profile ?? undefined;
+    if (!profile?.product_name && !profile?.product_description) {
       throw new Error(
         'PROFILE_NOT_FOUND: competitor research needs a drafted profile — run website research first',
       );
@@ -194,12 +186,20 @@ export class CompetitorResearchAgent {
     const dismissedNames = dismissedResult.rows.map((r) => r.name);
     const dismissedSet = new Set(dismissedNames.map((n) => n.toLowerCase().trim()));
 
-    // The profile gist every judging prompt carries beside search results
-    // and candidate websites (purpose competitor_check: product + customer,
-    // long fields clipped). Budgeted against the largest answer those prompts
-    // reserve; a profile that alone does not fit refuses the run with the
-    // numbers rather than being cut.
-    const profileContext = renderBrain(brain, 'competitor_check', charBudgetFor(undefined, 800, '')).text;
+    // Lean profile context shared by every prompt — long fields truncated;
+    // competitor research needs the gist, not the essay.
+    const clip = (v: string | null): string | null =>
+      v && v.length > FIELD_CAP ? `${v.slice(0, FIELD_CAP)}…` : v;
+    const profileContext = JSON.stringify({
+      product_name: profile.product_name,
+      product_description: clip(profile.product_description),
+      core_problem: clip(profile.core_problem),
+      key_differentiators: (profile.key_differentiators ?? []).slice(0, 5),
+      icp_role: profile.icp_role,
+      icp_company_type: profile.icp_company_type,
+      icp_industry: profile.icp_industry,
+      primary_pain_points: (profile.primary_pain_points ?? []).slice(0, 5),
+    }, null, 2);
 
     // 2. FRAME QUERIES (skipped on resume when checkpointed).
     //
@@ -213,21 +213,37 @@ export class CompetitorResearchAgent {
     if (cp.queries && cp.queries.length > 0) {
       queries = cp.queries;
     } else {
-      // The system prompt is chosen before the context is sized, so size it
-      // against the longer of the two; "grounded" then means the vocabulary
-      // actually made it into the prompt, not merely that it exists.
-      const framing = renderBrain(brain, 'competitor_research',
-        charBudgetFor(undefined, 300, FRAME_SYSTEM_GROUNDED));
-      const grounded = framing.included.includes('vocabulary');
-      const vocabularyDropped = brain.vocabulary.length > 0 && !grounded;
+      const clusters = brain.vocabulary;   // approved only, listClusters' order
+      const grounded = clusters.length > 0;
+
+      const vocabulary = grounded
+        ? clusters
+            .map((c) => `- [${c.cluster_type}] ${c.primary_term}: ${c.related_terms.slice(0, 12).join(', ')}`)
+            .join('\n')
+        : '';
 
       ({ queries } = await callLLMValidated(
         {
           pool, tenantId, runId,
-          system: grounded ? FRAME_SYSTEM_GROUNDED : FRAME_SYSTEM_PROFILE_ONLY,
+          system: grounded
+            ? 'You are a competitive-intelligence researcher. The company has ' +
+              'confirmed the vocabulary its buyers actually use — build the ' +
+              'searches from THOSE terms, not from broader words you would ' +
+              'otherwise reach for. Anchor on the "category" clusters, and ' +
+              'use related_terms verbatim where they read like something a ' +
+              'buyer would type. Aim at direct peers, not the largest firms ' +
+              'in an adjacent category. Respond with ONLY JSON inside ' +
+              `<queries> tags: <queries>{"queries": ["...", "..."]}</queries>. Max ${MAX_QUERIES} queries.`
+            : 'You are a competitive-intelligence researcher. Given a company profile, ' +
+              'write web-search queries that will surface its direct competitors — ' +
+              'vendors a buyer would evaluate instead. Use the company\'s OWN specific ' +
+              'category and buyer, never a broad umbrella term. Respond with ONLY JSON ' +
+              `inside <queries> tags: <queries>{"queries": ["...", "..."]}</queries>. Max ${MAX_QUERIES} queries.`,
           messages: [{
             role: 'user',
-            content: framing.text,
+            content: grounded
+              ? `Confirmed market vocabulary:\n${vocabulary}\n\nCompany profile:\n${profileContext}`
+              : `Company profile:\n${profileContext}`,
           }],
           maxTokens: 300,
         },
@@ -239,13 +255,10 @@ export class CompetitorResearchAgent {
       await appendStep(pool, runId, {
         step_name: 'frame_queries',
         action: grounded
-          ? `Framed the search from your ${brain.vocabulary.length} confirmed market terms`
+          ? `Framed the search from your ${clusters.length} confirmed market terms`
           : 'Framed the competitive landscape from your profile',
         output_summary: queries.map((q) => `"${q}"`).join(' · ')
-          + (grounded ? ''
-            : vocabularyDropped
-              ? ' (your confirmed vocabulary did not fit the model window alongside the profile — framed from the profile alone)'
-              : ' (no confirmed vocabulary yet — confirm your market terms for sharper results)'),
+          + (grounded ? '' : ' (no confirmed vocabulary yet — confirm your market terms for sharper results)'),
         status: 'ok',
       });
     }

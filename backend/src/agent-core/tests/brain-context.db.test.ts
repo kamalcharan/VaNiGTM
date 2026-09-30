@@ -1,9 +1,8 @@
 /**
  * loadBrain / brainContext against the REAL migrations.
  *
- * What only a database can show: the confirmed-only filters (approved
- * clusters, confirmed active offers, approved brand) are applied by the SQL
- * this module actually runs, every read is scoped to the tenant, and the
+ * What only a database can show: the approved-only vocabulary filter is
+ * applied by the SQL this module actually runs, every read is scoped to the tenant, and the
  * column names match what production has — a renderer test would pass with
  * a misspelt column.
  */
@@ -48,8 +47,6 @@ beforeAll(async () => {
   ({ A, B } = await bootstrapSchema(pool, [
     '184_gt_tenant_profile.sql',
     '192_gt_semantic_clusters.sql',
-    '193_gt_tenant_brand.sql',
-    '239_gt_offers_confirmed.sql',
   ]));
 
   await pool.query(
@@ -68,16 +65,7 @@ beforeAll(async () => {
        ($1, 'drafted term', ARRAY[]::text[], 'pain', NULL),
        ($2, 'their term', ARRAY[]::text[], 'category', now())`, [A, B]);
 
-  await pool.query(
-    `INSERT INTO gt_offers (tenant_id, offer_key, name, one_line, who_for, problem, confirmed_at, is_active) VALUES
-       ($1, 'core', 'Core', 'Invoices', 'Plumbers', 'Late pay', now(), true),
-       ($1, 'draft', 'Draft offer', 'x', 'y', 'z', NULL, true),
-       ($1, 'retired', 'Retired', 'x', 'y', 'z', now(), false),
-       ($2, 'theirs', 'Theirs', 'x', 'y', 'z', now(), true)`, [A, B]);
 
-  await pool.query(
-    `INSERT INTO gt_tenant_brand (tenant_id, voice_tone, approved_at) VALUES
-       ($1, ARRAY['plain'], NULL), ($2, ARRAY['loud'], now())`, [A, B]);
 }, 60000);
 
 afterAll(async () => { if (pool) await pool.end(); });
@@ -100,35 +88,29 @@ async function asAppRole<T>(fn: (p: Pool) => Promise<T>): Promise<T> {
 const d = available ? describe : describe.skip;
 
 d('loadBrain', () => {
-  it('reads only what a human confirmed, and counts what it left out', async () => {
+  it('reads the profile, every node, and approved vocabulary only', async () => {
     const brain = await loadBrain(pool, A);
     expect(brain.profile?.product_name).toBe('Acme');
-    expect(brain.nodes.map((n) => n.name).sort()).toEqual(['Asha', 'Offline mode']);
+    expect(brain.nodes.map((n) => n.name)).toEqual(['Offline mode', 'Asha']);   // label, name order
     expect(brain.vocabulary.map((c) => c.primary_term)).toEqual(['invoicing']);
-    expect(brain.offers.map((o) => o.offer_key)).toEqual(['core']);
-    expect(brain.brand).toBeNull();
-    expect(brain.unconfirmed).toEqual({ clusters: 1, offers: 1, brand: true });
   });
 
   it('never returns another tenant\'s rows', async () => {
     const brain = await loadBrain(pool, B);
     expect(brain.profile?.product_name).toBe('Rival');
     expect(brain.nodes.map((n) => n.name)).toEqual(['Their secret']);
-    expect(brain.offers.map((o) => o.offer_key)).toEqual(['theirs']);
-    expect(brain.brand?.voice_tone).toEqual(['loud']);
+    expect(brain.vocabulary.map((c) => c.primary_term)).toEqual(['their term']);
   });
 
   it('reads the same under RLS, as a non-owner role', async () => {
     await asAppRole(async (app) => {
-      const r = await app.query('SELECT current_user AS u, count(*)::int AS n FROM gt_offers');
+      const r = await app.query('SELECT current_user AS u, count(*)::int AS n FROM gt_kg_nodes');
       expect(r.rows[0]).toEqual({ u: 'brain_ctx_app', n: 0 });   // no context → nothing
 
       const a = await loadBrain(app, A);
       expect(a.profile?.product_name).toBe('Acme');
-      expect(a.nodes.map((n) => n.name).sort()).toEqual(['Asha', 'Offline mode']);
+      expect(a.nodes.map((n) => n.name)).toEqual(['Offline mode', 'Asha']);
       expect(a.vocabulary.map((c) => c.primary_term)).toEqual(['invoicing']);
-      expect(a.offers.map((o) => o.offer_key)).toEqual(['core']);
-      expect(a.unconfirmed).toEqual({ clusters: 1, offers: 1, brand: true });
 
       const b = await loadBrain(app, B);
       expect(b.nodes.map((n) => n.name)).toEqual(['Their secret']);
@@ -145,9 +127,7 @@ d('loadBrain', () => {
     const ctx = await brainContext(pool, A, { purpose: 'deck', reserveOutputTokens: 100, fixedText: 'sys' });
     expect(ctx.text).toContain('Name: Acme');
     expect(ctx.text).toContain('[Differentiator] Offline mode — works without signal');
-    expect(ctx.text).toContain('OFFERS (confirmed)\nCore — Invoices');
-    expect(ctx.text).not.toContain('Draft offer');
+    expect(ctx.text).toContain('[Team] Asha');
     expect(ctx.text).not.toContain('Their secret');
-    expect(ctx.missing).toContain('brand: drafted, not approved');
   });
 });

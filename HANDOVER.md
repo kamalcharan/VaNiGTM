@@ -96,30 +96,27 @@ Runtime DB role is still `vikuna_admin` (the vanigtm_app switch is DEPLOY §4b).
 ## D2 started — `brain.context` (2026-09-30, after the Haiku switch)
 
 `backend/src/agent-core/brain.context.ts`: the one reader of the Brain.
-`brainContext(pool, tenantId, { purpose, reserveOutputTokens, fixedText })`
-loads profile, KG nodes, approved clusters, confirmed active offers and the
-approved brand in ONE `withTenantClient` transaction, then renders them for
-the purpose under `charBudgetFor`: sections dropped whole in reverse priority,
-graph nodes by label priority, the profile never trimmed (too big alone →
-`BRAIN_CONTEXT_TOO_LARGE` with the numbers). Unconfirmed drafts are never
-presented and are listed in `missing`. The storyteller is converted (purpose
-`deck` — it now also sees approved brand, confirmed offers and vocabulary,
-which it never did); its private `fitContext`/`serializeContext` are gone.
-Tests: `brain-context.test.ts` (renderer) and `brain-context.db.test.ts`
-(real migrations, including a non-owner role under RLS). Next conversions:
-research (vocabulary framing), drafter, domain-pack, Vara compose/match — each
-adds a purpose to `BRAIN_PURPOSES`. No schema change.
+`loadBrain(pool, tenantId)` reads the profile, the KG nodes and the approved
+vocabulary in ONE `withTenantClient` transaction. `brainContext(pool, tenantId,
+{ purpose, reserveOutputTokens, fixedText })` renders them under
+`charBudgetFor`; the only purpose is `deck`.
 
-**Same day, later:** competitor research and offer drafting converted too.
-Research frames its searches from `competitor_research` (profile gist +
-approved vocabulary) and judges candidates with `competitor_check`; its run
-step now says when the vocabulary existed but did not fit. Offer drafting
-(`offer_draft`) now sees the confirmed offers and is told the names of
-pending drafts, so a second round stops re-proposing them; its site text is
-sized to the window under the old 12,000-char ceiling (cost unchanged).
-`profile-skill/tests/offer-draft.db.test.ts` checks what the model is shown.
+**The rule (Charan, 2026-09-30, after a first version drifted): a conversion
+does not change what the agent sends the model.** The first version added
+brand, offers and vocabulary to decks, re-laid-out research's and offer
+drafting's prompts, and told offer drafting about pending drafts — none of it
+asked for. All of that was taken back out the same evening:
+
+| Agent | Reads through brain.context | Proof nothing changed |
+|---|---|---|
+| storyteller | rendered `deck` (profile + every node, trimmed from the end) | `brain-context.test.ts` compares with the old builder, kept verbatim in `tests/fixtures/storyteller-v1-context.ts`, at every room size |
+| competitor research | `loadBrain` data only (profile + approved vocabulary) | diff against main touches only the two reads; prompts byte-identical |
+| offer drafting | `loadBrain` data only (profile) | `offer-draft.db.test.ts` asserts the exact message main sent |
+
 The profile drafter is not a Brain reader (crawl text in, profile out) — the
-POA listed it by mistake. Left: domain-pack, Vara compose/match.
+POA listed it by mistake. Left: domain-pack, Vara compose/match. Offers and
+brand join `loadBrain` with the first agent that needs them, after the change
+in that agent's output is agreed. No schema change.
 
 **Also 2026-09-30 (Charan): the Phase 4 gate passed and the runtime role is
 now `vanigtm_app` — RLS is enforced in production.** Track B is done; Track F

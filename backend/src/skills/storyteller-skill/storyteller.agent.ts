@@ -37,11 +37,9 @@ export class StorytellerAgent {
     opts?: { sourceRunId?: number },
   ): Promise<{ presentationId: string }> {
     // STEP 1 + 2 — load the seeded prompt, then read the Brain through
-    // brain.context: profile, approved brand, confirmed offers, the graph
-    // (by label priority for a deck) and approved vocabulary, sized to what
-    // is left of the window after the prompt and the answer. It used to paste
-    // getNodes() whole under its own trimmer; the budget and the "do not claim
-    // completeness" note now live in one place for every agent.
+    // brain.context (purpose `deck`): the whole profile and every graph node,
+    // trimmed from the end to what is left of the window after the prompt
+    // and the answer — the same text the storyteller built for itself before.
     const system = await loadPrompt(pool, PROMPT_KEY, tenantId);
     const MAX_OUTPUT = 2000;
     const brain = await brainContext(pool, tenantId, {
