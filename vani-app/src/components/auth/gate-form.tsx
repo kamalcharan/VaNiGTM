@@ -105,8 +105,11 @@ export default function GateForm() {
         </form>
 
         <p className={styles.foot}>
-          No phrase? Ask the person at Vikuna who invited you — we do not issue
-          them on request from this screen.
+          No phrase? VaNi is in closed beta.{' '}
+          <Link className={styles.altLink} href="/#request-access">
+            Request access
+          </Link>{' '}
+          and we will be in touch.
         </p>
 
         <div className={styles.alt}>

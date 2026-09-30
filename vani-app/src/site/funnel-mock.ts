@@ -6,6 +6,8 @@
 import type { SiteStatus, SubmitResult } from './funnel';
 
 const READS = new Map<string, { site: string; polls: number }>();
+/** Requests made in mock mode, so the console's Access requests list has something honest to show. */
+const REQUESTS: Record<string, unknown>[] = [];
 let seq = 0;
 
 const hostOf = (w: unknown) => String(w ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split(/[/?#]/)[0];
@@ -25,7 +27,9 @@ function status(token: string): SiteStatus {
       product_description: 'Ledgerline tracks hospital vendor contracts and AMCs, warns before renewals, and raises SLA penalties with the evidence attached.',
     },
     audit: { present: ['title', 'body_text'], missing: ['meta_description', 'og_tags', 'json_ld'] },
+    graph_failure: null,
     graph: {
+      partial: false,
       nodes: [
         { id: 'n1', label: 'Product', name: 'Ledgerline', description: 'Contract software for hospitals.', properties: {} },
         { id: 'n2', label: 'Feature', name: 'Renewal alerts', description: null, properties: {} },
@@ -47,6 +51,7 @@ function status(token: string): SiteStatus {
 
 export const FUNNEL_MOCK_READS: Record<string, (p: Record<string, unknown>) => unknown> = {
   'funnel.site_status': (p) => status(String(p.token)),
+  'access-skill.list_requests': () => ({ requests: [...REQUESTS].reverse(), total: REQUESTS.length, recipe: 'access-requests' }),
 };
 
 export const FUNNEL_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {
@@ -57,8 +62,17 @@ export const FUNNEL_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => 
     READS.set(token, { site, polls: 0 });
     return { ...status(token), token, reused: 'new' };
   },
+  'funnel.claim': (p) => {
+    const r = READS.get(String(p.token));
+    if (!r) throw new Error('this preview has expired or does not exist');
+    return { site: r.site, source_id: 'mock-source', profile_applied: true, graph_written: { nodes: 6, edges: 5, failed: 0 } };
+  },
   'funnel.request_access': (p) => {
     if (!String(p.email ?? '').includes('@')) throw new Error('Enter a work email.');
-    return { received: true };
+    const site = typeof p.token === 'string' ? READS.get(p.token)?.site ?? null : null;
+    REQUESTS.push({ lead_id: `mock-lead-${REQUESTS.length + 1}`, lead_no: `VANI-${String(REQUESTS.length + 1).padStart(4, '0')}`,
+      name: p.name, email: p.email, company: p.company, role_title: p.role_title, country_code: p.country_code ?? null,
+      mobile: p.mobile || null, site, consent_text: p.consent_text, requested_at: new Date().toISOString(), times_asked: 1, status: 'new' });
+    return { received: true, replayed: false };
   },
 };

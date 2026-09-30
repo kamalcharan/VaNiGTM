@@ -13,11 +13,12 @@ import runs from './runs';
 import settings from './settings';
 import install from './install';
 import demo from './demo';
+import accessRequests from './access-requests';
 import { VARA_WORKSPACE } from './vara-shell/vara-nav';
 import { GTM_WORKSPACE } from './gtm-shell/gtm-nav';
 import { EDGE_WORKSPACE } from './edge/edge-nav';
 
-export const SKILLS: SkillModule[] = [onboarding, smartProfile, org, workspace, agents, runs, install, settings, demo];
+export const SKILLS: SkillModule[] = [onboarding, smartProfile, org, workspace, agents, runs, install, settings, demo, accessRequests];
 
 /**
  * The agent workspaces. Each swaps the sidebar when entered (its own shell)

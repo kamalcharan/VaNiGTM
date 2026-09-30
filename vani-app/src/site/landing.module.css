@@ -231,3 +231,6 @@
 
 /* A phone-width graph is unreadable scaled down; keep it legible and let its own box scroll sideways. */
 @media (max-width: 700px) { .graph svg { min-width: 620px; } }
+
+/* After the preview: the push to sign up, with the lead form as the other door. */
+.signupPush { display: flex; flex-direction: column; gap: 14px; background: var(--surf); border: 1px solid var(--ac); border-radius: 12px; padding: 22px 24px; box-shadow: 0 10px 40px rgba(232, 66, 10, .12); }

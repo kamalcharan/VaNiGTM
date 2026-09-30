@@ -10,7 +10,7 @@
  * /api/v1/auth/me.
  */
 
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/context/auth-provider';
@@ -18,7 +18,7 @@ import { useToast } from '@/platform/feedback';
 import { RequireSession } from '@/platform/shell/RequireSession';
 import { Shell } from '@/platform/shell/Shell';
 import { SKILLS } from '@/skills';
-import { installSkillTransport } from '@/lib/transport';
+import { installSkillTransport, IS_LIVE } from '@/lib/transport';
 
 installSkillTransport();
 
@@ -31,6 +31,15 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
       }),
+  );
+
+  // Admin-only routes (access requests) are dropped for a tenant that is not
+  // Vikuna's own — the same rule GtmShell applies to the common pool. In mock
+  // mode there is no session, so everything shows.
+  const isAdmin = !IS_LIVE || tenant?.is_admin === true;
+  const skills = useMemo(
+    () => (isAdmin ? SKILLS : SKILLS.map((sk) => ({ ...sk, routes: sk.routes.filter((r) => !r.adminOnly) }))),
+    [isAdmin],
   );
 
   async function handleSignOut() {
@@ -47,7 +56,7 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
     <QueryClientProvider client={qc}>
       <RequireSession>
         <Shell
-          skills={SKILLS}
+          skills={skills}
           org={tenant?.name || 'Vikuna Technologies'}
           slug={tenant?.slug || 'vikuna'}
           onSignOut={handleSignOut}

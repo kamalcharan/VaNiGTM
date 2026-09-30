@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-provider';
 import { ApiError } from '@/lib/api-client';
 import { isGatePassed } from '@/lib/gate';
+import { claimPreviewAfterSignup } from '@/site/claim';
 import { useToast } from '@/platform/feedback';
 import VaniMark from './vani-mark';
 import styles from './auth-card.module.css';
@@ -90,6 +91,22 @@ export default function SignupForm() {
         'Organisation created.',
         `Signed in as ${email.trim()}. You are its owner.`,
       );
+      // The website preview made on vani.vikuna.io, if this browser made one,
+      // becomes the workspace's first Smart Profile. Never blocks signup; a
+      // failure is said, with the server's reason.
+      const kept = await claimPreviewAfterSignup();
+      if (kept.kind === 'kept' && !kept.result.already_claimed) {
+        const g = kept.result.graph_written;
+        toast.success(
+          `Your preview of ${kept.result.site} is in your Smart Profile.`,
+          g ? `${g.nodes} entries and ${g.edges} relationships added; VaNi is now reading the rest of the site.` : 'VaNi is now reading the rest of the site.',
+        );
+        if (!kept.result.profile_applied || (g && g.failed)) {
+          toast.warning('Part of the preview did not carry over.', kept.result.detail ?? `${g?.failed ?? 0} entries could not be written. The full read of your site will add them.`);
+        }
+      } else if (kept.kind === 'failed') {
+        toast.warning('Your website preview did not carry over.', `${kept.message} Add your website in the Smart Profile to read it again.`);
+      }
       router.replace('/dashboard');
     } catch (err) {
       setPassword('');

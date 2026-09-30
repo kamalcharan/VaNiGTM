@@ -303,6 +303,9 @@ integration contract.
   admin-only route yet); the server still gates every call. Charan asked for
   the common pool as an admin surface; this is the smallest platform change
   that lets a skill declare one.
+  2026-09-30: the console layout (`app/(console)/layout.tsx`) filters on it
+  too, the same way GtmShell does, for `/access-requests` — requests from
+  vani.vikuna.io land only in Vikuna's own workspace. No platform file changed.
 
 ---
 

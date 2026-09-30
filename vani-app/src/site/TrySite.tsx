@@ -8,6 +8,7 @@
  * drawn, and nothing stands in for it.
  */
 import { useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { InlineLoader } from '@/platform/feedback';
 import { useSkillMutation } from '@/lib/useSkillMutation';
 import { formatDate } from '@/lib/format';
@@ -143,6 +144,7 @@ export function TryResult() {
           <div className={s.blockEyebrow}>This is your data</div>
           <h3 className={s.blockTitle}>Your knowledge graph, from one page</h3>
           <p className={s.blockBody}>It becomes yours when you sign up. Once you are in, VaNi reads your whole site, your documents and your conversations.</p>
+          {data.graph.partial && <p className={s.tryNote}>Built from the first part of your homepage — the full read after signup covers all of it.</p>}
           <GraphPreview graph={data.graph} />
         </div>
       )}
@@ -153,8 +155,15 @@ export function TryResult() {
         </div>
       )}
 
-      <div className={s.resultActions}>
-        <a className={s.btnPrimary} href="#request-access">Request access{c?.product_name ? ` for ${c.product_name}` : ''}</a>
+      <div className={s.signupPush}>
+        <div>
+          <h3 className={s.blockTitle}>Make this {c?.product_name ? `${c.product_name}’s` : 'your'} Smart Profile</h3>
+          <p className={s.blockBody}>VaNi is in closed beta. With an access phrase, sign up now: this preview becomes your workspace’s first Smart Profile, and VaNi goes on to read the rest of your site.</p>
+        </div>
+        <div className={s.resultActions}>
+          <Link className={s.btnPrimary} href="/gate">Sign up with your access phrase →</Link>
+          <a className={s.btnGhost} href="#request-access">No access phrase? Request access</a>
+        </div>
       </div>
     </section>
   );

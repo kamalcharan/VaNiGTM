@@ -77,6 +77,12 @@ const PLATFORM_ROUTES: Record<string, (params: Record<string, unknown>) => Platf
     method: 'GET',
     path: `/api/v1/funnel/site/${encodeURIComponent(String(p.token))}`,
   }),
+  // Signed in (right after signup): the preview becomes the workspace's first Smart Profile.
+  'funnel.claim': (p) => ({
+    method: 'POST',
+    path: '/api/v1/funnel/claim',
+    body: { token: p.token },
+  }),
   'funnel.request_access': (p) => ({
     method: 'POST',
     path: '/api/v1/funnel/access-request',

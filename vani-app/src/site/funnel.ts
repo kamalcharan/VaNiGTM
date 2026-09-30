@@ -7,11 +7,10 @@
  * Reached through live-transport's PLATFORM_ROUTES, like auth — it is a
  * pre-account surface, so the JWT skill runner cannot serve it.
  *
- * Contract. `status`, `site`, `card`, `failure`, `claimed`, `token`, `reused`
- * are deployed. `audit`, `graph`, `graph_failure` and `read_at` are the
- * landing slice's additions (VaNiGTM documents/design-notes-landing.md B1–B3);
- * the page renders a block only when its field is present, and never
- * substitutes anything when it is not.
+ * Contract: VaNiGTM `funnel.service.ts` SiteStatus. `audit`, `graph`,
+ * `graph_failure` and `read_at` arrived with migration 262 and are null on
+ * reads made before it; the page renders a block only when its field is
+ * present, and never substitutes anything when it is not.
  */
 import { useSkillQuery } from '@/lib/useSkill';
 import type { CanvasEdge, CanvasNode } from '@/skills/smart-profile/screens/KgCanvas';
@@ -37,7 +36,8 @@ export interface SiteStatus {
   failure: string | null;
   claimed: boolean;
   audit?: Audit | null;
-  graph?: SiteGraph | null;
+  /** `partial`: built from only the first part of a long page, or an answer was cut off. */
+  graph?: (SiteGraph & { partial?: boolean }) | null;
   /** Set when the card read but the graph extraction did not — the card still shows. */
   graph_failure?: string | null;
   /** When the read finished; shown when an earlier read is being reused. */
