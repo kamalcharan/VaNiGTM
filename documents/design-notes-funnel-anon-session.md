@@ -145,6 +145,20 @@ text, draft, status and failure move to a `site read` record keyed by
 side (token, IP hash, the read it points at, binding). That is one more
 small table than §3.2 showed; it is decided with D3-h.
 
+**What counts as the same website** (Charan: "if contractnest.com repeats,
+show the existing one"): the key is the normalised host — scheme, `www.`,
+case, path and trailing slash dropped — so `http://contractnest.com`,
+`https://www.contractnest.com/`, `contractnest.com/about` and
+`CONTRACTNEST.COM` are one site. A card is reused for
+`FUNNEL_REUSE_HOURS` (proposed 30 days = 720): sites change, and the full
+crawl after signup refreshes everything anyway.
+
+**Only earlier funnel reads are reused — never a tenant's Brain.** If the
+site already belongs to a signed-up tenant, that tenant's Smart Profile is
+private; a visitor entering the same site gets a card from the funnel's own
+read of the public page, never from the tenant's data (the same line rule 13
+draws for research).
+
 IP is stored only as `ip_hash` (HMAC, the same keyed approach as D9-b), not
 the raw address: it matches revisits exactly as well, and a hash is not
 personal data we have to protect or disclose.
