@@ -116,6 +116,26 @@ function isNearNeutral(hex: string): boolean {
   return false;
 }
 
+/**
+ * `rgb(232 66 10 / .5)`, `rgb(232, 66, 10)`, `rgba(232,66,10,0.9)` → `#e8420a`
+ * (alpha dropped), so the two hex passes below see every colour.
+ *
+ * Found on vikuna.io (2026-09-30): Tailwind compiles every colour — even one
+ * written as `text-[#E8420A]` — to `rgb(… / var(--tw-…-opacity))`, and React
+ * inline styles come back from a rendered page as `rgb(…)`. A hex-only scan
+ * therefore found nothing on a site full of colour.
+ */
+export function rgbToHexInText(text: string): string {
+  return text.replace(
+    /rgba?\(\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*(?:[,/](?:[^()]|\([^()]*\))*)?\)/gi,
+    (whole, r: string, g: string, b: string) => {
+      const n = [r, g, b].map(Number);
+      if (n.some((v) => v > 255)) return whole;
+      return `#${n.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+    },
+  );
+}
+
 export interface RoleColors {
   primary?: string;
   secondary?: string;
@@ -217,10 +237,12 @@ export async function extractVisualHints(html: string, baseUrl: string): Promise
   if (bestIcon) visual.logo_url = bestIcon;
 
   const inlineStyle = (html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) ?? []).join('\n');
+  // style="…" on elements — where a JS-applied theme lives on a rendered page.
+  const styleAttrs = Array.from(html.matchAll(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/gi), (x) => x[2]).join(';\n');
   const stylesheetUrls = extractStylesheetLinks(html, baseUrl);
   const fetchedSheets = await Promise.all(stylesheetUrls.map(fetchCssText));
   const fetchedCss = fetchedSheets.join('\n');
-  const cssCorpus = `${inlineStyle}\n${fetchedCss}`;
+  const cssCorpus = rgbToHexInText(`${inlineStyle}\n${styleAttrs}\n${fetchedCss}`);
 
   const themeColorMatch = html.match(/<meta[^>]+name=["']theme-color["'][^>]+content=["'](#[0-9a-fA-F]{3,6})["']/i);
   const roles = extractRoleColors(cssCorpus);
