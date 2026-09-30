@@ -83,6 +83,7 @@ create table vani_suppression (
   tenant_id        uuid references vani_tenant(id) on delete cascade,  -- NULL = platform-wide
   channel          text not null check (channel in
                      ('email','sms','whatsapp','call','linkedin','x','all')),
+  identifier_kind  text not null check (identifier_kind in ('email','phone','profile_url','domain')),
   identifier_hash  text not null,     -- HMAC-SHA256 of the normalised address (D9-b)
   action           text not null check (action in ('suppress','lift')),
   reason           text not null check (reason in
@@ -185,11 +186,29 @@ How rows get written:
 | # | Answer | What it changes |
 |---|---|---|
 | D9-a | **As recommended**: bounce, complaint and erasure are platform-wide; unsubscribe, manual and consent-withdrawn are one tenant only | — |
-| D9-b | Explained; awaiting a yes | — |
-| D9-c | Explained; awaiting a yes | — |
+| D9-b | **Yes — keyed hash** (`SUPPRESSION_HASH_KEY` in .env, no default, backed up with the other secrets, never rotated casually) | — |
+| D9-c | **Product-level tenant id = `vani_tenant.id`** | — |
 | D9-d | **Yes — lifted by an admin or by the person themselves** | A `lift` row records who (`actor_type`, `actor_id`) and why. **Open point:** an admin undoing a person's own unsubscribe, complaint or consent withdrawal is what consent rules exist to stop; recommended split: an admin may lift `manual` and `bounced`; `unsubscribed`, `complained` and `consent_withdrawn` are lifted only by the person opting in again. Awaiting confirmation |
 | D9-e | **Configurable per tenant.** When the Smart Profile is built, the tenant is shown what the DPDP Act means for outreach and ticks "I agree"; that switches GTM sending on. Settings can switch it off again | §6b |
 | D9-f | Not answered yet | — |
+
+## 6c. Suppression is per PERSON, not per company (Charan's question, 2026-09-30)
+
+A prospect company with four people: one unsubscribes, three do not.
+
+- A row blocks **one address on one channel** (or `all` channels for that
+  person). The company is not a subject of suppression; the other three stay
+  contactable.
+- **One person, several addresses.** When someone says "never contact me",
+  a row is written for EVERY identifier we hold for them (`gt_contact_channels`:
+  work email, personal email, mobile, WhatsApp) — otherwise they would be
+  reached again on the address they did not use to opt out.
+- **When the company says "nobody here"** (a legal or procurement request), a
+  person-level row is not enough. Proposed: one more identifier kind — the
+  email **domain** — checked by the gate against every email address at that
+  domain. Recorded as `manual`, tenant scope. Part of this approval.
+- **Shared mailboxes** (`info@`, `sales@`) are addresses like any other: an
+  unsubscribe from `info@` blocks `info@` only.
 
 ## 6b. D9-e as decided: the tenant's DPDP acknowledgement
 
