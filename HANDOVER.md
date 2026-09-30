@@ -9,11 +9,16 @@
 
 # ▶ RESTART HANDOVER — 2026-09-29, evening (read this first)
 
-**Edge is built. The next session is VARA** (Charan, closing the Edge
-session: "in new session we will focus on completing Vara"). **The Vara diff
-is done — §2 below is the open list** (written 2026-09-29, late). It opens
-with a blocker: nine Vara backend commits on `claude/session-setup-qrxev9`
-never reached `main`, and the console on Vercel calls their routes.
+**2026-09-30: the plan is `documents/POA-2026-09-30-platform.md`** — seven
+tracks (foundations · unblock · harness · brain · funnel · Vara · GTM), a
+decisions register with defaults, the schema list, and a four-week sequence.
+It supersedes the May POA and the Aug 27 Vara POA. Read it before §1–§3
+below; those remain the evidence it was built on.
+
+**Edge is built. The Vara diff is done — §2 below is the open list**
+(written 2026-09-29, late). It opens with a blocker: nine Vara backend
+commits on `claude/session-setup-qrxev9` never reached `main`, and the
+console on Vercel calls their routes.
 
 ## 0. What the Edge session delivered (2026-09-29)
 
