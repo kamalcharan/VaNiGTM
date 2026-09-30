@@ -15,17 +15,27 @@ import { EDGE_MOCK_READS } from '@/skills/edge/mock';
 import { OFFERS_MOCK_READS, OFFERS_MOCK_WRITES } from '@/skills/smart-profile/offers-mock';
 import { KNOWLEDGE_MOCK_READS, KNOWLEDGE_MOCK_WRITES } from '@/skills/smart-profile/knowledge-mock';
 
+/**
+ * What `agents.list` returns. The API answers id/name/version/status/
+ * subscription/activated_at/source from vani_agent ⋈ vani_tenant_agent;
+ * colour, icon, role and copy are console cosmetics (skills/agents/meta.ts).
+ * The fixture carries both so mock mode looks the same.
+ */
 export interface AgentSummary {
   id: string;
   name: string;
-  role: string;
-  color: string;
-  icon: string;
-  scope: string;
   status: 'active' | 'attention' | 'not_activated';
-  runs: number;
-  tools: number;
-  facts: number | null;
+  version?: string;
+  subscription?: string;
+  activated_at?: string | null;
+  source?: 'registry' | 'derived';
+  role?: string;
+  color?: string;
+  icon?: string;
+  scope?: string;
+  runs?: number;
+  tools?: number;
+  facts?: number | null;
   desc: string;
 }
 
@@ -44,8 +54,13 @@ export interface RunRow {
   started: string;
   duration: string;
   steps: number;
-  status: 'ok' | 'running' | 'failed';
+  /** The API's five statuses; the fixture's older 'ok' reads as completed. */
+  status: 'ok' | 'queued' | 'running' | 'awaiting' | 'completed' | 'failed';
   actor: 'human' | 'rule' | 'timer' | 'system';
+  awaiting?: boolean;
+  started_at?: string;
+  duration_ms?: number | null;
+  event_type?: string | null;
 }
 
 /**
@@ -291,6 +306,40 @@ export const CONSOLE_PREVIEW_READS: Record<string, (p: Record<string, unknown>) 
     handovers: 1,
   }),
   'runs.list': () => ({ runs: RUNS }),
+  'runs.get': (p) => {
+    const r = RUNS.find((x) => x.id === String(p.run_id));
+    if (!r) return { run: null, steps: [], changed: { count: 0, nodes: [] }, event: null, reason: 'NOT_FOUND' };
+    return {
+      run: { id: r.id, agent: r.agent, status: r.status === 'ok' ? 'completed' : r.status, trigger: r.trigger, actor: r.actor,
+        started_at: new Date().toISOString(), completed_at: null, duration: r.duration, duration_ms: null,
+        awaiting_input: null, checkpoint_keys: [], last_checkpoint: null, output: null, token_usage: null, inputs: {}, error: null, error_trace: null },
+      steps: Array.from({ length: r.steps }, (_, i) => ({ ts: new Date().toISOString(), step_name: `step_${i + 1}`, action: 'Fixture step', status: 'ok' })),
+      changed: { count: 0, nodes: [] },
+      event: { id: 'evt-fixture', type: r.trigger, source_type: r.actor, status: 'done', attempts: 1, error: null },
+    };
+  },
+  'runs.events': () => ({
+    events: RUNS.map((r, i) => ({ id: `evt-${i}`, event_type: r.trigger, source_type: r.actor, status: 'done', attempts: 1,
+      created_at: new Date().toISOString(), started_at: null, processed_at: null, error: null, age_seconds: 60 * (i + 1),
+      run_id: r.id, run_status: r.status, handled: true, consumed: true })),
+    unconsumed: [],
+    counts: { pending: 0, processing: 0, done: RUNS.length, failed: 0 },
+  }),
+  'runs.awaiting': () => ({ items: [] }),
+  'dashboard.brain': () => ({
+    exists: true, completion_score: 45, is_complete: false,
+    detail: { icp: 10, brand: 0, offers: 15, competitors: 10, vocabulary: 5, research: 5 },
+    sections: [
+      { key: 'icp', label: 'Ideal customer', weight: 25, earned: 10, ratio: 0.4, why: 'Every agent reads this to know who to target.' },
+      { key: 'brand', label: 'Brand', weight: 20, earned: 0, ratio: 0, why: 'Nova (digital marketing) is blocked without it; the storyteller writes in this voice.' },
+      { key: 'offers', label: 'Offers', weight: 20, earned: 15, ratio: 0.75, why: 'Research cannot frame a search without knowing what you sell.' },
+      { key: 'competitors', label: 'Competitors', weight: 15, earned: 10, ratio: 0.67, why: 'Sharpens what research looks for.' },
+      { key: 'vocabulary', label: 'Market vocabulary', weight: 10, earned: 5, ratio: 0.5, why: 'Frames every research search and every match against the pool.' },
+      { key: 'research', label: 'Company profile', weight: 10, earned: 5, ratio: 0.5, why: 'What everything else is built on.' },
+    ],
+    weakest: { key: 'brand', label: 'Brand', why: 'Nova (digital marketing) is blocked without it; the storyteller writes in this voice.' },
+    unlocks: { storytelling: false },
+  }),
 };
 
 const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {

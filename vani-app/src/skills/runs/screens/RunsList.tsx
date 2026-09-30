@@ -1,9 +1,33 @@
 'use client';
 
+import Link from 'next/link';
 import { useSkillQuery } from '@/lib/useSkill';
 import type { RunRow } from '@/lib/mock-transport';
+import { formatDateTime } from '@/lib/format';
 import { DataBoundary, SkeletonTable } from '@/platform/feedback';
 import u from '@/platform/shell/ui.module.css';
+
+/** The API's five statuses onto the three tag colours; 'ok' is the fixture's old spelling. */
+export function statusTag(status: RunRow['status']): string {
+  if (status === 'ok' || status === 'completed') return u.tagOk;
+  if (status === 'running' || status === 'queued' || status === 'awaiting') return u.tagWarn;
+  return u.tagBad;
+}
+
+export function RunsSubnav({ active }: { active: 'runs' | 'awaiting' | 'events' }) {
+  const item = (key: typeof active, href: string, label: string) => (
+    <Link href={href} className={`${u.tag} ${active === key ? u.tagOk : u.tagDim}`} style={{ textDecoration: 'none' }}>
+      {label}
+    </Link>
+  );
+  return (
+    <div style={{ display: 'flex', gap: 8, margin: '4px 0 14px' }}>
+      {item('runs', '/runs', 'Runs')}
+      {item('awaiting', '/runs/awaiting', 'Waiting on you')}
+      {item('events', '/runs/events', 'Events')}
+    </div>
+  );
+}
 
 /**
  * Read-only by design. The platform spec's audit spine is append-only and
@@ -11,7 +35,7 @@ import u from '@/platform/shell/ui.module.css';
  * so the actor column is deliberately prominent.
  */
 export default function RunsList() {
-  const q = useSkillQuery<{ runs: RunRow[] }>('runs', 'list');
+  const q = useSkillQuery<{ runs: RunRow[] }>('runs', 'list', { limit: 100 });
 
   return (
     <div>
@@ -22,18 +46,19 @@ export default function RunsList() {
         <strong> human, rule, timer or system</strong> — a model score is never an
         actor, and the database enforces it.
       </p>
+      <RunsSubnav active="runs" />
 
       <section className={u.card}>
         <div className={u.cardHead}>
           Recent runs
-          <span className={u.cardMeta}>append-only</span>
+          <span className={u.cardMeta}>append-only · newest first</span>
         </div>
         <DataBoundary
           query={q}
           label="runs"
           skeleton={<SkeletonTable rows={6} cols={8} />}
           isEmpty={(d) => !d?.runs?.length}
-          empty="No runs have been recorded for this tenant yet."
+          empty="No runs have been recorded for this workspace yet. The first one appears the moment an agent starts — reading your website in the Smart Profile is the usual first run."
         >
           {(d) => (
             <div className={u.tableWrap}>
@@ -53,22 +78,23 @@ export default function RunsList() {
                 <tbody>
                   {d.runs.map((r) => (
                     <tr key={r.id}>
-                      <td className={u.mono}>{r.id}</td>
+                      <td className={u.mono}>
+                        <Link href={`/runs/${encodeURIComponent(r.id)}`} style={{ color: 'var(--ac)', textDecoration: 'none' }}>
+                          {r.id}
+                        </Link>
+                      </td>
                       <td>{r.agent}</td>
                       <td className={u.mono}>{r.trigger}</td>
                       <td>
                         <span className={`${u.tag} ${u.tagDim}`}>{r.actor}</span>
                       </td>
-                      <td className={u.mono}>{r.started}</td>
+                      <td className={u.mono}>{r.started_at ? formatDateTime(r.started_at) : r.started}</td>
                       <td>{r.steps}</td>
                       <td className={u.mono}>{r.duration}</td>
                       <td>
-                        <span
-                          className={`${u.tag} ${
-                            r.status === 'ok' ? u.tagOk : r.status === 'running' ? u.tagWarn : u.tagBad
-                          }`}
-                        >
-                          {r.status}
+                        <span className={`${u.tag} ${statusTag(r.status)}`}>
+                          {r.status === 'ok' ? 'completed' : r.status}
+                          {r.awaiting ? ' · on you' : ''}
                         </span>
                       </td>
                     </tr>

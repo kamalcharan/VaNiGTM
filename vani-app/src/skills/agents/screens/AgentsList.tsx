@@ -4,6 +4,7 @@ import { useSkillQuery } from '@/lib/useSkill';
 import type { AgentSummary } from '@/lib/mock-transport';
 import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import u from '@/platform/shell/ui.module.css';
+import { metaFor } from '@/skills/agents/meta';
 
 export default function AgentsList() {
   const q = useSkillQuery<{ agents: AgentSummary[] }>('agents', 'list');
@@ -32,20 +33,23 @@ export default function AgentsList() {
             empty="Agents appear here once they are registered against this tenant."
           >
             {(d) =>
-              d.agents.map((a) => (
+              d.agents.map((a) => {
+                const m = metaFor(a.id);
+                const color = a.color ?? m.color;
+                return (
                 <div key={a.id} className={u.agent}>
                   <span
                     className={u.agIc}
-                    style={{ background: `${a.color}1f`, color: a.color, border: `1px solid ${a.color}55` }}
+                    style={{ background: `${color}1f`, color, border: `1px solid ${color}55` }}
                     aria-hidden="true"
                   >
-                    {a.icon}
+                    {a.icon ?? m.icon}
                   </span>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span className={u.agName}>{a.name}</span>
                       <span className={u.agRole} style={{ margin: 0 }}>
-                        {a.role}
+                        {a.role ?? m.role}
                       </span>
                       <span
                         className={`${u.tag} ${
@@ -56,14 +60,17 @@ export default function AgentsList() {
                         {a.status === 'not_activated' ? 'Not activated' : a.status}
                       </span>
                     </div>
-                    <div className={u.agDesc}>{a.desc}</div>
+                    <div className={u.agDesc}>{a.desc ?? m.desc}</div>
                     <div className={u.agScope}>
-                      {a.scope} · {a.runs} runs · {a.tools} tools
-                      {a.facts !== null ? ` · ${a.facts} facts` : ''}
+                      {a.scope ?? m.scope}
+                      {a.version ? ` · v${a.version}` : ''}
+                      {a.subscription && a.subscription !== 'none' ? ` · ${a.subscription}` : ''}
+                      {a.source === 'derived' ? ' · derived' : ''}
                     </div>
                   </div>
                 </div>
-              ))
+                );
+              })
             }
           </DataBoundary>
         </div>

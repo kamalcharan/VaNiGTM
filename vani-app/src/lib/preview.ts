@@ -36,6 +36,13 @@ const REAL = new Set([
   'prospect-skill.get_loads',
   'etl.upload', 'etl.headers', 'etl.create_session', 'etl.process', 'etl.sessions', 'etl.records', 'etl.resolve_conflicts',
   'etl.status', 'etl.tags', 'etl.create_tag', 'etl.reprocess', 'etl.patch_record', 'etl.sync_stats', 'etl.delete_staging',
+  // Visibility and journey readers (VaNiGTM 2026-09-30): runs, the dashboard,
+  // the agent registry and two of the three journeys are real. edge.journey
+  // stays a preview — Edge keeps its mission in the browser and the server
+  // has nothing truthful to say about it yet.
+  'runs.list', 'runs.get', 'runs.events', 'runs.awaiting',
+  'dashboard.brain', 'dashboard.counters', 'dashboard.activity',
+  'agents.list', 'vara.journey', 'gtm.journey',
 ]);
 
 export const PREVIEW_FUNCTIONS: Record<string, Handler> = Object.fromEntries(
