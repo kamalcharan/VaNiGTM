@@ -22,6 +22,7 @@
 
 import { callLLM } from '../../../agent-core/llm.client';
 import { platformContextTokens } from '../../../agent-core/llm.gate';
+import { readLlmConfig } from '../../../agent-core/llm.config';
 import type { Pool } from 'pg';
 import type { Chunk } from './chunker';
 
@@ -38,9 +39,11 @@ import type { Chunk } from './chunker';
 export function extractMaxTokens(): number {
   // A function, not a value computed at import: the window comes from .env
   // at call time (llm.config.ts), like every other LLM setting.
+  // LLM_EXTRACT_ANSWER_DIVISOR / _MIN / _MAX from .env.
+  const c = readLlmConfig();
   const window = platformContextTokens();
-  if (window <= 0) return 3000;
-  return Math.min(3000, Math.max(800, Math.floor(window / 8)));
+  if (window <= 0) return c.extractAnswerMax;
+  return Math.min(c.extractAnswerMax, Math.max(c.extractAnswerMin, Math.floor(window / c.extractAnswerDivisor)));
 }
 
 export interface SourcedChunk extends Chunk {

@@ -13,6 +13,7 @@
 
 import type { Pool } from 'pg';
 import { createTenantDb } from '../db';
+import { readWorkerConfig } from './worker.config';
 
 /* ── Event types ─────────────────────────────────────────────────────────── */
 
@@ -157,10 +158,11 @@ export async function pollPendingEvents(
  * kind would have to exceed the 20+ minute enrichment run, which would mean a
  * job that died after ten seconds also waited half an hour.
  */
-const STALE_CLAIM = process.env.WORKER_STALE_CLAIM ?? '2 minutes';
+// WORKER_STALE_CLAIM_SECONDS from .env (worker.config.ts), passed as a query
+// parameter — never interpolated into the SQL.
 
 /** Claims before an event is declared poison and failed rather than retried. */
-const MAX_ATTEMPTS = parseInt(process.env.WORKER_MAX_ATTEMPTS ?? '3', 10);
+// WORKER_MAX_ATTEMPTS from .env (worker.config.ts).
 
 /**
  * Return orphaned events to the queue, and fail the ones that keep killing it.
@@ -183,7 +185,8 @@ const MAX_ATTEMPTS = parseInt(process.env.WORKER_MAX_ATTEMPTS ?? '3', 10);
 export async function reclaimStaleEvents(pool: Pool): Promise<{
   requeued: number; failed: number;
 }> {
-  const stale = `started_at IS NOT NULL AND started_at < now() - interval '${STALE_CLAIM}'`;
+  const { staleClaimSeconds, maxAttempts } = readWorkerConfig();
+  const stale = `started_at IS NOT NULL AND started_at < now() - make_interval(secs => $2)`;
 
   const dead = await pool.query(
     `UPDATE gt_events
@@ -192,7 +195,7 @@ export async function reclaimStaleEvents(pool: Pool): Promise<{
                     || ' times and never finished — the worker died mid-run each time'
       WHERE status = 'processing' AND ${stale} AND attempts >= $1
       RETURNING id`,
-    [MAX_ATTEMPTS],
+    [maxAttempts, staleClaimSeconds],
   );
 
   const back = await pool.query(
@@ -200,7 +203,7 @@ export async function reclaimStaleEvents(pool: Pool): Promise<{
         SET status = 'pending', started_at = NULL
       WHERE status = 'processing' AND ${stale} AND attempts < $1
       RETURNING id`,
-    [MAX_ATTEMPTS],
+    [maxAttempts, staleClaimSeconds],
   );
 
   // Never silent. A reclaim means work was lost and redone, which is worth a
@@ -208,7 +211,7 @@ export async function reclaimStaleEvents(pool: Pool): Promise<{
   if (dead.rowCount || back.rowCount) {
     console.warn(
       `[Queue] Reclaimed orphaned events: ${back.rowCount} requeued, `
-      + `${dead.rowCount} failed after ${MAX_ATTEMPTS} attempts`);
+      + `${dead.rowCount} failed after ${maxAttempts} attempts`);
   }
   return { requeued: back.rowCount ?? 0, failed: dead.rowCount ?? 0 };
 }

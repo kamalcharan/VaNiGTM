@@ -49,7 +49,8 @@ import { withLlmSlot, checkContext, contextError, noteObservedTokens, noteContex
 const charsPerTokenLabel = (model?: string) => charsPerToken(model).toFixed(2);
 
 /** Prompt processing is faster than generation; ~10× is a safe floor on CPU. */
-const PREFILL_FACTOR = 10;
+// LLM_PREFILL_FACTOR — how much faster the server reads than it writes.
+const prefillFactor = () => readLlmConfig().prefillFactor;
 
 /* ── LLM config ─────────────────────────────────────────────────── */
 
@@ -256,7 +257,11 @@ async function callEndpoint(
   options: LLMCallOptions,
   provider: ResolvedProvider,
 ): Promise<LLMResult> {
-  const { tenantId, pool, system, messages, maxTokens = 1000, temperature = 0.2 } = options;
+  const cfgNow = readLlmConfig();
+  const { tenantId, pool, system, messages } = options;
+  // Defaults from .env (LLM_DEFAULT_MAX_TOKENS / LLM_DEFAULT_TEMPERATURE), used only when the caller names none.
+  const maxTokens = options.maxTokens ?? cfgNow.defaultMaxTokens;
+  const temperature = options.temperature ?? cfgNow.defaultTemperature;
 
   // A platform-only system suffix, declared in .env (LLM_PRIMARY_SYSTEM_SUFFIX,
   // e.g. `/no_think` for qwen3). It was appended whenever the model name
@@ -315,7 +320,7 @@ async function callEndpoint(
   // ceiling is what this call needs at LLM_TOKENS_PER_SEC (default 10).
   const promptTokens = estimateTokens(wholePrompt, provider.model);
   const tps = tokensPerSec(provider.model);
-  const neededMs = Math.ceil(((promptTokens / (tps * PREFILL_FACTOR)) + (maxTokens / tps)) * 1000) + 15_000;
+  const neededMs = Math.ceil(((promptTokens / (tps * prefillFactor())) + (maxTokens / tps)) * 1000) + cfgNow.timeoutSlackMs;
   const timeoutMs = Math.max(provider.timeoutMs, neededMs);
   const startedAt = Date.now();
 
@@ -407,7 +412,8 @@ async function callEndpoint(
 /* ── Failover: Claude API call ──────────────────────────────────────────── */
 
 async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
-  const { tenantId, pool, system, messages, maxTokens = 1000 } = options;
+  const { tenantId, pool, system, messages } = options;
+  const maxTokens = options.maxTokens ?? readLlmConfig().defaultMaxTokens;
 
   const client = getAnthropic();
   if (!client) {
@@ -538,7 +544,7 @@ export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
   // not apply — see the ruling in the header. Usage is still recorded inside
   // callEndpoint either way.
   if (provider.posture === 'platform') {
-    await checkTokenBudget(options.pool, options.tenantId, options.maxTokens ?? 1000);
+    await checkTokenBudget(options.pool, options.tenantId, options.maxTokens ?? readLlmConfig().defaultMaxTokens);
   }
 
   try {

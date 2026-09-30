@@ -34,12 +34,16 @@
  * "free-text questions are unavailable" (503) on any EmbedError. Missing
  * settings arrive there as EMBED_NOT_CONFIGURED, naming them.
  */
-function embedConfig(): { url: string; model: string; key: string; timeoutMs: number } {
-  const missing = ['EMBED_URL', 'EMBED_MODEL', 'EMBED_TIMEOUT_MS']
+function embedConfig(): { url: string; model: string; key: string; timeoutMs: number; dim: number } {
+  const missing = ['EMBED_URL', 'EMBED_MODEL', 'EMBED_TIMEOUT_MS', 'EMBED_DIM']
     .filter((k) => !(process.env[k] ?? '').trim());
   const timeoutMs = Number(process.env.EMBED_TIMEOUT_MS);
+  const dim = Number(process.env.EMBED_DIM);
   if (!missing.length && (!Number.isInteger(timeoutMs) || timeoutMs < 1000)) {
     missing.push(`EMBED_TIMEOUT_MS=${process.env.EMBED_TIMEOUT_MS} (whole ms ≥ 1000)`);
+  }
+  if (!missing.length && (!Number.isInteger(dim) || dim < 1)) {
+    missing.push(`EMBED_DIM=${process.env.EMBED_DIM} (a whole number)`);
   }
   if (missing.length) {
     throw new EmbedError('EMBED_NOT_CONFIGURED',
@@ -50,13 +54,13 @@ function embedConfig(): { url: string; model: string; key: string; timeoutMs: nu
     model: process.env.EMBED_MODEL!.trim(),
     key: (process.env.EMBED_KEY ?? '').trim(),
     timeoutMs,
+    dim,
   };
 }
 
-/** Dimension the vector(768) columns expect. Kept as a constant so the
- *  runtime check catches a wrong-model deployment loudly instead of
- *  letting pgvector reject at insert. */
-export const EMBED_DIM = 768;
+/** Dimension the vector columns expect — EMBED_DIM in .env, which must match
+ *  the vector(768) columns of migration 246. Checked on every result so a
+ *  wrong-model deployment fails loudly here instead of at a pgvector insert. */
 
 export class EmbedError extends Error {
   constructor(readonly code: string, message: string) {
@@ -113,10 +117,10 @@ export async function embedText(text: string): Promise<number[]> {
   if (!Array.isArray(vec) || !vec.every((n) => typeof n === 'number')) {
     throw new EmbedError('EMBED_BAD_SHAPE', 'Response did not include a number[] `embedding` field');
   }
-  if (vec.length !== EMBED_DIM) {
+  if (vec.length !== cfg.dim) {
     throw new EmbedError(
       'EMBED_WRONG_DIM',
-      `Model ${cfg.model} returned ${vec.length}-dim vector; migration 246 expects ${EMBED_DIM}`,
+      `Model ${cfg.model} returned ${vec.length}-dim vector; EMBED_DIM is ${cfg.dim} (migration 246 columns are vector(768))`,
     );
   }
   return vec as number[];

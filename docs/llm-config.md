@@ -32,28 +32,31 @@ What changed on 2026-09-30: the code used to supply `localhost:11434`,
 failover when `HAIKU_DEFAULT` was unset, and `/no_think` whenever the model
 name contained "qwen". All gone.
 
-## Still in code — PENDING APPROVAL
+## Also from .env — moved out of code on Charan's ruling (2026-09-30: "it should move to .env")
 
-These are properties of how the budget and timeouts are computed, not of the
-deployment. Each can move to .env if you prefer; none is a model, endpoint or
-limit.
+All required; the API and worker refuse to start without them.
 
-| Value | Where | Why it is a constant |
+| Variable | Was in code | Meaning |
 |---|---|---|
-| 200 tokens | `llm.gate.ts` `OVERHEAD_TOKENS` | Space inside the window for the chat template and role markers, which are not in our string |
-| 64 tokens | `llm.gate.ts` `BUDGET_SLACK_TOKENS` | Kept back for the caller's own wrapper around budgeted text |
-| 0.9 | `llm.gate.ts` `noteContextOverflow` | Margin when a server refusal teaches us the ratio |
-| 3 samples | `llm.gate.ts` `effective` | A learned ratio is trusted only after three calls |
-| 50 tokens | `llm.gate.ts` `noteObservedSpeed` | Shorter answers measure latency, not speed |
-| × 4 | `llm.gate.ts` `tokensPerSec` | A measured speed may not exceed four times the guess |
-| 10 | `llm.client.ts` `PREFILL_FACTOR` | Reading a prompt is ~10× faster than writing an answer |
-| + 15 s | `llm.client.ts` timeout | Connection and queueing slack on the derived timeout |
-| 1000 tokens, 0.2 | `llm.client.ts` `callLLM` | Default answer size and temperature when a caller names none |
-| window ÷ 8, 800–3,000 | `ingestion-skill/pipeline/extractor.ts` | Answer reserve for extraction, derived from the window |
-| 768 | `vani/embed.ts` `EMBED_DIM` | Fixed by the `vector(768)` columns (migration 246) — a schema fact |
-| provider catalogue | `llm.provider.ts` | Public base URLs and default models of OpenAI, Anthropic, Groq, Together — offered to BYOK tenants; each tenant can override |
+| `LLM_TEMPLATE_OVERHEAD_TOKENS` | 200 | Tokens inside the window for the chat template and role markers |
+| `LLM_BUDGET_SLACK_TOKENS` | 64 | Kept back for a caller's own wrapper around budgeted text |
+| `LLM_OVERFLOW_MARGIN` | 0.9 | Safety factor on the ratio learned from a "too large" refusal |
+| `LLM_CALIBRATION_MIN_SAMPLES` | 3 | Calls before a learned chars/token ratio is trusted |
+| `LLM_SPEED_MIN_SAMPLE_TOKENS` | 50 | Shorter answers measure latency, not speed |
+| `LLM_SPEED_MAX_MULTIPLE` | 4 | A measured speed may not exceed this multiple of the guess |
+| `LLM_PREFILL_FACTOR` | 10 | How much faster the server reads than it writes |
+| `LLM_TIMEOUT_SLACK_MS` | 15000 | Added to every derived timeout |
+| `LLM_DEFAULT_MAX_TOKENS` | 1000 | Answer size when a caller names none |
+| `LLM_DEFAULT_TEMPERATURE` | 0.2 | Temperature when a caller names none |
+| `LLM_EXTRACT_ANSWER_DIVISOR` / `_MIN` / `_MAX` | 8 / 800 / 3000 | Extraction answer reserve = window ÷ divisor, clamped |
+| `LLM_BYOK_PROVIDERS` | the provider catalogue | One line of JSON, single-quoted: `{code: {label, baseUrl or null, defaultModel, keyRequired}}` |
+| `EMBED_DIM` | 768 | Must match the `vector(768)` columns (migration 246); checked at call time with the other EMBED_* |
+| `WORKER_POLL_MS` | 3000 | How often the worker polls |
+| `WORKER_BATCH_SIZE` | 5 | Events claimed per poll |
+| `WORKER_HEARTBEAT_MS` | 30000 | "Still alive" stamp while a handler runs |
+| `WORKER_STALE_CLAIM_SECONDS` | "2 minutes" (was `WORKER_STALE_CLAIM`) | A claim with no heartbeat this long is orphaned. Now a number, passed to SQL as a parameter |
+| `WORKER_MAX_ATTEMPTS` | 3 | Claims before an event is failed as poison |
 
-Also noted, outside the LLM: the worker's `WORKER_POLL_MS` (3000),
-`WORKER_BATCH_SIZE` (5), `WORKER_HEARTBEAT_MS` (30000), `WORKER_STALE_CLAIM`
-(2 minutes) and `WORKER_MAX_ATTEMPTS` (3) still have code defaults. Same
-treatment on request.
+Nothing LLM- or worker-related remains in code as a value. Outside that
+scope, constants still exist elsewhere in the backend (list sizes, crawl
+limits, the DB pool size); they are not covered by this change.

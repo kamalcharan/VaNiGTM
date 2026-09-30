@@ -43,7 +43,7 @@ import type { Pool, PoolClient } from 'pg';
 import { withTenantClient } from '../db';
 import { encryptSecret, decryptSecret, maskSecret } from '../agent-core/secret.crypto';
 import {
-  PROVIDER_CATALOGUE,
+  providerCatalogueMap,
   isKnownProvider,
   invalidateProvider,
   serialiseCredentials,
@@ -81,10 +81,10 @@ function validate(input: ProviderInput, hasStoredKey: boolean): void {
   if (!input.providerCode || !isKnownProvider(input.providerCode)) {
     throw new ProviderError(400, 'UNKNOWN_PROVIDER',
       `'${input.providerCode}' is not a provider we know. Choose one of: `
-      + `${Object.keys(PROVIDER_CATALOGUE).join(', ')}.`);
+      + `${Object.keys(providerCatalogueMap()).join(', ')}.`);
   }
 
-  const catalogue = PROVIDER_CATALOGUE[input.providerCode];
+  const catalogue = providerCatalogueMap()[input.providerCode];
 
   if (catalogue.keyRequired && !input.key && !hasStoredKey) {
     throw new ProviderError(400, 'KEY_REQUIRED',
@@ -189,8 +189,8 @@ export async function getProviderSummary(
 
     return {
       providerCode: row.provider_code,
-      model:        model ?? PROVIDER_CATALOGUE[row.provider_code]?.defaultModel ?? null,
-      baseUrl:      baseUrl ?? PROVIDER_CATALOGUE[row.provider_code]?.baseUrl ?? null,
+      model:        model ?? providerCatalogueMap()[row.provider_code]?.defaultModel ?? null,
+      baseUrl:      baseUrl ?? providerCatalogueMap()[row.provider_code]?.baseUrl ?? null,
       testStatus:   row.test_status,
       lastTestAt:   row.last_test_at ? row.last_test_at.toISOString() : null,
       keyHint,
@@ -245,7 +245,7 @@ export async function saveProviderWithin(
 
     validate(input, Boolean(storedKey));
 
-    const catalogue = PROVIDER_CATALOGUE[input.providerCode];
+    const catalogue = providerCatalogueMap()[input.providerCode];
     const credentials = {
       key:     input.key || storedKey || '',
       model:   input.model   || catalogue.defaultModel,
@@ -353,7 +353,7 @@ export async function testProvider(pool: Pool, vnTenantId: string): Promise<Test
       { key?: string; model?: string; baseUrl?: string };
   });
 
-  const catalogue = PROVIDER_CATALOGUE[summary.providerCode];
+  const catalogue = providerCatalogueMap()[summary.providerCode];
   const baseUrl   = (credentials.baseUrl ?? catalogue?.baseUrl ?? '').replace(/\/+$/, '');
   const model     = credentials.model || catalogue?.defaultModel || '';
   const started   = Date.now();
@@ -419,7 +419,7 @@ export async function testProvider(pool: Pool, vnTenantId: string): Promise<Test
 
 /** What the settings screen offers. No secrets, safe to serve unauthenticated. */
 export function providerCatalogue() {
-  return Object.entries(PROVIDER_CATALOGUE).map(([code, c]) => ({
+  return Object.entries(providerCatalogueMap()).map(([code, c]) => ({
     code,
     label:          c.label,
     defaultModel:   c.defaultModel,

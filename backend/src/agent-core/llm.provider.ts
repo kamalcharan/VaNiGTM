@@ -44,7 +44,7 @@
  * sign a request. It is never logged and never leaves this process.
  */
 
-import { readLlmConfig } from './llm.config';
+import { readLlmConfig, type ByokProvider } from './llm.config';
 import type { Pool } from 'pg';
 import { withTenantClient } from '../db';
 import { decryptSecret } from './secret.crypto';
@@ -106,19 +106,15 @@ function platformProvider(): ResolvedProvider {
  * their behalf, and a guessed endpoint for a real API key is worse than an
  * error.
  */
-export const PROVIDER_CATALOGUE: Record<
-  string,
-  { label: string; baseUrl: string | null; defaultModel: string; keyRequired: boolean }
-> = {
-  openai:    { label: 'OpenAI',        baseUrl: 'https://api.openai.com/v1',       defaultModel: 'gpt-4o-mini',            keyRequired: true  },
-  anthropic: { label: 'Anthropic',     baseUrl: 'https://api.anthropic.com/v1',    defaultModel: 'claude-haiku-4-5',       keyRequired: true  },
-  groq:      { label: 'Groq',          baseUrl: 'https://api.groq.com/openai/v1',  defaultModel: 'llama-3.3-70b-versatile', keyRequired: true  },
-  together:  { label: 'Together AI',   baseUrl: 'https://api.together.xyz/v1',     defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', keyRequired: true },
-  custom:    { label: 'Self-hosted',   baseUrl: null,                              defaultModel: '',                        keyRequired: false },
-};
+export function providerCatalogueMap(): Record<string, ByokProvider> {
+  // From .env (LLM_BYOK_PROVIDERS, JSON) — which providers a tenant may pick,
+  // their endpoints and suggested models are a deployment decision, not code
+  // (Charan, 2026-09-30). backend/.env.example carries the current list.
+  return readLlmConfig().byokProviders;
+}
 
 export function isKnownProvider(code: string): boolean {
-  return Object.prototype.hasOwnProperty.call(PROVIDER_CATALOGUE, code);
+  return Object.prototype.hasOwnProperty.call(providerCatalogueMap(), code);
 }
 
 /* ── Cache ───────────────────────────────────────────────────────────────── */
@@ -216,7 +212,7 @@ export async function resolveProvider(
       );
     }
 
-    const catalogue = PROVIDER_CATALOGUE[row.provider_code];
+    const catalogue = providerCatalogueMap()[row.provider_code];
     const baseUrl   = stored.baseUrl ?? catalogue?.baseUrl ?? null;
 
     if (!baseUrl) {

@@ -23,6 +23,7 @@ import { emitEvent, reclaimStaleEvents, heartbeat, pollPendingEvents, type GTEve
 import { createRun, setStatus, appendStep } from './agent.runner';
 import { assertRegistryMatches, HANDLED_EVENT_TYPES } from './handled-events';
 import { readLlmConfig, assertLlmConfig } from './llm.config';
+import { readWorkerConfig, assertWorkerConfig } from './worker.config';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
 import { CompetitorResearchAgent } from '../skills/research-skill/research.agent';
@@ -241,7 +242,7 @@ async function processEvent(
     // that long. The interval is unref'd so it can never hold the process open.
     const beat = setInterval(() => {
       void heartbeat(pool, event.id).catch(() => { /* a missed beat is not fatal */ });
-    }, HEARTBEAT_MS);
+    }, workerCfg().heartbeatMs);
     beat.unref?.();
     try {
       await handler(pool, event.tenant_id, event.payload, runId);
@@ -318,11 +319,11 @@ async function processEvent(
 
 /* ── Poll loop ──────────────────────────────────────────────────────────── */
 
-const POLL_INTERVAL_MS = parseInt(process.env.WORKER_POLL_MS   ?? '3000', 10);
+// WORKER_POLL_MS / _HEARTBEAT_MS / _BATCH_SIZE from .env (worker.config.ts), no defaults.
+const workerCfg = () => readWorkerConfig();
 /** How often a running handler stamps "still alive". Must be comfortably
- *  shorter than WORKER_STALE_CLAIM or a healthy long job reclaims itself. */
-const HEARTBEAT_MS     = parseInt(process.env.WORKER_HEARTBEAT_MS ?? '30000', 10);
-const POLL_BATCH_SIZE  = parseInt(process.env.WORKER_BATCH_SIZE ?? '5',    10);
+ *  shorter than WORKER_STALE_CLAIM_SECONDS or a healthy long job reclaims itself. */
+
 
 let pollTimeout: NodeJS.Timeout | null = null;
 let stopping = false;
@@ -335,7 +336,7 @@ async function pollOnce(pool: Pool, queue: EventQueue): Promise<void> {
     // and selects nothing.
     await reclaimStaleEvents(pool);
 
-    const events = await queue.poll(POLL_BATCH_SIZE);
+    const events = await queue.poll(workerCfg().batchSize);
     for (const event of events) {
       // Fire and forget — one failure must not block siblings.
       processEvent(pool, queue, event).catch(err =>
@@ -345,7 +346,7 @@ async function pollOnce(pool: Pool, queue: EventQueue): Promise<void> {
   } catch (err) {
     console.error('[Worker] Poll error:', err);
   }
-  pollTimeout = setTimeout(() => void pollOnce(pool, queue), POLL_INTERVAL_MS);
+  pollTimeout = setTimeout(() => void pollOnce(pool, queue), workerCfg().pollMs);
 }
 
 export function startWorker(pool: Pool, queue: EventQueue): void {
@@ -357,8 +358,9 @@ export function startWorker(pool: Pool, queue: EventQueue): void {
   // starts on a missing model URL claims events and fails each one, which is
   // the same outage reported N times instead of once, here.
   assertLlmConfig('Worker');
+  assertWorkerConfig();
   console.log(
-    `[Worker] Starting — polling every ${POLL_INTERVAL_MS}ms, batch size ${POLL_BATCH_SIZE}`,
+    `[Worker] Starting — polling every ${workerCfg().pollMs}ms, batch size ${workerCfg().batchSize}`,
   );
   void pollOnce(pool, queue);
 }

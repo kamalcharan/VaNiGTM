@@ -93,10 +93,12 @@ holds and is what the API is shaped around. The routes and the sidebar are
   VPS is the platform model; Haiku is the fallback; **no hardcoded value
   anywhere without his approval.** Every LLM setting is read by
   `agent-core/llm.config.ts` with NO defaults; the API and worker refuse to
-  start and list every missing variable. The in-code constants that remain
-  (template overhead, calibration margins) are listed for approval in
-  `docs/llm-config.md`. Never add `process.env.X ?? '<value>'` for an LLM
-  setting; add it to llm.config.ts and `.env.example`.
+  start and list every missing variable. That includes the budget/timeout
+  arithmetic, the BYOK provider list (`LLM_BYOK_PROVIDERS`, JSON) and the
+  worker's `WORKER_*` settings (`worker.config.ts`) — "it should move to
+  .env" (Charan, same day). `docs/llm-config.md` lists every variable. Never
+  add `process.env.X ?? '<value>'` for an LLM or worker setting; add it to
+  the config module and `.env.example`.
 - **LLM:** VPS/local OpenAI-compatible endpoint (`LLM_PRIMARY_URL`, dev =
   Ollama). Working dev model: `qwen3:8b` (pre-warm with `keep_alive:"24h"`;
   `llm.client.ts` appends `/no_think` and sends `Authorization: Bearer
@@ -803,7 +805,7 @@ claim has gone stale to `pending`, or fails it once `attempts` hits the cap so
 a poison event cannot loop.
 
 `started_at` doubles as a HEARTBEAT: `worker.ts` bumps it every 30s while a
-handler runs. That is what keeps `WORKER_STALE_CLAIM` at 2 minutes. A plain
+handler runs. That is what keeps `WORKER_STALE_CLAIM_SECONDS` at 120. A plain
 timeout would have to exceed the slowest agent — enrichment is 20+ minutes —
 so a worker that died after ten seconds would have sat undetected for half an
 hour.
@@ -812,8 +814,8 @@ Migration 253 also ADOPTS rows stranded before it existed, stamping them with
 `created_at` rather than `now()` so they are immediately stale rather than
 looking freshly claimed.
 
-Tunables: `WORKER_STALE_CLAIM` (default `2 minutes`), `WORKER_MAX_ATTEMPTS`
-(3), `WORKER_HEARTBEAT_MS` (30000).
+Tunables (from .env, no defaults since 2026-09-30): `WORKER_STALE_CLAIM_SECONDS`
+(120), `WORKER_MAX_ATTEMPTS` (3), `WORKER_HEARTBEAT_MS` (30000).
 
 ### Found while fixing it: `WHERE id IN (SELECT … LIMIT n)` does not limit
 

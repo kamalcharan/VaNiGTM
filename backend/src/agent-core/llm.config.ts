@@ -21,12 +21,15 @@
  * a value frozen when the module loaded is how a test ends up asserting
  * against the wrong configuration without knowing it.
  *
- * What is NOT here, deliberately: the numbers inside the algorithms (the 200
- * tokens reserved for the chat template, the 64 kept for a caller's wrapper,
- * the prefill factor, the calibration margins). They are properties of how
- * the budget is computed, not of the deployment; they are listed with their
- * reasons in docs/llm-config.md and stay in code by Charan's approval.
+ * That includes the numbers inside the algorithms — the tokens reserved for
+ * the chat template, the calibration margins, the prefill factor, the default
+ * answer size — and the list of providers a BYOK tenant may pick. They were
+ * proposed as in-code constants; Charan (2026-09-30): "it should move to
+ * .env". docs/llm-config.md explains each one.
  */
+
+/** A provider a BYOK tenant can choose; baseUrl null = the tenant supplies it. */
+export interface ByokProvider { label: string; baseUrl: string | null; defaultModel: string; keyRequired: boolean }
 
 export interface LlmConfig {
   /** The platform model — Charan's self-hosted qwen, OpenAI-compatible. */
@@ -57,6 +60,35 @@ export interface LlmConfig {
   haikuDefault: boolean;
   /** The Claude model used when the platform model is unreachable. Required when ANTHROPIC_API_KEY is set. */
   failoverModel: string | null;
+
+  // ── The budget and timeout arithmetic (docs/llm-config.md) ──
+  /** Tokens inside the window taken by the chat template and role markers. */
+  templateOverheadTokens: number;
+  /** Tokens kept back for a caller's own wrapper around budgeted text. */
+  budgetSlackTokens: number;
+  /** Safety factor on the ratio learned from a server's "too large" refusal (0–1]. */
+  overflowMargin: number;
+  /** Calls before a learned chars/token ratio is trusted over the guess. */
+  calibrationMinSamples: number;
+  /** Answers shorter than this measure latency, not speed, and are ignored. */
+  speedMinSampleTokens: number;
+  /** A measured speed may not exceed this multiple of LLM_TOKENS_PER_SEC. */
+  speedMaxMultiple: number;
+  /** How much faster the server reads a prompt than it writes an answer. */
+  prefillFactor: number;
+  /** Added to every derived timeout for connection and queueing. */
+  timeoutSlackMs: number;
+  /** Answer tokens when a caller names none. */
+  defaultMaxTokens: number;
+  /** Temperature when a caller names none. */
+  defaultTemperature: number;
+  /** Extraction answer reserve = window ÷ divisor, clamped to [min, max]; max when the window is unknown. */
+  extractAnswerDivisor: number;
+  extractAnswerMin: number;
+  extractAnswerMax: number;
+
+  /** Providers a BYOK tenant may pick (LLM_BYOK_PROVIDERS, JSON). */
+  byokProviders: Record<string, ByokProvider>;
 }
 
 /** Every variable this module reads, in the order .env.example lists them. */
@@ -65,6 +97,11 @@ export const LLM_ENV_VARS = [
   'LLM_PRIMARY_SYSTEM_SUFFIX', 'LLM_CONTEXT_TOKENS', 'LLM_MAX_CONCURRENT',
   'LLM_BYOK_MAX_CONCURRENT', 'LLM_CHARS_PER_TOKEN', 'LLM_TOKENS_PER_SEC',
   'HAIKU_DEFAULT', 'ANTHROPIC_API_KEY', 'LLM_FAILOVER_MODEL',
+  'LLM_TEMPLATE_OVERHEAD_TOKENS', 'LLM_BUDGET_SLACK_TOKENS', 'LLM_OVERFLOW_MARGIN',
+  'LLM_CALIBRATION_MIN_SAMPLES', 'LLM_SPEED_MIN_SAMPLE_TOKENS', 'LLM_SPEED_MAX_MULTIPLE',
+  'LLM_PREFILL_FACTOR', 'LLM_TIMEOUT_SLACK_MS', 'LLM_DEFAULT_MAX_TOKENS', 'LLM_DEFAULT_TEMPERATURE',
+  'LLM_EXTRACT_ANSWER_DIVISOR', 'LLM_EXTRACT_ANSWER_MIN', 'LLM_EXTRACT_ANSWER_MAX',
+  'LLM_BYOK_PROVIDERS',
 ] as const;
 
 export class LlmConfigError extends Error {
@@ -107,6 +144,35 @@ export function readLlmConfig(env: NodeJS.ProcessEnv = process.env): LlmConfig {
     return raw === 'true';
   };
 
+  const between = (name: string, lo: number, hi: number): number => {
+    const raw = str(name);
+    if (raw === '') return NaN;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < lo || n > hi) { problems.push(`${name}=${raw} must be between ${lo} and ${hi}`); return NaN; }
+    return n;
+  };
+
+  const providers = (): Record<string, ByokProvider> => {
+    const raw = str('LLM_BYOK_PROVIDERS');
+    if (raw === '') return {};
+    let parsed: unknown;
+    try { parsed = JSON.parse(raw); } catch {
+      problems.push('LLM_BYOK_PROVIDERS is not valid JSON'); return {};
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      problems.push('LLM_BYOK_PROVIDERS must be a JSON object keyed by provider code'); return {};
+    }
+    const out: Record<string, ByokProvider> = {};
+    for (const [code, v] of Object.entries(parsed as Record<string, any>)) {
+      const ok = v && typeof v.label === 'string' && v.label.trim()
+        && (v.baseUrl === null || (typeof v.baseUrl === 'string' && /^https?:\/\//.test(v.baseUrl)))
+        && typeof v.defaultModel === 'string' && typeof v.keyRequired === 'boolean';
+      if (!ok) { problems.push(`LLM_BYOK_PROVIDERS.${code} needs {label, baseUrl (http(s) URL or null), defaultModel, keyRequired}`); continue; }
+      out[code] = { label: v.label, baseUrl: v.baseUrl, defaultModel: v.defaultModel, keyRequired: v.keyRequired };
+    }
+    return out;
+  };
+
   const primaryUrl = str('LLM_PRIMARY_URL').replace(/\/+$/, '');
   if (primaryUrl && !/^https?:\/\//.test(primaryUrl)) problems.push(`LLM_PRIMARY_URL=${primaryUrl} is not an http(s) URL`);
 
@@ -123,7 +189,26 @@ export function readLlmConfig(env: NodeJS.ProcessEnv = process.env): LlmConfig {
     tokensPerSec:        num('LLM_TOKENS_PER_SEC', 0),
     haikuDefault:        bool('HAIKU_DEFAULT'),
     failoverModel:       null,
+
+    templateOverheadTokens: int('LLM_TEMPLATE_OVERHEAD_TOKENS', 0),
+    budgetSlackTokens:      int('LLM_BUDGET_SLACK_TOKENS', 0),
+    overflowMargin:         between('LLM_OVERFLOW_MARGIN', 0.01, 1),
+    calibrationMinSamples:  int('LLM_CALIBRATION_MIN_SAMPLES', 1),
+    speedMinSampleTokens:   int('LLM_SPEED_MIN_SAMPLE_TOKENS', 1),
+    speedMaxMultiple:       num('LLM_SPEED_MAX_MULTIPLE', 0),
+    prefillFactor:          num('LLM_PREFILL_FACTOR', 0),
+    timeoutSlackMs:         int('LLM_TIMEOUT_SLACK_MS', 0),
+    defaultMaxTokens:       int('LLM_DEFAULT_MAX_TOKENS', 1),
+    defaultTemperature:     between('LLM_DEFAULT_TEMPERATURE', 0, 2),
+    extractAnswerDivisor:   num('LLM_EXTRACT_ANSWER_DIVISOR', 0),
+    extractAnswerMin:       int('LLM_EXTRACT_ANSWER_MIN', 1),
+    extractAnswerMax:       int('LLM_EXTRACT_ANSWER_MAX', 1),
+
+    byokProviders:          providers(),
   };
+  if (cfg.extractAnswerMin > cfg.extractAnswerMax) {
+    problems.push(`LLM_EXTRACT_ANSWER_MIN (${cfg.extractAnswerMin}) is above LLM_EXTRACT_ANSWER_MAX (${cfg.extractAnswerMax})`);
+  }
 
   // The failover exists only when there is a key to fail over WITH; then its
   // model is required — which Claude model spends Vikuna's money is not

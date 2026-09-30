@@ -1,5 +1,5 @@
 /**
- * The LLM configuration every test runs under, stated in full.
+ * The LLM and worker configuration every test runs under, stated in full.
  *
  * Production reads these from .env with no defaults (agent-core/llm.config.ts),
  * so tests must supply them too — explicitly, here, rather than by the code
@@ -22,6 +22,31 @@ const TEST_LLM_ENV: Record<string, string> = {
   LLM_TOKENS_PER_SEC: '10',
   HAIKU_DEFAULT: 'true',
   LLM_FAILOVER_MODEL: 'claude-test-failover',
+  LLM_TEMPLATE_OVERHEAD_TOKENS: '200',
+  LLM_BUDGET_SLACK_TOKENS: '64',
+  LLM_OVERFLOW_MARGIN: '0.9',
+  LLM_CALIBRATION_MIN_SAMPLES: '3',
+  LLM_SPEED_MIN_SAMPLE_TOKENS: '50',
+  LLM_SPEED_MAX_MULTIPLE: '4',
+  LLM_PREFILL_FACTOR: '10',
+  LLM_TIMEOUT_SLACK_MS: '15000',
+  LLM_DEFAULT_MAX_TOKENS: '1000',
+  LLM_DEFAULT_TEMPERATURE: '0.2',
+  LLM_EXTRACT_ANSWER_DIVISOR: '8',
+  LLM_EXTRACT_ANSWER_MIN: '800',
+  LLM_EXTRACT_ANSWER_MAX: '3000',
+  LLM_BYOK_PROVIDERS: JSON.stringify({
+    openai: { label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o-mini', keyRequired: true },
+    anthropic: { label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-haiku-4-5', keyRequired: true },
+    groq: { label: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', defaultModel: 'llama-3.3-70b-versatile', keyRequired: true },
+    together: { label: 'Together AI', baseUrl: 'https://api.together.xyz/v1', defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', keyRequired: true },
+    custom: { label: 'Self-hosted', baseUrl: null, defaultModel: '', keyRequired: false },
+  }),
+  WORKER_POLL_MS: '3000',
+  WORKER_BATCH_SIZE: '5',
+  WORKER_HEARTBEAT_MS: '30000',
+  WORKER_STALE_CLAIM_SECONDS: '120',
+  WORKER_MAX_ATTEMPTS: '3',
 };
 for (const [k, v] of Object.entries(TEST_LLM_ENV)) {
   if (process.env[k] === undefined) process.env[k] = v;

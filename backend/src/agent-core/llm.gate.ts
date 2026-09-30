@@ -85,9 +85,9 @@ export function platformContextTokens(): number { return platformContext(); }
  * Headroom left for the chat template, role markers and the server's own
  * bookkeeping, which are inside the window and not inside our string.
  */
-const OVERHEAD_TOKENS = 200;
+const overheadTokens = () => cfg().templateOverheadTokens;   // LLM_TEMPLATE_OVERHEAD_TOKENS
 /** Kept back by charBudgetFor for the caller's own wrapper around the budgeted text. */
-export const BUDGET_SLACK_TOKENS = 64;
+export const budgetSlackTokens = () => cfg().budgetSlackTokens;   // LLM_BUDGET_SLACK_TOKENS
 
 import type { Pool, PoolClient } from 'pg';
 import { readLlmConfig } from './llm.config';
@@ -268,13 +268,13 @@ export function noteObservedTokens(model: string, chars: number, promptTokens: n
 export function noteContextOverflow(model: string, chars: number, reservedOutputTokens: number): void {
   const window = platformContext();
   if (!model || chars <= 0 || window <= 0) return;
-  const room = window - OVERHEAD_TOKENS - Math.max(0, reservedOutputTokens);
+  const room = window - overheadTokens() - Math.max(0, reservedOutputTokens);
   if (room <= 0) return;
-  const bound = (chars / room) * 0.9;
+  const bound = (chars / room) * cfg().overflowMargin;
   if (!Number.isFinite(bound) || bound < 1) return;
   const prev = observed.get(model);
   if (prev && prev.minRatio <= bound) return;    // already budgeting tighter than this bound
-  observed.set(model, { minRatio: bound, samples: Math.max(prev?.samples ?? 0, 3) });
+  observed.set(model, { minRatio: bound, samples: Math.max(prev?.samples ?? 0, cfg().calibrationMinSamples) });
 }
 
 /* ── How fast the model actually answers ──────────────────────────────── */
@@ -291,7 +291,7 @@ const speed = new Map<string, { minTps: number; samples: number }>();
 export function noteObservedSpeed(model: string, completionTokens: number, ms: number): void {
   // Under 50 tokens the per-token time is dominated by prefill and latency,
   // not generation — a bad sample, not a slow model.
-  if (!model || completionTokens < 50 || ms <= 0) return;
+  if (!model || completionTokens < cfg().speedMinSampleTokens || ms <= 0) return;
   const tps = completionTokens / (ms / 1000);
   if (!Number.isFinite(tps) || tps <= 0) return;
   const prev = speed.get(model);
@@ -302,13 +302,13 @@ export function noteObservedSpeed(model: string, completionTokens: number, ms: n
 export function tokensPerSec(model?: string): number {
   const o = model ? speed.get(model) : undefined;
   const guess = coldTokensPerSec();
-  return o ? Math.min(o.minTps, guess * 4) : guess;
+  return o ? Math.min(o.minTps, guess * cfg().speedMaxMultiple) : guess;
 }
 
 /** Never trust a learned ratio to be MORE generous than the heuristic without
  *  evidence from several calls — one short prompt is not a calibration. */
 const effective = (o: { minRatio: number; samples: number }) =>
-  (o.samples >= 3 ? o.minRatio : Math.min(o.minRatio, coldCharsPerToken()));
+  (o.samples >= cfg().calibrationMinSamples ? o.minRatio : Math.min(o.minRatio, coldCharsPerToken()));
 
 /**
  * Chars per token: the densest ratio seen for this model, or the heuristic.
@@ -358,7 +358,7 @@ export function charBudgetFor(
   if (window <= 0) return Number.MAX_SAFE_INTEGER;   // window unknown, do not cap
   // Slack for what the caller wraps around the text it budgets — a heading,
   // a role line — which the check will count and the budget did not see.
-  const usable = window - OVERHEAD_TOKENS - reserveOutputTokens - BUDGET_SLACK_TOKENS;
+  const usable = window - overheadTokens() - reserveOutputTokens - budgetSlackTokens();
   const left = usable - estimateTokens(fixedText, model);
   return left <= 0 ? 0 : Math.floor(left * charsPerToken(model));
 }
@@ -388,7 +388,7 @@ export function checkContext(
   const window = platformContext();
   if (posture !== 'platform' || window <= 0) return null;
   const estimatedPromptTokens = estimateTokens(text, model);
-  const budgetTokens = window - OVERHEAD_TOKENS;
+  const budgetTokens = window - overheadTokens();
   return {
     estimatedPromptTokens,
     reservedOutputTokens: maxTokens,
