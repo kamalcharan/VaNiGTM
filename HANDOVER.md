@@ -57,6 +57,27 @@ in code, verified under BOTH roles by `backend/scripts/rls-runtime-probe/`
 tenant can finish the Domain step under `vanigtm_app`. Procedure, preflight
 and the 12-item test list: `DEPLOY.md` §4b. Evidence: `docs/db/rls-status.md` §14.
 
+## Later on 2026-09-30 — C6, C5, .env-only LLM config (all on `claude/wizardly-darwin-778r2w`, not merged)
+
+- **C6 done:** the worker claims only event types it handles; unhandled ones
+  wait in `pending` with a `waiting_reason` (`runs.events`), and run when an
+  agent subscribes.
+- **C5 done:** the platform LLM limit spans every process (Postgres advisory
+  locks, `LLM_MAX_CONCURRENT` slots per endpoint), tested with real processes.
+- **Every LLM and worker setting comes from `.env`, no defaults** (Charan).
+  Platform model = qwen on Vikuna's VPS, 16k context; Haiku = fallback. The
+  API and worker refuse to start and name what is missing — **the VPS `.env`
+  must carry the full block before this branch is deployed** (`backend/.env.example`,
+  `docs/llm-config.md`). `WORKER_STALE_CLAIM` became `WORKER_STALE_CLAIM_SECONDS`.
+  One approved exception: the BYOK provider menu stays in code. Other backend
+  constants (DB pool size, list limits, crawl limits) were deliberately left
+  alone — "leave it".
+- **Track H corrected and parked, no urgency:** ONE repo — website under `web/`,
+  `vani-app/`, `backend/` in VaNiGTM; `frontend/` deleted with every reference;
+  vikunawebsite archived. `documents/POA-2026-09-30-repo-consolidation.md`.
+- **Still waiting on Charan:** migration 259 approval and the `vanigtm_app`
+  switch (`DEPLOY.md` §4b); the Phase 4 gate; merging this branch to `main`.
+
 ## Next session, in order
 
 1. **Phase 4 gate** (POA B1, the one open item of Track B): with the API
