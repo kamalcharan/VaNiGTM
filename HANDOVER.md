@@ -118,6 +118,21 @@ POA listed it by mistake. Left: domain-pack, Vara compose/match. Offers and
 brand join `loadBrain` with the first agent that needs them, after the change
 in that agent's output is agreed. No schema change.
 
+**Deployed 2026-09-30 ~13:47: `main` at e62b2a6 on the Main VPS** (D2 as
+above + deploy-vani.sh reloading nginx). Charan: DB working, app reachable,
+running as `vanigtm_app` — DEPLOY §4b test #2 passed. Earlier the same day
+the role switch caused a 502: the recreate gave vani-backend a new IP and
+nginx still pointed at the old one (error log: `connect() failed (111)` to
+172.18.0.4). Fixed by an nginx reload; the script now does it and checks
+/health through nginx. Still open: the first `[LLM]` line on Haiku — no agent
+has run since the deploy, so there is nothing to see yet.
+
+**D2 is complete for every Brain reader.** Domain-pack and Vara were listed
+but read no Brain: the domain-pack agent gets only the industry string on
+purpose (platform packs must not carry a tenant's Brain), and Vara reads
+`vn_tenant_profiles.industry` (registration). Vara reading the Brain instead
+is a D3 decision for Charan, not a conversion.
+
 **Also 2026-09-30 (Charan): the Phase 4 gate passed and the runtime role is
 now `vanigtm_app` — RLS is enforced in production.** Track B is done; Track F
 waits only on D9 (consent). Still to check: the first `[LLM]` line in the
