@@ -76,7 +76,7 @@ track stalls on an unanswered question.
 | D6 | Embedding provider (Haiku has no embeddings; Ollama is off the path) | Env-configured OpenAI-compatible `/v1/embeddings` endpoint; provider named in `.env` | D4 |
 | D7 | Vector columns on `gt_kg_nodes`, `gt_tenant_profile`, `gt_semantic_clusters` | Approve (§7); pgvector is already on the VPS | D4 |
 | D8 | Per-field provenance on `gt_tenant_profile` | Approve the JSONB shape (§7); no new table | D1 |
-| D9 | Consent / suppression model, one for GTM outreach and Vara intake | Design first (D-track), approve, then F2 | F2, G |
+| D9 | Consent / suppression model, one for GTM outreach and Vara intake | **Design written 2026-09-30: `documents/design-notes-consent.md` — six sub-decisions D9-a…f, awaiting Charan.** Keeps `vara_consent`; adds `vani_consent_text` + `vani_suppression` (append-only, keyed hash); one `mayContact` gate. GTM's lawful basis (D9-e) needs legal advice | F2, G |
 | D10 | Vara seniority: modifier on the family shape vs pack per level | Modifier | F |
 | D11 | Vara: tenant shape supersedes at take-time (built) vs first publish | Keep take-time; say it in the UI | F |
 | D12 | Lane-aware onboarding status; industry as a master list (Aug 27 D1/D2) | Lane-aware status: yes. Industry list: draft 254 in `documents/drafts/` becomes real | E, F |
