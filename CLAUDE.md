@@ -1,5 +1,13 @@
 # CLAUDE.md — VaNi GTM (Vikuna GTM Engine)
 
+> **Read first (2026-09-30):** `ARCH.md` (the common architecture every slice
+> obeys) and `AGENTS.md` (the agent contract, harness, prompt contracts,
+> evaluation). They are INTENDED architecture; the product is corrected to
+> them. The specs are `documents/spec/PLATFORM.md`, `VARA.md`, `GTM.md`; the
+> plan is `documents/POA-2026-09-30-platform.md` (+ `-repo-consolidation.md`).
+> This file is the working notebook — rulings, traps, recipes — and defers to
+> those where they overlap.
+
 ## What is this repo?
 VaNi GTM — a multi-tenant, agent-powered go-to-market engine. A tenant (each
 Vikuna product, or any external company) signs up; VaNi learns their business
@@ -106,7 +114,7 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…253 (highest = 253; TWO files are numbered 249)
+  migrations/         — 001…258 (highest = 258; TWO files are numbered 249)
 frontend/            — ⚠️ RETIRED (2026-09-16). Still on disk, still builds,
                       NOT the product. The frontend is vikunawebsite/vani-app.
                       Kept for reference; do not add features here.
@@ -202,7 +210,9 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
 - **Knowledge graph:** `gt_kg_nodes`/`gt_kg_edges`, UPSERT on
   (tenant_id, label, name). VaNi conversation + ingestion both write here;
   `gt_tenant_profile` is the typed projection (completion score 0–100,
-  product/icp/gtm/vision weights 40/30/20/10, `is_complete` = score ≥ 60).
+  Brain weights icp 25 · brand 20 · offers 20 · competitors 15 · vocabulary 10 ·
+  research 10 (`BRAIN_WEIGHTS` in profile.service — the dashboard reads the
+  same export; this line used to say 40/30/20/10), `is_complete` = score ≥ 60).
 - **Prompts:** `gt_prompts` (system + tenant override), key format
   `<skill>.<name>` — e.g. `vani-skill.gather`.
 - **Market vocabulary:** `gt_semantic_clusters` (migration 192) — 3–5
@@ -317,11 +327,14 @@ because a date format or a token convention is worth not re-deciding.
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **253**. **Two files
+  status: `npm run db:migrate -- --status`. Highest = **258**. **Two files
   share the number 249** (`249_ki_import_sessions_needs_review.sql` and
   `249_vara_domain_pack_research_prompt.sql`); the runner keys on the full
   filename, production has both recorded, so they stay as they are — the next
-  migration is 254, and never reuse a number again.
+  migration is 259, and never reuse a number again. 254–258 are the Aug 29
+  Platform Channel branch's 247–251, renumbered when it was finally merged on
+  2026-09-30 (`boot_pings`, `vara_answer_cache`, `vani_agent_intent`,
+  `vani_intent_match`, seed intents).
 - **`⚠ modified` on a Windows checkout is line endings, not an edit.** The
   checksum is MD5 of the file bytes; a CRLF checkout of 239 hashes to
   f43d515a…, the LF file and the DB both say 6e6c8dca… (verified 2026-09-29).
@@ -699,7 +712,7 @@ running. Every one is environmental — no code defect among them.
 | `LLM_VPS_UNREACHABLE: Cannot reach https://llm.dristiq.com` (timeout) | 4 | A later remote model that timed out |
 | `URL_EMPTY_CONTENT: https://vikuna.io/ yielded 6 chars` | 4 | vikuna.io is a Vite SPA. The static crawl gets nothing; the n8n headless escalation is the only path for JS sites |
 | `SEARCH_NOT_CONFIGURED: SEARXNG_URL is not set` | 1 | Competitor search was never deployed |
-| `relation "gt_tenant_brand" does not exist` | 1 | Latest failure, 2026-08-15. The brand pull queries a table that exists in NO branch of this repo — see below |
+| `relation "gt_tenant_brand" does not exist` | 1 | Failure of 2026-08-15. The table is `193_gt_tenant_brand.sql` and IS in this repo (checked 2026-09-30); the note below that said "no branch" was written before it was committed. The failure was an unapplied migration, not missing code |
 
 ### Two things that need a decision, not a fix
 
@@ -720,12 +733,12 @@ tells you how a deploy restarts it, or whether it comes back after a reboot.
 Bring it into the repo's compose (~400MB; the box had 4.3Gi free on 2026-08-17)
 or commit the unit file next to it, so the restart path is reviewable.
 
-**2. `gt_tenant_brand` is referenced by code that is not in this repo.** Not in
-`backend/src`, not in `backend/migrations`, not on any remote branch. The image
-running before 2026-08-17 was therefore built from an uncommitted working tree.
-Commit that work before the next rebuild, or it is lost — the pre-rebuild image
-was preserved as `vikuna/vani-backend:pre-onboarding-20260817` on the VPS, which
-is the only remaining copy.
+**2. `gt_tenant_brand` — RESOLVED (checked 2026-09-30).** This entry said the
+table was referenced by code in no branch. `backend/migrations/193_gt_tenant_brand.sql`
+is in the repo and applies cleanly on a fresh build; the 2026-08-15 failure was
+a migration not yet applied on the VPS, not missing code. The
+`vikuna/vani-backend:pre-onboarding-20260817` image is no longer the only copy
+of anything. Lesson kept: an environmental finding is true of a moment.
 
 ### The queue reclaims orphans now — FIXED 2026-09-17 (migration 253)
 

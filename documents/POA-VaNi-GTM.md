@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-09-30** by `POA-2026-09-30-platform.md`. Kept for history; do not plan from it.
+
 # VaNi GTM Engine — Plan of Action
 
 > v1.0 · 2026-05-13 · Execution plan for `PRD-VaNi-GTM.md`.

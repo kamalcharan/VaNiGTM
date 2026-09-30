@@ -9,6 +9,21 @@
 
 # ▶ RESTART HANDOVER — 2026-09-29, evening (read this first)
 
+**2026-09-30, later: Tracks A and B of the POA are DONE** (Charan: "complete
+task A + B"). A: `ARCH.md`, `AGENTS.md`, `documents/spec/{PLATFORM,VARA,GTM}.md`;
+the May POA, the May agent spec and the Aug Vara POA are marked superseded.
+B: the Aug 29 Vara branch is merged (migrations renumbered 254–258, all 258
+apply on a fresh DB with pgvector); the failover-approval defect is fixed with
+a DB test; `runs` / `dashboard` / `agents` / `vara.journey` / `gtm.journey`
+skills exist and the console reads them (dashboard opens on the Brain; /runs,
+/runs/:id, /runs/events, /runs/awaiting are real); CLAUDE.md drift fixed.
+**Not done, needs a deploy and a person:** the Phase 4 gate (paste the snippet
+on a real page, watch a boot land). **Follow-ups recorded:** the worker still
+resolves an unhandled event as `done` (the read reports it; Track C6 changes
+the worker); `vani/embed.routes.ts` and `intent.ts` use raw `pool.query`
+(predate the withTenantClient conversion; none of their tables is FORCE RLS);
+Edge's journey stays a labelled preview.
+
 **2026-09-30: the plan is `documents/POA-2026-09-30-platform.md`** — seven
 tracks (foundations · unblock · harness · brain · funnel · Vara · GTM), a
 decisions register with defaults, the schema list, and a four-week sequence.

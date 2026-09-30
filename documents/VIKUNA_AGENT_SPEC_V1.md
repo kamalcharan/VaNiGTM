@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-09-30** by `AGENTS.md` (the agent contract) and `ARCH.md`. This was the May build instruction for agent-core and vani-skill; the code exists and has moved on. Kept for history.
+
 # Vikuna GTM — Agent Infrastructure Spec
 ## Version 1.1 · May 2026 · Status: Ready for Claude Code
 
