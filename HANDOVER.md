@@ -133,6 +133,20 @@ purpose (platform packs must not carry a tenant's Brain), and Vara reads
 `vn_tenant_profiles.industry` (registration). Vara reading the Brain instead
 is a D3 decision for Charan, not a conversion.
 
+**Deployed 2026-09-30 (late): `main` at 3762365 — the contact gate (D9,
+unused yet) and the website preview before signup (E1).** Verified on
+production: `contractnest.com` → a real card from the live site; the same site
+re-entered as `http://www.ContractNest.com/` → `reused: site`, instant, own
+token; the worker logged ONE model call — `claude-haiku-4-5: 2136 prompt + 426
+answer tokens in 5.0s` (also the first confirmed Haiku call through the new
+code). 259–261 had been run by pasting SQL, so were unrecorded; re-applied
+through the runner (idempotent, rehearsed first). `.env` gained
+`SUPPRESSION_HASH_KEY`, `FUNNEL_IP_HASH_KEY` and five `FUNNEL_*` values
+(suggested: 5 new reads/IP/hour, 500,000 tokens/day, 7 days, 10 min timeout,
+720 h reuse — Charan's to change). Nothing visible to visitors until E2 (the
+landing page) exists. Open: the tenant ingestion fetch has no SSRF guard
+(src/funnel/site.ts has one).
+
 **Also 2026-09-30 (Charan): the Phase 4 gate passed and the runtime role is
 now `vanigtm_app` — RLS is enforced in production.** Track B is done; Track F
 waits only on D9 (consent). Still to check: the first `[LLM]` line in the
