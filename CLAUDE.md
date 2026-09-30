@@ -155,8 +155,10 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   (resolved from JWT, never the request body).
 
 ### RLS — current reality (important)
-- **The runtime connects as `vanigtm_app` since 2026-09-30 (Charan switched it
-  per `DEPLOY.md` §4b) — RLS is ENFORCED.** A raw `pool.query` against an RLS
+- ⚠️ **Checked on the VPS 2026-09-30 ~23:40: the runtime is `vikuna_admin` — the switch below
+  is NOT in effect, RLS is NOT enforced in production** (DEPLOY.md §4b warning). Local
+  `.env`s may still use `vanigtm_app`, so a laptop can pass what production never checks.
+- **Intended: the runtime connects as `vanigtm_app` (DEPLOY.md §4b) — RLS ENFORCED.** A raw `pool.query` against an RLS
   table now returns nothing; every tenant read goes through `withTenantClient`
   / `createTenantDb`. Application-layer `WHERE tenant_id` filters stay as the
   second layer. Until that day the runtime was `vikuna_admin` (SUPERUSER and

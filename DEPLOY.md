@@ -193,6 +193,8 @@ EOF
 
 ## 4b. Switching the runtime role to `vanigtm_app` (decided 2026-09-30)
 
+> ⚠️ **CHECKED 2026-09-30 ~23:40 on the VPS: the runtime is `vikuna_admin` again** (`select current_user` inside vani-backend). The compose `.env` had no `DB_MIGRATE` and its `DB_PRIMARY` is the owner, so either step 5 below was never applied on the box or a later whole-file `.env` swap (the Haiku/qwen `cp`) restored the old line. RLS is therefore NOT enforced in production; isolation is the code's `WHERE tenant_id` only. `DB_MIGRATE` was added (owner URL) the same night so migrations run through the runner. Redo §4b step 5 deliberately, and swap LLM settings by editing the `LLM_*` lines, never by copying a whole file over `.env`.
+
 Today the API and worker connect as `vikuna_admin` — SUPERUSER + BYPASSRLS —
 so every RLS policy is skipped and tenant isolation is only the
 `WHERE tenant_id = …` in the code. The switch makes the database enforce it.
@@ -330,7 +332,7 @@ Restore on failure: copy the `.bak-…` file back and reload.
 | API port | 3001 in the container; public only through nginx |
 | Platform LLM | **Haiku as primary since 2026-09-30 evening (Charan: "let haiku run now")**: `claude-haiku-4-5` at `https://api.anthropic.com/v1`, window 100000, 4 at a time, no system suffix. The qwen settings (`qwen3-4b` at `http://vikuna-llm:8080`, window 16384, 1 at a time, suffix `/no_think`) are kept in the compose dir as `.env.bak-qwen-<date>`; restoring is `cp` of that file + recreate |
 | Database | `vani_gtm_db` |
-| Runtime DB role | **`vanigtm_app`** since 2026-09-30 (switched by Charan per §4b) — RLS is enforced. `DB_MIGRATE` keeps the owner connection for the migration runner. Before the switch: `vikuna_admin` (SUPERUSER + BYPASSRLS) |
+| Runtime DB role | **`vikuna_admin` as checked 2026-09-30 23:40** — the §4b switch to `vanigtm_app` is not in effect on the box (see the warning at §4b); RLS is NOT enforced. Intended: `vanigtm_app`. `DB_MIGRATE` keeps the owner connection for the migration runner. Before the switch: `vikuna_admin` (SUPERUSER + BYPASSRLS) |
 | Console | `vani.vikuna.io` (Vercel, vikunawebsite repo, root `vani-app/`); env `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` |
 | Website | `www.vikuna.io` (Vercel, vikunawebsite repo, root `/`) |
 | Other vhosts on the same nginx | `dristiq.com`, `mcp-db.dristiq.com` (the read-only DB MCP) — not ours to change from here |
