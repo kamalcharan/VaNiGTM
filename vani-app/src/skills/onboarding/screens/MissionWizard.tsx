@@ -36,7 +36,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { callSkill } from '@/lib/useSkill';
-import { useToast } from '@/platform/feedback';
+import { useToast, VaniLoader } from '@/platform/feedback';
 import { useMissionOnboarding } from '../useOnboarding';
 import { useMissionHandoff } from '../useMissionHandoff';
 import { useAuth } from '@/context/auth-provider';
@@ -146,6 +146,20 @@ interface TenantBrand {
 }
 
 type ColorRole = 'primary_color' | 'secondary_color' | 'accent_color';
+
+/** True when a brand holds anything a draft or a person put there. */
+function brandHasContent(b: TenantBrand): boolean {
+  const lists = [b.voice_tone, b.always_say, b.never_say, b.proof].some((l) => Array.isArray(l) && l.length > 0);
+  const v = (b.visual ?? {}) as Record<string, unknown>;
+  return lists || ['primary_color', 'secondary_color', 'accent_color'].some((k) => typeof v[k] === 'string' && v[k] !== '');
+}
+
+/** The brand fields in the words the step uses — for "Filled from your site: …". */
+const BRAND_FIELD_WORDS: Record<string, string> = {
+  voice_tone: 'voice', always_say: 'what you always say', never_say: 'what you never say', proof: 'proof',
+  primary_color: 'primary colour', secondary_color: 'secondary colour', accent_color: 'accent colour',
+  logo_url: 'logo', typography: 'typeface',
+};
 
 const COLOR_ROLES: { key: ColorRole; label: string; desc: string }[] = [
   { key: 'primary_color', label: 'Primary', desc: 'Your main color — buttons, links, primary actions.' },
@@ -1007,7 +1021,10 @@ export default function MissionWizardPage() {
     let cancelled = false;
     (async () => {
       const existing = await loadBrand();
-      if (cancelled || existing) return;
+      // A brand row that holds nothing at all (a first draft that failed,
+      // then an empty field saved) is drafted too — only a brand with
+      // something in it is left for the person to regenerate by choice.
+      if (cancelled || (existing && brandHasContent(existing))) return;
       setGeneratingBrand(true);
       try {
         const res = await apiFetch<{ brand: TenantBrand }>(API.gtmProfile.generateBrand);
@@ -1114,9 +1131,14 @@ export default function MissionWizardPage() {
     setGeneratingBrand(true);
     setBrandEdits({});
     try {
-      const res = await apiFetch<{ brand: TenantBrand }>(API.gtmProfile.generateBrand);
+      const res = await apiFetch<{ brand: TenantBrand; filled?: string[] }>(API.gtmProfile.generateBrand);
       setBrand(res.brand);
-      showToast({ message: 'Redrafted from your site', type: 'success' });
+      // Say what actually changed. Fields you wrote are never overwritten, so
+      // a redraft can legitimately change nothing — and must say so.
+      const filled = res.filled ?? [];
+      showToast(filled.length
+        ? { message: `Filled from your site: ${filled.map((f) => BRAND_FIELD_WORDS[f] ?? f).join(', ')}`, type: 'success' }
+        : { message: 'Your site gave nothing new — what you wrote is kept. Fill the rest by hand.', type: 'info' });
     } catch (err) {
       showToast({ message: (err as ApiError).message || 'Could not redraft the brand', type: 'error' });
     } finally {
@@ -1849,8 +1871,14 @@ export default function MissionWizardPage() {
               confirmLabel="Confirm &amp; enter mission control →"
               loading={generatingBrand || approvingBrand || finishing}
             >
-              {generatingBrand && !brand && (
-                <VdfKgLoader message="Reading your site for voice, claims and proof" />
+              {/* Every draft — the first one AND a regenerate — shows the wait.
+                  It used to show only when no brand existed yet, so a
+                  regenerate looked like nothing happening for a minute. */}
+              {generatingBrand && (
+                <VaniLoader
+                  message="Reading your site for voice, colours, claims and proof"
+                  hint="VaNi opens your homepage, renders it if it needs JavaScript, then drafts. Up to a minute."
+                />
               )}
               {/* Persistent completeness signal — replaces a one-time success
                   toast that couldn't tell you WHICH fields still needed you.
