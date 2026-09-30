@@ -35,6 +35,9 @@ TRACK E  Funnel           landing → pre-signup crawl → signup → agent cata
 TRACK F  Vara             Phase 4 gate · consent · candidate lifecycle · import
 TRACK G  GTM              pool landing · ICP data structure · people · cleanup source
          Edge backend     after the entitlement model (Track E) exists
+TRACK H  One repository   vani-app moves into VaNiGTM; frontend/ retired; website slimmed
+                          — its own plan: POA-2026-09-30-repo-consolidation.md. Lands in
+                          week 1 after B1, before any Track C/D code, so nothing moves twice.
 ```
 
 A and B start together. C and D start once A is written, because they are
@@ -166,7 +169,7 @@ Everything else in this plan is code over existing tables.
 ## 11. Sequencing, first four weeks
 
 ```
-Week 1   A1 ARCH.md · A2 AGENTS.md · B1 merge + Phase 4 gate · B2 failover fix
+Week 1   A1 ARCH.md · A2 AGENTS.md · B1 merge + Phase 4 gate · B2 failover fix · H1–H4 one repo
 Week 2   A3 PLATFORM spec · B3 visibility · B4 journey readers + dashboard · C1 run table
 Week 3   A4/A5 Vara + GTM specs · C2 contracts + primitives · D1 provenance · D2 brain.context
 Week 4   C3 evals · C5 lanes · D3 Vara in the graph · E1/E2 funnel front half

@@ -12,8 +12,10 @@
 **2026-09-30: the plan is `documents/POA-2026-09-30-platform.md`** — seven
 tracks (foundations · unblock · harness · brain · funnel · Vara · GTM), a
 decisions register with defaults, the schema list, and a four-week sequence.
-It supersedes the May POA and the Aug 27 Vara POA. Read it before §1–§3
-below; those remain the evidence it was built on.
+It supersedes the May POA and the Aug 27 Vara POA. Its Track H is
+`documents/POA-2026-09-30-repo-consolidation.md`: vani-app moves into this
+repo, `frontend/` is deleted, vikunawebsite goes back to being the website.
+Read both before §1–§3 below; those remain the evidence they were built on.
 
 **Edge is built. The Vara diff is done — §2 below is the open list**
 (written 2026-09-29, late). It opens with a blocker: nine Vara backend
