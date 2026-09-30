@@ -27,7 +27,22 @@ jest.mock('../../skills/profile-skill/profile.drafter', () => ({
   }),
 }));
 
-import { submitSite, siteStatus, runSiteRead, claimSite, FUNNEL_TENANT_SLUG } from '../funnel.service';
+const graphCalls: string[] = [];
+let graphImpl: () => Promise<unknown> = async () => ({
+  status: 'read', truncated: false, chunks_read: 1, chunks_total: 1,
+  nodes: [
+    { id: 'n1', label: 'Product', name: 'Acme', description: 'Invoicing for plumbers', properties: { source_url: 'https://contractnest.com/' } },
+    { id: 'n2', label: 'ICP', name: 'Plumbers', description: 'Small plumbing firms', properties: {} },
+  ],
+  edges: [{ id: 'e1', from_node_id: 'n1', to_node_id: 'n2', relationship: 'TARGETS' }],
+});
+jest.mock('../site-graph', () => ({
+  readSiteGraph: jest.fn(async (_p: unknown, tenantId: string) => { graphCalls.push(tenantId); return graphImpl(); }),
+}));
+
+import { submitSite, siteStatus, runSiteRead, claimSite, requestAccess, FUNNEL_TENANT_SLUG } from '../funnel.service';
+import { createTenantDb } from '../../db/query';
+import { list_requests } from '../../skills/access-skill/functions/list-requests';
 import { createRun } from '../../agent-core/agent.runner';
 
 const HOST = process.env.PGHOST || '/tmp';
@@ -51,6 +66,7 @@ const ENV = {
   FUNNEL_REUSE_HOURS: '720', FUNNEL_MAX_PER_IP_PER_HOUR: '2', FUNNEL_SESSION_DAYS: '7',
   FUNNEL_DAILY_TOKEN_LIMIT: '50000', FUNNEL_READ_TIMEOUT_MINUTES: '10',
   FUNNEL_IP_HASH_KEY: 'funnel-test-key-0123456789abcdef0123456789',
+  FUNNEL_GRAPH_MAX_CHUNKS: '3', FUNNEL_LEADS_TENANT_SLUG: 'fa',
 };
 
 beforeAll(async () => {
@@ -120,6 +136,16 @@ d('the three layers — a revisit never pays twice', () => {
     expect(JSON.stringify(s)).not.toContain('invoices for plumbers and gets them paid');   // page text is never shown
   });
 
+  it('the same read carries the digital audit (static page) and the graph, under the funnel tenant', async () => {
+    const s = await siteStatus(app, tokenA);
+    expect(s.audit).toEqual({ present: ['title', 'body_text'], missing: ['meta_description', 'og_tags', 'json_ld'] });
+    expect(s.graph).toMatchObject({ partial: false, edges: [{ from_node_id: 'n1', to_node_id: 'n2', relationship: 'TARGETS' }] });
+    expect(s.graph?.nodes.map((n) => n.name)).toEqual(['Acme', 'Plumbers']);
+    expect(s.graph_failure).toBeNull();
+    expect(s.read_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(graphCalls).toEqual([funnelTenant]);
+  });
+
   it('layer 1: the same visitor comes back with their token → their own session', async () => {
     const r = await submitSite(app, { website: 'contractnest.com', ip: '9.9.9.9', token: tokenA });
     expect(r).toMatchObject({ reused: 'session', token: tokenA, status: 'read' });
@@ -153,6 +179,27 @@ d('limits and failures', () => {
     expect(s.failure).toMatch(/HTTP 503/);
   });
 
+  it('a graph that cannot be read keeps the card, and says why', async () => {
+    const r = await submitSite(app, { website: 'nograph.test', ip: '6.6.6.7' });
+    const was = graphImpl;
+    graphImpl = async () => ({ status: 'failed', failure: 'VaNi found nothing specific enough on this page to build a graph from.' });
+    try { await runQueuedRead(); } finally { graphImpl = was; }
+    const s = await siteStatus(app, r.token);
+    expect(s).toMatchObject({ status: 'read', card: { product_name: 'Acme' }, graph: null });
+    expect(s.graph_failure).toMatch(/nothing specific enough/);
+    expect(s.audit).not.toBeNull();
+  });
+
+  it('a graph read that THROWS is recorded as a failed graph, never as a failed card', async () => {
+    const r = await submitSite(app, { website: 'graphthrows.test', ip: '6.6.6.8' });
+    const was = graphImpl;
+    graphImpl = async () => { throw new Error('LLM_VPS_UNREACHABLE: timeout'); };
+    try { await runQueuedRead(); } finally { graphImpl = was; }
+    const s = await siteStatus(app, r.token);
+    expect(s).toMatchObject({ status: 'read', graph: null });
+    expect(s.graph_failure).toMatch(/could not finish reading/);
+  });
+
   it('a read stuck past the timeout reads as failed, and the next visitor starts a fresh one', async () => {
     const r = await submitSite(app, { website: 'stuck.test', ip: '7.7.7.7' });
     await owner.query(`UPDATE vani_anon_site_read SET created_at = now() - interval '1 hour' WHERE website_host = 'stuck.test'`);
@@ -177,6 +224,12 @@ d('claim after signup', () => {
     expect(ev.rows[0].payload).toMatchObject({ source_id: r.source_id, from: 'funnel' });
     const p = await owner.query(`SELECT product_name, product_category, source FROM gt_tenant_profile WHERE tenant_id = $1`, [A]);
     expect(p.rows[0]).toEqual({ product_name: 'Acme', product_category: 'Invoicing', source: 'vani' });
+    // …and the preview's graph is now the tenant's own
+    expect(r.graph_written).toEqual({ nodes: 2, edges: 1, failed: 0 });
+    const nodes = await owner.query(`SELECT label, name, properties->>'from' AS "from" FROM gt_kg_nodes WHERE tenant_id = $1 ORDER BY label`, [A]);
+    expect(nodes.rows).toEqual([{ label: 'ICP', name: 'Plumbers', from: 'website preview' }, { label: 'Product', name: 'Acme', from: 'website preview' }]);
+    const edges = await owner.query(`SELECT relationship FROM gt_kg_edges WHERE tenant_id = $1`, [A]);
+    expect(edges.rows).toEqual([{ relationship: 'TARGETS' }]);
   });
 
   it('claiming again is harmless; another workspace cannot take it', async () => {
@@ -184,11 +237,84 @@ d('claim after signup', () => {
     await expect(claimSite(app, B, token)).rejects.toThrow(/ALREADY_CLAIMED/);
     const bSources = await owner.query(`SELECT count(*)::int n FROM gt_kb_sources WHERE tenant_id = $1`, [B]);
     expect(bSources.rows[0].n).toBe(0);
+    expect((await owner.query(`SELECT count(*)::int n FROM gt_kg_nodes WHERE tenant_id = $1`, [B])).rows[0].n).toBe(0);
   });
 
   it('a failed or unknown preview has nothing to keep', async () => {
     const failedToken = (await submitSite(app, { website: 'broken.test', ip: '4.4.4.5' })).token;
     await expect(claimSite(app, B, failedToken)).rejects.toThrow(/NOT_READY/);
     await expect(claimSite(app, B, 'no-such-token')).rejects.toThrow(/NOT_FOUND/);
+  });
+});
+
+d('request access (closed beta) — a lead in the FUNNEL_LEADS_TENANT_SLUG workspace', () => {
+  const CONSENT = 'Vikuna may contact me about VaNi access. I can ask to be removed at any time.';
+  const base = { name: 'Priya Rao', email: 'priya@acme.in', role_title: 'Founder', company: 'Acme',
+    country_code: '+91', mobile: '98480 12345', consent_text: CONSENT };
+  const events = () => owner.query(`SELECT e.payload, l.email, l.lead_no, l.phone FROM gt_lead_event e JOIN gt_lead l ON l.id = e.lead_id
+    WHERE e.tenant_id = $1 AND e.event_type = 'access_requested' ORDER BY e.created_at`, [A]);
+
+  it('switched off with a 503 naming the setting when FUNNEL_LEADS_TENANT_SLUG is missing', async () => {
+    delete process.env.FUNNEL_LEADS_TENANT_SLUG;
+    try { await expect(requestAccess(app, { ...base, ip: '10.0.0.1' })).rejects.toThrow(/FUNNEL_LEADS_TENANT_SLUG/); }
+    finally { process.env.FUNNEL_LEADS_TENANT_SLUG = 'fa'; }
+  });
+
+  it('refuses what it cannot record, with the reason', async () => {
+    await expect(requestAccess(app, { ...base, email: 'not-an-email', ip: '10.0.0.1' })).rejects.toThrow(/valid work email/);
+    await expect(requestAccess(app, { ...base, role_title: ' ', ip: '10.0.0.1' })).rejects.toThrow(/Your role is required/);
+    await expect(requestAccess(app, { ...base, consent_text: '', ip: '10.0.0.1' })).rejects.toThrow(/Consent is required/);
+    expect((await events()).rows).toHaveLength(0);
+  });
+
+  it('writes one lead and one event: the site from the SESSION, the code and mobile apart, the exact consent words', async () => {
+    const token = (await submitSite(app, { website: 'contractnest.com', ip: '10.0.0.9' })).token;
+    const r = await requestAccess(app, { ...base, token, ip: '10.0.0.2', idempotencyKey: 'funnel.request_access.1.abc' });
+    expect(r).toEqual({ received: true, replayed: false });
+    const rows = (await events()).rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ email: 'priya@acme.in', phone: '98480 12345' });
+    expect(rows[0].lead_no).toBeTruthy();
+    expect(rows[0].payload).toMatchObject({ site: 'contractnest.com', country_code: '+91', mobile: '98480 12345', consent_text: CONSENT, repeat: false });
+    expect(JSON.stringify(rows[0].payload)).not.toContain('10.0.0.2');   // the IP is only ever a hash
+  });
+
+  it('the same request again (same key, same email) replays — no second event', async () => {
+    const r = await requestAccess(app, { ...base, ip: '10.0.0.2', idempotencyKey: 'funnel.request_access.1.abc' });
+    expect(r).toEqual({ received: true, replayed: true });
+    expect((await events()).rows).toHaveLength(1);
+  });
+
+  it('another person whose browser minted the SAME key is not swallowed by the replay', async () => {
+    await requestAccess(app, { ...base, name: 'Arun', email: 'arun@other.in', ip: '10.0.0.3', idempotencyKey: 'funnel.request_access.1.abc' });
+    const emails = (await events()).rows.map((x) => x.email);
+    expect(emails).toEqual(['priya@acme.in', 'arun@other.in']);
+  });
+
+  it('the same email asking again is one lead with two events, not two leads', async () => {
+    await requestAccess(app, { ...base, email: 'PRIYA@acme.in', ip: '10.0.0.4', idempotencyKey: 'funnel.request_access.2.def' });
+    const leads = await owner.query(`SELECT count(*)::int n FROM gt_lead WHERE tenant_id = $1 AND lower(email) = 'priya@acme.in'`, [A]);
+    expect(leads.rows[0].n).toBe(1);
+    const rows = (await events()).rows.filter((x) => x.email === 'priya@acme.in');
+    expect(rows.map((x) => x.payload.repeat)).toEqual([false, true]);
+  });
+
+  it('the per-IP ceiling applies to requests too', async () => {
+    await requestAccess(app, { ...base, email: 'a1@x.in', ip: '10.0.0.5' });
+    await requestAccess(app, { ...base, email: 'a2@x.in', ip: '10.0.0.5' });
+    await expect(requestAccess(app, { ...base, email: 'a3@x.in', ip: '10.0.0.5' })).rejects.toThrow(/RATE_LIMITED/);
+  });
+
+  it('list_requests: the owner workspace sees them; another workspace sees none (valid / other tenant)', async () => {
+    const ctx = (tenant: string) => ({ tenant_id: tenant, is_live: true, user_id: null, db: createTenantDb(app, tenant) }) as never;
+    const mine = await list_requests({}, ctx(A));
+    expect(mine.requests.map((x) => x.email)).toEqual(['a2@x.in', 'a1@x.in', 'priya@acme.in', 'arun@other.in']);
+    expect(mine.requests.find((x) => x.email === 'priya@acme.in')).toMatchObject({ times_asked: 2, site: null, country_code: '+91' });
+    expect((await list_requests({}, ctx(B))).requests).toEqual([]);
+  });
+
+  it('empty: a workspace with no requests gets an empty list, not an error', async () => {
+    const ctx = { tenant_id: funnelTenant, is_live: true, user_id: null, db: createTenantDb(app, funnelTenant) } as never;
+    expect(await list_requests({}, ctx)).toEqual({ requests: [], total: 0, recipe: 'access-requests' });
   });
 });

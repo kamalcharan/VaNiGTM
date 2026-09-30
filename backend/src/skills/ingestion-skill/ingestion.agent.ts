@@ -27,7 +27,7 @@ import { DocxParser } from './parsers/docx.parser';
 import { PptxParser } from './parsers/pptx.parser';
 import { TextParser } from './parsers/text.parser';
 import { chunkText } from './pipeline/chunker';
-import { extractFromChunks, EXTRACTION_PROMPT, extractMaxTokens, type SourcedChunk } from './pipeline/extractor';
+import { extractFromChunks, EXTRACT_CHUNK_CAP, EXTRACTION_PROMPT, extractMaxTokens, type SourcedChunk } from './pipeline/extractor';
 import { charBudgetFor } from '../../agent-core/llm.gate';
 import { draftProfileFromText } from '../profile-skill/profile.drafter';
 
@@ -349,7 +349,6 @@ export class IngestionAgent {
       // window is, a chunk plus the extraction prompt plus the reserved
       // answer now fits inside it — or the run fails here, with the numbers,
       // before a single call is spent.
-      const CHUNK_CAP = 4_000;
       const room = charBudgetFor(undefined, extractMaxTokens(), EXTRACTION_PROMPT);
       if (room < 400) {
         throw new Error(
@@ -357,7 +356,7 @@ export class IngestionAgent {
           + `leave ${room} chars for text inside LLM_CONTEXT_TOKENS — raise it to the server's real window.`,
         );
       }
-      const chunkChars = Math.min(CHUNK_CAP, room);
+      const chunkChars = Math.min(EXTRACT_CHUNK_CAP, room);
       const chunks: SourcedChunk[] = sections.flatMap((sec) =>
         chunkText(sec.text, chunkChars).map((c) => ({ ...c, source_url: sec.url })),
       );

@@ -1,6 +1,6 @@
 # vani.vikuna.io — the landing page (spec for review, 2026-09-30)
 
-Status: **SPEC — no code until Charan approves.** Builds on the funnel
+Status: **BUILT on `claude/wizardly-darwin-778r2w` (2026-09-30)** — page in vikunawebsite, backend B1–B7 here. Waits on migration 262 + two .env settings to deploy. Builds on the funnel
 (`design-notes-funnel-anon-session.md`, migration 261, deployed).
 
 ## Rulings this spec is built on (Charan, 2026-09-30)
@@ -163,3 +163,43 @@ This is a schema change, so it needs your yes. 262 was approved as "graph jsonb"
 1. Schema option **(a)** for access-request events: yes or no?
 2. Headline "VaNi learns your business from your website.": keep it, or do you have your own line?
 3. Should the audit show a score ("3 of 5") or only the lines? I recommend the lines only: a score invites comparison we can't back.
+
+## Addendum — after the preview, push to signup through the beta gate (Charan, 2026-09-30)
+
+> "when the first smart-profile is built -- we need push users for signup --
+> (we are currently in beta - so we will have gate with password …) if users
+> do not have the password -- capture their details for lead, otherwise they
+> enter the gate and complete the signup"
+
+The gate already exists in vani-app (`lib/gate.ts`, `/gate`); its stored
+digest is that phrase, so nothing about the phrase changes. What is added:
+
+- The result's call to action is **Sign up with your access phrase** (→ `/gate`
+  → `/signup`), with **No access phrase? Request access** beside it. The gate
+  screen links to Request access too.
+- **Signup claims the preview.** The funnel token stays in the browser; right
+  after `register` returns a session, the console calls `POST /funnel/claim`,
+  so the card and graph become the new workspace's first Smart Profile and the
+  full crawl is queued. A claim that fails never blocks signup — the person is
+  told the preview did not carry over, and why (rule 12).
+- The gate is a front door, not a lock (lib/gate.ts says so); `register` is
+  open on the API. A server-issued invite code is the real fix and stays
+  logged, not faked.
+
+## Decisions made while building (for review)
+
+- **Graph failure lives inside `graph`** — `{ status: 'failed', failure }` —
+  rather than a third column: 262 was approved as audit + graph.
+- **`FUNNEL_GRAPH_MAX_CHUNKS`** (new .env, required by the preview) caps the
+  extraction calls per new read; the graph says when it came from only the
+  first part of the page. Suggested 3.
+- **Access request replay key** = SHA-256(Idempotency-Key + email). The
+  client's keys are a counter plus a timestamp, so two visitors can mint the
+  same one; scoping by email stops one person's replay swallowing another's
+  request (tested).
+- **Same email again** → a new `access_requested` event on the existing lead,
+  not a second lead. `phone` holds the mobile only; the country code stays a
+  separate field in the event (lesson 11).
+- **Claimed graph entries** carry `properties.from = 'website preview'` and no
+  source run: the knowledge screen shows them unlinked until the full crawl
+  (queued by the same claim) re-reads the page and links each one it finds.

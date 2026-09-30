@@ -46,6 +46,14 @@ export function extractMaxTokens(): number {
   return Math.min(c.extractAnswerMax, Math.max(c.extractAnswerMin, Math.floor(window / c.extractAnswerDivisor)));
 }
 
+/**
+ * The most text one extraction call is given — the cap ingestion has always
+ * used, lower than the window allows so each answer stays dense enough to fit
+ * its reserve. Callers still take the smaller of this and charBudgetFor(...).
+ * Shared so the website preview chunks exactly as ingestion does.
+ */
+export const EXTRACT_CHUNK_CAP = 4_000;
+
 export interface SourcedChunk extends Chunk {
   /** URL of the page this chunk came from (null for pasted text / files). */
   source_url?: string | null;
