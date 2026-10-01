@@ -354,7 +354,7 @@ stay here, because they are worth not re-deciding:
   were first run on production by pasting SQL (2026-09-30) and so were NOT
   recorded; all three are idempotent, and the fix is to let the runner re-apply
   them (`docker exec vani-backend node dist/migrate.js`) — rehearsed on a copy
-  of that state: 3 applied, 0 pending, data kept.** Next migration is 263. The
+  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); next free is **268** (P2 enrichment). The
   runner uses `DB_MIGRATE` when set (the owner, once the runtime is the app
   role), else `DB_PRIMARY`. **Two files
   share the number 249** (`249_ki_import_sessions_needs_review.sql` and

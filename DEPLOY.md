@@ -352,6 +352,7 @@ touches most:
 | Worker — **required**, checked at worker start | `WORKER_POLL_MS`, `WORKER_BATCH_SIZE`, `WORKER_HEARTBEAT_MS`, `WORKER_STALE_CLAIM_SECONDS`, `WORKER_MAX_ATTEMPTS` |
 | Embeddings (checked at call time) | `EMBED_URL`, `EMBED_MODEL`, `EMBED_TIMEOUT_MS`, `EMBED_DIM`, `EMBED_KEY` |
 | Integrations | `SEARXNG_URL`, `N8N_RENDER_URL`, `N8N_RENDER_SECRET`, `N8N_ENV`, `GDRIVE_*` |
+| Import pipeline — **required**, checked at API and worker start | `ETL_UPLOAD_MAX_BYTES` (nginx's `/api/v1/etl/upload` location must allow as much — 200m today), `ETL_SYNC_MAX_BYTES`, `ETL_STAGE_CHUNK_ROWS` |
 | CORS (dev only) | `CORS_ORIGIN` — comma-separated; production uses nginx instead |
 
 Never commit a value. Never print `.env` into a chat.

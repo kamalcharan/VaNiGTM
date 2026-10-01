@@ -24,6 +24,8 @@ import { createRun, setStatus, appendStep } from './agent.runner';
 import { assertRegistryMatches, HANDLED_EVENT_TYPES } from './handled-events';
 import { readLlmConfig, assertLlmConfig } from './llm.config';
 import { readWorkerConfig, assertWorkerConfig } from './worker.config';
+import { assertEtlConfig } from '../etl/etl.config';
+import { runStageJob } from '../etl/stage-job';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
 import { CompetitorResearchAgent } from '../skills/research-skill/research.agent';
@@ -96,6 +98,10 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
   // ceiling); the data stays in vani_anon_site_read (src/funnel).
   FUNNEL_SITE_SUBMITTED: (pool, tenantId, payload, runId) =>
     runSiteRead(pool, tenantId, payload, runId),
+
+  // Common pool P1 — a large CSV staged in chunks, resumable (src/etl/stage-job.ts).
+  IMPORT_STAGE_REQUESTED: (pool, tenantId, payload, runId) =>
+    runStageJob(pool, tenantId, payload, runId).then(() => undefined),
 
   // FOLDER_CONNECTED fires immediately after OAuth — folder_id may still
   // be null (tenant hasn't picked a folder yet). Guard the sync call so
@@ -366,6 +372,7 @@ export function startWorker(pool: Pool, queue: EventQueue): void {
   // the same outage reported N times instead of once, here.
   assertLlmConfig('Worker');
   assertWorkerConfig();
+  assertEtlConfig('Worker');
   console.log(
     `[Worker] Starting — polling every ${workerCfg().pollMs}ms, batch size ${workerCfg().batchSize}`,
   );

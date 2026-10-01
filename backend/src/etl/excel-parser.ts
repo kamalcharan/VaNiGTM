@@ -39,3 +39,28 @@ export function parseExcelRows(filePath: string): Record<string, any>[] {
   const ws = wb.Sheets[wb.SheetNames[0]];
   return XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
 }
+
+/**
+ * Headers, a sample and a row count — streaming for CSV, so a large file is
+ * never held in memory just to show its columns. Workbooks still go through
+ * the xlsx library, which cannot stream; their size is bounded by the upload
+ * limit and the sync threshold (etl.config.ts).
+ */
+export async function readHeadersAndSample(filePath: string, opts: { count?: boolean } = {}): Promise<ParsedHeaders> {
+  if (!/\.csv$/i.test(filePath)) return parseExcelHeaders(filePath);
+  const { readCsvRecords } = await import('./csv-stream');
+  const sampleRows: Record<string, any>[] = [];
+  let headers: string[] = [];
+  let totalRows = 0;
+  for await (const { record } of readCsvRecords(filePath)) {
+    totalRows++;
+    if (sampleRows.length < 10) {
+      sampleRows.push(record);
+      if (headers.length === 0) headers = Object.keys(record).filter((k) => !k.startsWith('__extra_'));
+    }
+    // A caller that needs only the columns and a sample stops here — the
+    // count would read the whole file (and the worker reads it anyway).
+    if (opts.count === false && sampleRows.length >= 10) break;
+  }
+  return { headers, sampleRows, totalRows };
+}

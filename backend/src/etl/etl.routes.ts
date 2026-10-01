@@ -21,7 +21,10 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { withTenantClient } from '../db/query';
-import { parseExcelHeaders, parseExcelRows } from './excel-parser';
+import { parseExcelRows, readHeadersAndSample } from './excel-parser';
+import { buildStagingRow, insertStagingRows } from './staging';
+import { readEtlConfig } from './etl.config';
+import { emitEvent } from '../agent-core/event.store';
 import { mapCustomerRow, CUSTOMER_FIELD_MAP } from './customer-processor';
 import { mapCompanyRow, COMPANY_FIELD_MAP } from './company-processor';
 import { mapContactRow, personDedupKey } from './contact-processor';
@@ -34,7 +37,6 @@ import { landSession } from './landing';
 import { resolveAuth, type AuthContext } from '../auth/auth-context';
 
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 /* ── Multer config ─────────────────────────────────── */
 
@@ -50,9 +52,12 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({
+// The size limit comes from .env (ETL_UPLOAD_MAX_BYTES), read per request so a
+// changed value applies without a code change; nginx's location for
+// /api/v1/etl/upload must allow at least as much.
+const makeUpload = () => multer({
   storage,
-  limits: { fileSize: MAX_FILE_SIZE },
+  limits: { fileSize: readEtlConfig().uploadMaxBytes },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (['.xlsx', '.xls', '.csv'].includes(ext)) cb(null, true);
@@ -120,7 +125,7 @@ export function createEtlRouter(pool: Pool): Router {
 
   /* ── POST /upload ───────────────────────────────── */
 
-  router.post('/upload', upload.single('file'), async (req, res) => {
+  router.post('/upload', (req, res, next) => makeUpload().single('file')(req, res, next), async (req, res) => {
     try {
       const auth = extractAuth(req);
       if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
@@ -202,7 +207,7 @@ export function createEtlRouter(pool: Pool): Router {
       if (fileResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } }); return; }
 
       const file = fileResult.rows[0] as any;
-      const { headers, sampleRows, totalRows } = parseExcelHeaders(file.file_path);
+      const { headers, sampleRows, totalRows } = await readHeadersAndSample(file.file_path);
 
       // What is actually IN this file. The detector groups columns by entity —
       // one file commonly yields both companies and the people at them — and
@@ -468,6 +473,7 @@ export function createEtlRouter(pool: Pool): Router {
 
       const result = await pool.query(
         `SELECT s.id, s.import_type, s.status, s.total_records, s.processed_records,
+                s.last_processed_row AS staged_rows,
                 s.successful_records, s.failed_records, s.duplicate_records,
                 s.orphan_records,
                 -- Where it landed and what the tenant said it was (197, 200):
@@ -578,9 +584,24 @@ export function createEtlRouter(pool: Pool): Router {
       // cosmetic one. Common-pool loads carry no tenant; a tenant's own
       // upload is scoped to them.
       const srcCode = dest === 'universe_companies' ? (req.body.source_code || 'upload') : 'upload';
-      const src = await pool.query('SELECT id FROM gt_data_sources WHERE code = $1', [srcCode]);
+      const src = await pool.query('SELECT id, may_enter_pool FROM gt_data_sources WHERE code = $1', [srcCode]);
       if (src.rows.length === 0) {
         res.status(400).json({ error: { code: 'UNKNOWN_SOURCE', message: `No data source registered with code "${srcCode}".` } });
+        return;
+      }
+      // The licence gate (common pool P1, D-P6): only a source whose licence
+      // lets its data be shared may feed the pool. The refusal names the
+      // sources that may, so the person can pick the delivery's real one.
+      if (dest === 'universe_companies' && (src.rows[0] as any).may_enter_pool !== true) {
+        const ok = await pool.query(
+          `SELECT code FROM gt_data_sources WHERE may_enter_pool AND kind IN ('directory','provider','registry','listing') AND is_active ORDER BY code`);
+        res.status(400).json({
+          error: {
+            code: 'SOURCE_NOT_POOLABLE',
+            message: `"${srcCode}" may not feed the common pool (its licence keeps it in a workspace's own copy). `
+              + `Choose the delivery's real source: ${ok.rows.map((r: any) => r.code).join(', ') || 'none is registered'}.`,
+          },
+        });
         return;
       }
       const load = await pool.query(
@@ -624,7 +645,7 @@ export function createEtlRouter(pool: Pool): Router {
       // review step still stages something coherent.
       let plan: ExtractionPlan | null = extraction_plan ?? null;
       if (!plan && import_type === 'company') {
-        const { headers, sampleRows } = parseExcelHeaders(file.file_path);
+        const { headers, sampleRows } = await readHeadersAndSample(file.file_path, { count: false });
         plan = detectEntities(headers, sampleRows);
       }
       const wantsCompany = plan ? plan.entities.some((e) => e.kind === 'company') : import_type === 'company';
@@ -654,82 +675,33 @@ export function createEtlRouter(pool: Pool): Router {
       // guess is converted into the same shape and run through the same code.
       const explicit = resolveMappings(field_mappings) ?? planToMapping(plan);
 
-      // Parse Excel and stage all rows
+      // Large CSVs are staged by the worker in chunks (IMPORT_STAGE_REQUESTED,
+      // stage-job.ts); the request returns at once with status 'staging'.
+      // Workbooks cannot be streamed, so a large one is refused with the
+      // reason rather than read into memory.
+      const etlCfg = readEtlConfig();
+      const size = Number(file.file_size ?? fs.statSync(file.file_path).size);
+      if (size > etlCfg.syncMaxBytes) {
+        if (!/\.csv$/i.test(file.file_path)) {
+          await pool.query(`UPDATE ki_import_sessions SET status = 'cancelled', error_summary = $1 WHERE id = $2`,
+            ['A workbook this large cannot be read in parts — save it as CSV and upload again.', sessionId]);
+          res.status(413).json({ error: { code: 'WORKBOOK_TOO_LARGE',
+            message: `This workbook is ${size} bytes; above ${etlCfg.syncMaxBytes} bytes only CSV can be staged (in parts, by the worker). Save it as CSV and upload again.` } });
+          return;
+        }
+        await emitEvent(pool, tenantId, 'IMPORT_STAGE_REQUESTED', 'human',
+          { session_id: sessionId, field_mappings: field_mappings ?? null }, String(sessionId));
+        res.status(202).json({ session_id: sessionId, status: 'staging', total_records: null, import_type });
+        return;
+      }
+
+      // Parse and stage all rows — the same row builder the worker uses.
       const rows = parseExcelRows(file.file_path);
       const BATCH_SIZE = 500;
-
+      const stagingCtx = { importType: import_type, explicit, mappings };
       for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-        const batch = rows.slice(i, i + BATCH_SIZE);
-        const values: any[] = [];
-        const placeholders: string[] = [];
-
-        batch.forEach((raw, batchIdx) => {
-          const rowNum = i + batchIdx + 1;
-
-          // One source row can produce a company AND the people at it, so
-          // mapped_data carries both. Quality is scored HERE, before anything
-          // lands, which is the whole point of staging.
-          let mappedData: Record<string, unknown>;
-          let completeness: number | null = null;
-          let validity: number | null = null;
-          let rejects: unknown[] = [];
-          let dedupKey: string | null = null;
-
-          if (import_type === 'company' && explicit) {
-            const companyRow = companyRowFor(raw, explicit.company);
-            const company = Object.keys(explicit.company).length > 0
-              ? mapCompanyRow(companyRow, identityMapping(companyRow))
-              : null;
-
-            const people = explicit.people
-              .map((slot) => {
-                const personRow = personRowForSlot(raw, slot, explicit.company);
-                return mapContactRow(personRow, identityMapping(personRow));
-              })
-              .filter((p) => p.mapped.name);
-
-            const claimed = [
-              ...Object.keys(explicit.company),
-              ...explicit.people.flatMap((slot) => Object.keys(slot)),
-            ];
-            mappedData = {
-              company: company?.mapped ?? null,
-              people: people.map((p) => p.mapped),
-              // Everything no field claimed, kept for future use.
-              metadata: unmappedColumns(raw, claimed),
-            };
-
-            const primary = company ?? people[0] ?? null;
-            completeness = primary?.quality.completeness ?? null;
-            validity = primary?.quality.validity ?? null;
-            rejects = [
-              ...(company?.quality.reject_reasons ?? []),
-              ...people.flatMap((p) => p.quality.reject_reasons),
-            ];
-            dedupKey = primary?.dedup_key ?? null;
-          } else {
-            // MFD customer import — untouched legacy path.
-            mappedData = mapCustomerRow(raw, mappings);
-          }
-
-          const offset = batchIdx * 8;
-          placeholders.push(
-            `($${offset + 1}, $${offset + 2}, $${offset + 3}::jsonb, $${offset + 4}::jsonb,` +
-            ` $${offset + 5}, $${offset + 6}, $${offset + 7}::jsonb, $${offset + 8})`,
-          );
-          values.push(
-            sessionId, rowNum, JSON.stringify(raw), JSON.stringify(mappedData),
-            completeness, validity, JSON.stringify(rejects), dedupKey,
-          );
-        });
-
-        await pool.query(
-          `INSERT INTO ki_import_staging
-             (session_id, row_number, raw_data, mapped_data,
-              completeness, validity, reject_reasons, dedup_key)
-           VALUES ${placeholders.join(', ')}`,
-          values,
-        );
+        await insertStagingRows(pool, sessionId,
+          rows.slice(i, i + BATCH_SIZE).map((raw, k) => buildStagingRow(raw, i + k + 1, stagingCtx)));
       }
 
       // Update session: staged
@@ -797,6 +769,7 @@ export function createEtlRouter(pool: Pool): Router {
 
       const result = await pool.query(
         `SELECT s.id, s.import_type, s.status, s.total_records, s.processed_records,
+                s.last_processed_row AS staged_rows,
                 s.successful_records, s.failed_records, s.duplicate_records,
                 s.error_summary, s.created_at, s.processing_started_at,
                 s.processing_completed_at, f.original_filename
@@ -1001,6 +974,68 @@ export function createEtlRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[ETL:patchRecord]', err);
       res.status(500).json({ error: { code: 'PATCH_FAILED', message: err.message || 'Failed to patch record' } });
+    }
+  });
+
+  /* ── POST /sessions/:id/records/:recordId/state — junk · held · restore ──
+   *
+   * Common pool P1 lifecycle (POA §1.4). Junk is a STATE with a reason, never
+   * a deletion, and it is reversible (J5); held parks a row for a person.
+   * Landing reads only pending/failed/conflict rows, so neither can land.
+   * A row that already landed ('success') is refused here — in the pool it is
+   * the COMPANY that is marked junk, not the delivered row.
+   * One conditional UPDATE: the allowed-from states are in the WHERE, so two
+   * clicks cannot race a row into a state it may not reach.
+   */
+  router.post('/sessions/:id/records/:recordId/state', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+      const sessionId = Number(req.params.id);
+      const recordId = Number(req.params.recordId);
+      const { state, reason } = req.body ?? {};
+      const REASONS = ['placeholder', 'unreadable', 'consumer', 'defunct', 'out_of_scope', 'spam_source'];
+      const FROM: Record<string, string[]> = {
+        junk:    ['pending', 'failed', 'conflict', 'duplicate', 'skipped', 'orphan', 'held'],
+        held:    ['pending', 'failed', 'conflict', 'duplicate', 'skipped', 'orphan'],
+        restore: ['junk', 'held'],
+      };
+      if (!FROM[state]) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'state must be junk, held or restore' } });
+        return;
+      }
+      if (state === 'junk' && !REASONS.includes(reason)) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: `A junk row needs a reason: ${REASONS.join(', ')}` } });
+        return;
+      }
+      const session = await loadOwnedSession(pool, sessionId, auth.tenant_id);
+      if (!session) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
+
+      const target = state === 'restore' ? 'pending' : state;
+      const updated = await pool.query(
+        `UPDATE ki_import_staging
+            SET processing_status = $1,
+                junk_reason = $2, junk_by = $3, junk_at = CASE WHEN $1 = 'junk' THEN now() ELSE NULL END,
+                updated_at = now()
+          WHERE id = $4 AND session_id = $5 AND processing_status = ANY($6::text[])
+          RETURNING id, row_number, processing_status, junk_reason, junk_by, junk_at`,
+        [target, state === 'junk' ? reason : null, state === 'junk' ? auth.user_id : null,
+         recordId, sessionId, FROM[state]],
+      );
+      if (updated.rows.length === 0) {
+        const cur = await pool.query('SELECT processing_status FROM ki_import_staging WHERE id = $1 AND session_id = $2', [recordId, sessionId]);
+        if (cur.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Record not found' } }); return; }
+        const now = (cur.rows[0] as any).processing_status;
+        res.status(409).json({ error: { code: 'INVALID_TRANSITION',
+          message: now === 'success'
+            ? 'This row already reached the pool — mark the company junk there, not the delivered row.'
+            : `A row that is "${now}" cannot be moved to ${state}.` } });
+        return;
+      }
+      res.json({ record: updated.rows[0] });
+    } catch (err: any) {
+      console.error('[ETL:recordState]', err);
+      res.status(500).json({ error: { code: 'STATE_FAILED', message: err.message || 'Failed to change the row' } });
     }
   });
 

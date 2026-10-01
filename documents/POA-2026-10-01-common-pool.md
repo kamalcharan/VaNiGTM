@@ -285,8 +285,9 @@ Everything after it runs agents in front of a person; build the frame once.
 | Phase | State |
 |---|---|
 | Sprint 0 | not started |
-| P0 | written 2026-10-01 — `documents/pool/P0-mapping.md` + `documents/prototypes/pool-journey.html`; **waiting on Charan: S1–S8 and the UX map** |
-| P1–P9 | not started |
+| P0 | **approved 2026-10-01** (S1–S15) |
+| P1 | sprint A in progress: migrations 264–267 ✓, prototype `documents/prototypes/p1-sources.html` ✓ (awaiting review), licence gate ✓, junk/held/restore on staged rows ✓, chunked CSV staging on the worker (`IMPORT_STAGE_REQUESTED`, resumable) ✓ — sprint B: the Complete test, the screens on real data, re-landing FTCCI/analytica/prospector, raising the upload limit once the console shows staging |
+| P2–P9 | not started |
 
 ## 5. Dependencies outside this plan
 
