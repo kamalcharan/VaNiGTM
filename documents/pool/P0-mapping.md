@@ -117,6 +117,7 @@ Today: identity, address, `industry_raw/_id`, bands, `linkedin_url`,
 | + | `method` text — `import · crawl · llm · provider · manual` | how the value was obtained (D-P12) |
 | + | `confidence` numeric(3,2) | per row; per field stays in `field_quality` |
 | + | `domain_status` — `found · none_found · not_tried` | "domain lookup attempted" is a Complete check |
+| + | `model` text — `provider:model` that produced the row (NULL for import) | per-model quality is measurable only if every answer says who gave it (§9) |
 
 ### 2.5 `gt_universe_companies` (195) — the golden record and the core pool
 
@@ -132,7 +133,7 @@ Today: the same business fields, `field_sources`, `source_codes[]`,
 | + | `junk_reason`, `junk_by`, `junk_at` | junk after enrichment (defunct, B2C) |
 | + | `duplicate_of_id` bigint | **flagged, never merged** (D-P3); `merged_into_id` stays for a person's explicit late merge |
 | + | `coverage_score` smallint, `coverage_parts` jsonb | J4, every dimension shown |
-| + | `last_enriched_at` | freshness of the enrichment, apart from `best_as_of` |
+| + | `last_enriched_at` | when ANY enrichment last touched it, apart from `best_as_of` (the source's own date); per-step dates come from `gt_enrichment_items.done_at` |
 | index | `(lifecycle_state, state_code)`, GIN on `nic_codes`, trigram on `name_key` | segment filters and the match ladder |
 
 `pg_trgm` is **not installed** on the migration-built database (only
@@ -175,7 +176,8 @@ over the daily limit and resume after a crash.
 |---|---|
 | `request_id`, `entity_type` (`pool_company · prospect`), `entity_id`, `step` | |
 | `status` — `queued · done · skipped · failed · abstained`, `attempts` | |
-| `result_source_row_id`, `error`, `done_at` | |
+| `result_source_row_id`, `error`, `done_at` | `done_at` per step = "last enriched" for that step |
+| `provider`, `model`, `escalated_from` (the item this re-ran), `cost_inr`, `confidence` | which lane answered, and why it went up a rung (§9) |
 | UNIQUE `(request_id, entity_type, entity_id, step)` | idempotent re-run |
 
 **`gt_enrichment_usage`** (P2) — daily and monthly counters.
@@ -237,7 +239,7 @@ for now.
 | `gt_person_company_link` | new (ICP design note §2.2) | P7 |
 | `gt_contact_channels` | + `verification_status` (`unverified · valid · risky · catch_all · invalid · unknown`), `verifier`, `is_role_based`, `is_free_mail`, `permission` (`unknown · opted_in · opted_out`) | P7–P8 |
 | `gt_segments` | new — filters, frozen count, scope (`pool + own`) | P9 |
-| `gt_prospects` | keep — already copies with `universe_company_id` + `adopted_at` (196) | P7 |
+| `gt_prospects` | + `last_enriched_at` (the tenant copy's own enrichment); otherwise keep — copies with `universe_company_id` + `adopted_at` (196) | P2 (column) / P7 |
 | `vani_suppression` | keep (260) | — |
 
 ---
@@ -337,9 +339,11 @@ clean at checkout. Pool tables keep RLS **off by design** (no tenant_id, as
 | S10 | Taxonomy discovery through `gt_cleanup_gap` (`taxonomy_proposal`); admin approves every node and alias | yes |
 | S11 | Onboarding picker, Vara domain packs and the normalizer read/write the master | yes |
 | S12 | Model enrichment may run as an Anthropic batch (`llm_mode`, `provider_batch_ids`); the daily LLM limit counts records per day either way — see §8 for what that means at 50,000 | yes |
+| S13 | The rotation policy of §9, including its rule-12 exception (free → Haiku escalation, declared and capped per run) | yes |
+| S14 | `model` on source rows; `provider/model/escalated_from/cost_inr/confidence` on enrichment items; `last_enriched_at` on `gt_prospects`; re-enrichment cadences in `.env` | yes |
 | — | P7–P9 tables (§2.8) | approved at their own phase |
 
-Approving S1–S12 lets P1 start. Sprint 0 (the agentic foundation) needs no
+Approving S1–S14 lets P1 start. Sprint 0 (the agentic foundation) needs no
 schema and can start in parallel once its platform change is approved
 (`vani-app/CLAUDE.md` §5).
 
@@ -381,3 +385,116 @@ So for a 50k bulk job the decision is the limit, not the model: keep 5,000/day
 batch run (e.g. 25,000/day → 2 days). The estimate screen shows both before
 anyone confirms (R3). Anthropic's own rate limits depend on the account's
 tier and are checked on the console before the first bulk run.
+
+---
+
+## 9. The rotation policy — free model pools first, Haiku last (S13)
+
+Charan, 2026-10-01: "we should use free LLM pools — Grok, OpenRouter and a few
+others have free quota — use them and then come to Haiku; enrichment should
+have a smart rotation policy."
+
+### 9.1 The ladder, per record per step
+
+```
+1. code lane          NIC → master, alias table, normalizer rules        free, exact
+2. known answer       this value already classified (distinct-value cache) free
+3. free pool          rotate across approved free providers               free, quota-bound
+     ├ validate: schema + validator + confidence ≥ the step's bar → accept
+     └ fail / low confidence / quota gone everywhere ─┐
+4. Haiku              batch or realtime, inside the run's ₹ cap     ◄─────┘   paid
+     └ fail / low confidence → 5
+5. abstain            review queue (gt_cleanup_gap) — a person decides       no guess
+```
+
+Every accepted answer records `provider:model`, confidence and the rung it
+came from — on the source row and the item. A tenant or an operator can always
+see that "Pharmaceuticals" came from a free Llama model at 0.91, or from Haiku
+after the free answer was refused.
+
+### 9.2 What makes it "smart"
+
+- **Quota-aware rotation.** Each free provider has its own per-minute and
+  per-day quota (from `.env`, never assumed); usage counts in
+  `gt_enrichment_usage` per provider per day. The router picks the provider
+  with quota left, then by **measured quality for that step**; a 429 moves to
+  the next provider and marks that one cooling down. The existing LLM lane
+  already queues per endpoint URL, so providers never queue behind each other.
+- **Quality-weighted, measured — not trusted.** A provider is admitted to a
+  step only after it passes that step's golden set (offline eval, AGENTS.md
+  §7) — the Laya trial (31% agreement) is why: free does not mean usable.
+- **Audit sample.** A fixed share of free answers (e.g. 5%,
+  `ENRICH_AUDIT_SAMPLE`) is re-asked of Haiku. Agreement per provider per step
+  is tracked continuously; a provider whose agreement falls below its bar is
+  **paused for that step with an alert** in `/runs/awaiting` — a person
+  resumes or removes it (never silent, never automatic re-admission).
+- **Two run settings, chosen on the estimate screen:**
+  - *Free only* — slower; when every free quota is spent the run waits for
+    tomorrow's reset (visible as `waiting_limit`).
+  - *Free first, Haiku overflow up to ₹X* — escalation allowed until the
+    run's own cap; past it, the run waits.
+
+### 9.3 What may go to a free provider — the data rule
+
+Free tiers often keep or train on prompts. So each provider carries a
+**data-terms class** in `.env` — `no_training · may_train · unknown` — and:
+
+| Data | Free `may_train`/`unknown` | Free `no_training` | Haiku |
+|---|---|---|---|
+| Pool company facts (name, public description, industry prose, website text) — R0 | ✅ | ✅ | ✅ |
+| People (names, titles, emails), anything personal | ❌ never | ❌ until DPDP review | ✅ |
+| A tenant's Brain or its own copy | ❌ never | ❌ | ✅ (or the tenant's BYOK) |
+
+People and tenant data never ride a free pool. That is enforced in code by
+the step's declared data class, not by the caller's care.
+
+### 9.4 Why this is an exception to rule 12, and how it stays honest
+
+Moving from a free answer to Haiku is an automatic switch that spends money —
+exactly what rule 12 forbids unless approved. It is acceptable here because:
+it is **declared before the run** (the estimate names the ladder and the ₹
+cap), **capped per run**, **labelled per answer** (`provider:model`, rung),
+and **reversible** (an enrichment run is a load; retiring it withdraws its
+answers). A validation failure does not silently become a different answer —
+it becomes the next rung's question, and the last rung is abstain. Once
+approved, this exception is recorded in CLAUDE.md beside the LLM failover one.
+
+### 9.5 Candidates and configuration
+
+Candidates to test, all OpenAI-compatible (`callEndpoint` already speaks that
+shape; Groq and Together are already in the BYOK menu): OpenRouter's `:free`
+models, Groq, Google AI Studio (Gemini free tier), Cerebras, Mistral's free
+tier, xAI (Grok) where credits apply. **Quotas and data terms change often —
+each is read from the provider's current terms when it is added, written into
+`.env`, and re-checked at every phase checkout; none is taken from memory.**
+
+`.env` (no defaults in code):
+
+| Variable | Meaning |
+|---|---|
+| `ENRICH_LLM_POOL` | ordered provider codes, e.g. `groq,openrouter_free,gemini_free,haiku` |
+| `LLMPOOL_<CODE>_URL`, `_MODEL`, `_KEY` | endpoint, model, key |
+| `LLMPOOL_<CODE>_RPM`, `_DAILY` | quota |
+| `LLMPOOL_<CODE>_DATA_TERMS` | `no_training · may_train · unknown` |
+| `ENRICH_AUDIT_SAMPLE` | share re-asked of Haiku, e.g. 0.05 |
+| `ENRICH_CONFIDENCE_<STEP>` | the acceptance bar per step |
+
+What it is worth, if free models settle ~70–80% of model work at an
+acceptable agreement: the 50,000-record batch of §8 drops from ≈ ₹6,000–11,000
+to ≈ ₹1,500–3,500 (escalations + the audit sample), at the cost of time spent
+waiting on free quotas. The P3 trial measures the real share before anyone
+relies on it.
+
+### 9.6 Last enriched, and when to enrich again
+
+`last_enriched_at` on the golden record and on the tenant copy; per-step
+`done_at` on items. Re-enrichment is **proposed, never automatic**: when a step
+is older than its cadence the record shows "stale since…" and VaNi proposes a
+refresh run for the affected set (the person starts it).
+
+| Step | Cadence (`.env`) |
+|---|---|
+| liveness, crawl | `ENRICH_REFRESH_CRAWL_DAYS` — 90 |
+| classification | when the description changed, or the taxonomy version changed |
+| email verification (P8) | `ENRICH_REFRESH_VERIFY_DAYS` — 180 |
+| domain lookup "none found" | `ENRICH_REFRESH_DOMAIN_DAYS` — 180 |
