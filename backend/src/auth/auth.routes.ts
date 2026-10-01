@@ -1139,7 +1139,7 @@ export function createAuthRouter(pool: Pool): Router {
 const TENANT_PROFILE_FIELDS = [
   'name', 'display_name', 'type', 'description', 'brand_color', 'theme_id',
   'email', 'phone', 'website', 'address_line1', 'address_line2', 'city',
-  'state', 'country', 'postal_code', 'gstin', 'pan', 'industry', 'arn',
+  'state', 'country', 'postal_code', 'gstin', 'pan', 'industry',
 ] as const;
 
 export function createTenantRouter(pool: Pool): Router {
@@ -1159,7 +1159,7 @@ export function createTenantRouter(pool: Pool): Router {
         `SELECT tenant_id, name, short_name, display_name, type, description,
                 logo_url, brand_color, theme_id, tagline, email, phone, website,
                 address_line1, address_line2, city, state, country, postal_code,
-                gstin, pan, industry, arn, updated_at
+                gstin, pan, industry, updated_at
          FROM vn_tenant_profiles WHERE tenant_id = $1`,
         [jwt.tenant_id],
       );
@@ -1463,7 +1463,7 @@ export function createTenantRouter(pool: Pool): Router {
           `SELECT tenant_id, name, short_name, display_name, type, description,
                   logo_url, brand_color, theme_id, tagline, email, phone, website,
                   address_line1, address_line2, city, state, country, postal_code,
-                  gstin, pan, industry, arn, updated_at
+                  gstin, pan, industry, updated_at
            FROM vn_tenant_profiles WHERE tenant_id = $1`,
           [tenant_id],
         );
