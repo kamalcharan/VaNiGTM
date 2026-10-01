@@ -31,6 +31,8 @@
  * unmapped membership number or fax is never lost.
  */
 
+import { deIndexHeader } from './entity-detector';
+
 export interface ResolvedMapping {
   /** header -> company field */
   company: Record<string, string>;
@@ -221,9 +223,15 @@ export function planToMapping(
 
   if (personEntity) {
     for (const [header, field] of Object.entries(personEntity.columns)) {
-      const indexed = header.match(/\b(\d{1,2})\b/);
+      // The detector's own de-indexer, so both read an index the same way.
+      // `\b(\d)\b` missed an index glued to the word — FTCCI's REP_BY1,
+      // POST1, PHONE1 — so every representative column fed EVERY slot and the
+      // last one won: two copies of REP_BY2, and no one at all on a row
+      // without a second representative (found 2026-10-01: 2,900 first
+      // representatives in, 1,450 people out).
+      const indexed = deIndexHeader(header);
       if (indexed && slots > 1) {
-        const slot = Number(indexed[1]);
+        const slot = indexed.index;
         if (slot >= 1 && slot <= slots) people[slot - 1][header] = field;
       } else {
         // Un-indexed: the same column feeds every person on the row.

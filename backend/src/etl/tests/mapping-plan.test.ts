@@ -10,9 +10,11 @@
 import {
   resolveMappings, companyRowFor, personRowForSlot, identityMapping,
   unmappedColumns,
+  planToMapping,
 } from '../mapping-plan';
 import { mapCompanyRow } from '../company-processor';
 import { mapContactRow } from '../contact-processor';
+import { detectEntities } from '../entity-detector';
 
 /** The real row, with the header names a chamber directory actually ships. */
 const FTCCI_ROW: Record<string, unknown> = {
@@ -156,5 +158,25 @@ describe('unmappedColumns — nothing is left out', () => {
     const meta = unmappedColumns(FTCCI_ROW, claimed);
     expect(claimed.length + Object.keys(meta).length)
       .toBe(Object.keys(FTCCI_ROW).length);
+  });
+});
+
+describe('planToMapping — an index glued to the word (FTCCI: REP_BY1, POST1, PHONE1)', () => {
+  // Found 2026-10-01: `\b(\d)\b` never fires between Y and 1, so every
+  // representative column fed every slot and the last one won — two copies of
+  // REP_BY2 on a row that had one, and NO ONE on a row without a second.
+  const plan = detectEntities(['COMPANY', 'WEBSITE', 'REP_BY1', 'POST1', 'PHONE1', 'REP_BY2', 'POST2', 'PHONE2']);
+  const mapping = planToMapping(plan)!;
+
+  it('puts each numbered column in its own slot', () => {
+    expect(mapping.people).toHaveLength(2);
+    expect(Object.keys(mapping.people[0]).sort()).toEqual(['PHONE1', 'POST1', 'REP_BY1']);
+    expect(Object.keys(mapping.people[1]).sort()).toEqual(['PHONE2', 'POST2', 'REP_BY2']);
+  });
+
+  it('keeps an un-numbered person column in every slot', () => {
+    const p = planToMapping({ entities: [{ kind: 'person', columns: { REP_BY1: 'full_name', REP_BY2: 'full_name', CITY: 'city' }, per_row: 2 }] })!;
+    expect(p.people[0]).toEqual({ REP_BY1: 'full_name', CITY: 'city' });
+    expect(p.people[1]).toEqual({ REP_BY2: 'full_name', CITY: 'city' });
   });
 });
