@@ -68,20 +68,30 @@ Two findings from it change the order below:
 blocks the slice in hand; everything else is written under "Smaller" and the
 slice continues. Track H is next and nothing else starts before it.
 
+### Priority set by Charan (2026-10-01, evening): GTM activation first, then the common pool
+
+"Let's first make GTM ready and then we will discuss the common pool." GTM
+activation has three parts, each with a reason from Charan:
+
+1. **DPDP acceptance** — very important. Decided 2026-09-30 (design-notes-consent §6b): the tenant reads what the DPDP Act means for outreach and accepts; that switches sending on; Settings can switch it off. `vani_tenant_acknowledgement` is live (260). Missing: the notice wording, the screen, the API.
+2. **Email outreach** — important for activation. The safety half exists (suppression, the `mayContact` gate, `gt_channels`, the cadence governor, `gt_touch_log`); **nothing in the backend can send an email yet.** The tenant sends under its own identity (ruling 2026-09-22).
+3. **Tiers** — a business model is coming, tiered on research runs, common-pool access and enrichment. Needs `vani_entitlement` (D4, schema approval) once the tiers are known.
+
 ### Pending, in order
 
-0a. **Re-land the people of the FTCCI-shaped import** (lost before 9f5d6dd) — re-upload after deploy; if refused as already imported, clear that load first (steps given in chat).
-0. **nginx: copy `deploy/vani-main-vps/api.vikuna.io.conf` to the VPS and reload** (DEPLOY.md §5) — `/api/v1/ingest/` now allows 10 MB for document upload; without the copy, uploads over 2 MB get nginx's 413.
-1. **Track H** — move `vani-app/` into this repo, before the rest of F0.
-2. **F0 remainder (Vara)** — role-first JD Studio (needs D16, and D10 for the level field), the context-confirm step, publish → careers site instead of back to the doorway, server-side drafts (check whether `vara_jd` draft status carries it before asking for schema).
-3. **RLS switch, done deliberately** — runtime to `vanigtm_app` per DEPLOY.md §4b, preflight first.
-4. **G0 remainder (GTM)** — activation (D17) once the DPDP notice wording is approved and GTM has a `vani_agent` row; hide the four sample pages or finish them.
-5. **D9 → Vara consent capture**, then candidate intake (Track F order).
-6. **Landing graph snapshot** — needs Charan to approve connect@'s graph as public.
-7. **Test-workspace cleanup** — keep `charans-workspace-e619cv`, `vikuna-funnel`, connect@'s and the seeded `vikuna` tenant.
-8. **C1 / C4** (needs D14), **C2 conversions** (need fixtures), **C3** (needs D5); **E3** (needs D4).
-9. **Needs schema approval (not started):** outreach channel identity (email / WhatsApp — check `gt_channels` 161 first), a tenant's own Apollo key (shape of `vani_llm_provider`).
-10. Smaller: GTM sidebar regrouping (do / look up / manage — proposed, not built); landing "chunked + background job" before any 25k+ file; uploaded .txt shows as "pasted" in sources; BYOK "test connection" has no SSRF guard; no "withdraw invitation"; the organisation name defaults to the person when signup leaves it blank (fixable from the organisation step); the vikuna.io site's own Tailwind build (Charan's call).
+0. **Today's leftovers** — deploy the backend; re-run the nginx copy (10 MB uploads); re-land the people of the FTCCI-shaped import (re-save the Excel under a new name, upload on vani.vikuna.io).
+1. **Track H — console into this repo** (1–2 days). Recommended before GTM activation, which is mostly console work; skip only if Charan says so.
+2. **GTM activation, step 1 — DPDP acceptance.** The notice (platform `outreach_notice` row in `vani_consent_text`, versioned), an Accept screen in GTM, revoke in Settings, the record in `vani_tenant_acknowledgement`; the `mayContact` gate reads it. GTM gets its `vani_agent` row (data, no DDL). *Needs from Charan: the notice wording — his, legal's, or a draft from us marked for legal review.*
+3. **GTM activation, step 2 — connect the tenant's email.** SMTP to the tenant's own mailbox first (works with Google Workspace and Microsoft 365), credentials encrypted per tenant (`secret.crypto`, as BYOK), stored on `gt_channels`; a test send to the tenant themself; SPF/DKIM shown as checked or missing. *Needs from Charan: OK to start with SMTP (provider APIs later).*
+4. **GTM activation, step 3 — send one approved email.** Draft from the offer → a person approves → `mayContact` (acceptance, suppression) → cadence slot → send through the tenant's channel → `gt_touch_log`; every email carries an unsubscribe link that writes suppression. No bulk, no automatic sends.
+5. **GTM activation, step 4 — "Activated" becomes real.** Offer ready + DPDP accepted + email connected → GTM live for the tenant; the landing's Activate card and milestones read it.
+6. **Tiers and entitlement** — when the business model is set: `vani_entitlement` (schema approval), checked at activation; research runs, pool reads and enrichment metered against the tier. Until then every tenant is on a "beta" grant.
+7. **The common pool** — discussion after GTM is ready (Charan).
+8. **Vara: rest of the first-job journey (F0)** — role-first JD Studio etc. Needs two answers: do role families leave the main path (recommended yes), and seniority as an adjustment of one playbook (recommended).
+9. **RLS switch on production** — runtime to `vanigtm_app` per DEPLOY.md §4b.
+10. **Vara consent capture, then candidate intake.**
+11. **Later:** landing graph snapshot; test-workspace cleanup; run cost + evals (schema approvals); agent catalog; background import for 25k+ files; a tenant's own Apollo key (schema approval).
+12. **Smaller:** GTM sidebar regrouping; BYOK test-connection SSRF guard; withdraw invitation; uploaded .txt labelled "pasted"; organisation name defaults to the person; the vikuna.io site's Tailwind build.
 
 ### 2026-09-30 detail (kept)
 
