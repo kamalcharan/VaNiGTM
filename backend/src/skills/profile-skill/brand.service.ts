@@ -287,6 +287,9 @@ export async function extractVisualHints(html: string, baseUrl: string): Promise
   return visual;
 }
 
+/** Below this much readable text a page is a JS shell — the threshold ingestion escalates at too. */
+const MIN_SITE_TEXT = 200;
+
 /* ── Generate (1 LLM call + best-effort HTML parse, agent-suggested) ──── */
 
 export async function generateBrand(
@@ -326,40 +329,52 @@ export async function generateBrand(
       console.error('[Brand:generateBrand] site fetch failed, drafting from profile alone', err);
     }
 
-    // A client-rendered site's real styling only exists after the browser
-    // runs its JS — a plain fetch sees the empty shell. Escalate to the same
-    // n8n headless-render webhook step 1 already uses (rule 12: never a
-    // silent fallback — appendStep makes this visible in the run feed either
-    // way, success or failure).
+    // A client-rendered site (a React/Vite SPA such as vikuna.io) serves an
+    // empty shell: no text, no colours, the framework's default icon. Its
+    // real content only exists after the browser runs its JS, so escalate to
+    // the same n8n headless render ingestion uses — ONE render, used for the
+    // text as well as the colours. Before 2026-10-01 the render was used for
+    // colours only, so the model was asked for a voice from an empty shell
+    // and (correctly, per its prompt) returned nothing. Rule 12: every path
+    // here is a visible run step.
+    const thin = siteText.length < MIN_SITE_TEXT;
     const renderReady = IngestionAgent.renderConfigured();
     console.log(
-      `[Brand:generateBrand] primary color so far: ${visual.primary_color ?? 'none'} — `
-      + `render escalation ${renderReady ? 'WILL fire' : 'will NOT fire'} `
+      `[Brand:generateBrand] site text ${siteText.length} chars${thin ? ' (thin)' : ''}, primary color so far: ${visual.primary_color ?? 'none'} — `
+      + `render escalation ${(thin || !visual.primary_color) && renderReady ? 'WILL fire' : 'will NOT fire'} `
       + `(N8N_RENDER_URL ${process.env.N8N_RENDER_URL ? 'set' : 'MISSING'}, `
       + `N8N_RENDER_SECRET ${process.env.N8N_RENDER_SECRET ? 'set' : 'MISSING'})`,
     );
-    if (!visual.primary_color && renderReady) {
+    if ((thin || !visual.primary_color) && renderReady) {
       await appendStep(pool, runId, {
         step_name: 'render_escalation',
-        action: 'Static fetch found no colors — rendering the page with JS to look again',
+        action: thin
+          ? `The page has almost no text without JavaScript (${siteText.length} chars) — rendering it to read voice, claims and colours`
+          : 'Static fetch found no colors — rendering the page with JS to look again',
         status: 'ok',
       });
       try {
         const renderedHtml = await IngestionAgent.renderPageViaN8n(siteUrl);
+        const renderedText = IngestionAgent.extractFromHtml(renderedHtml).text;
         const renderedVisual = await extractVisualHints(renderedHtml, siteUrl);
+        if (renderedText.length > siteText.length) siteText = renderedText;
+        // From a shell, the static page's icon and font are the framework's,
+        // not the company's — the rendered page's win. Otherwise the static
+        // ones stand and the render only fills gaps.
+        const first = thin ? renderedVisual : visual;
+        const second = thin ? visual : renderedVisual;
         visual = {
-          logo_url: visual.logo_url ?? renderedVisual.logo_url,
-          primary_color: visual.primary_color ?? renderedVisual.primary_color,
-          secondary_color: visual.secondary_color ?? renderedVisual.secondary_color,
-          accent_color: visual.accent_color ?? renderedVisual.accent_color,
-          typography: visual.typography ?? renderedVisual.typography,
+          logo_url: first.logo_url ?? second.logo_url,
+          primary_color: first.primary_color ?? second.primary_color,
+          secondary_color: first.secondary_color ?? second.secondary_color,
+          accent_color: first.accent_color ?? second.accent_color,
+          typography: first.typography ?? second.typography,
         };
         await appendStep(pool, runId, {
           step_name: 'render_escalation_complete',
-          action: renderedVisual.primary_color
-            ? `Found colors in the rendered page (primary: ${renderedVisual.primary_color})`
-            : 'Rendered the page but still found no colors',
-          status: 'ok',
+          action: `Rendered page: ${renderedText.length} chars of text; `
+            + (renderedVisual.primary_color ? `colours found (primary: ${renderedVisual.primary_color})` : 'still no colours'),
+          status: renderedText.length < MIN_SITE_TEXT ? 'error' : 'ok',
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -370,6 +385,12 @@ export async function generateBrand(
           status: 'error',
         });
       }
+    } else if (thin) {
+      await appendStep(pool, runId, {
+        step_name: 'render_unavailable',
+        action: `The page has almost no text without JavaScript (${siteText.length} chars) and the headless renderer is not configured (N8N_RENDER_URL / N8N_RENDER_SECRET) — the draft can only use the profile`,
+        status: 'error',
+      });
     }
   }
 
