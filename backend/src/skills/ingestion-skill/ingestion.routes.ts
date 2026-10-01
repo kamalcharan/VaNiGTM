@@ -5,6 +5,7 @@
  *   GET    /connect/gdrive/callback   OAuth callback (no JWT — Google redirects here)
  *   PATCH  /connect/gdrive/folder     set folder_id after OAuth (JWT)
  *   POST   /sync                      trigger folder sync (JWT)
+ *   POST   /file                      upload a document (pdf/docx/pptx/txt/md) → KG (JWT)
  *   GET    /sources                   paginated source list (JWT)
  *   GET    /sources/:id               single source + run status (JWT)
  *   DELETE /sources/:id               remove a source row; nodes stay (JWT)
@@ -21,6 +22,25 @@ import { verifyAccessToken, type JwtPayload } from '../../auth/token.service';
 import { createTenantDb } from '../../db';
 import { emitEvent } from '../../agent-core/event.store';
 import { IngestionAgent } from './ingestion.agent';
+import multer from 'multer';
+import { PdfParser } from './parsers/pdf.parser';
+import { DocxParser } from './parsers/docx.parser';
+import { PptxParser } from './parsers/pptx.parser';
+import { TextParser } from './parsers/text.parser';
+
+/**
+ * Documents a tenant can upload into the knowledge graph, and the parser that
+ * reads each. The same parsers the Google Drive path uses. 10 MB matches the
+ * ETL upload's limit; nginx allows it for /api/v1/ingest/ only
+ * (deploy/vani-main-vps/api.vikuna.io.conf).
+ */
+const DOC_MAX_BYTES = 10 * 1024 * 1024;
+const DOC_PARSERS = {
+  pdf: new PdfParser(), docx: new DocxParser(), pptx: new PptxParser(),
+  txt: new TextParser(), md: new TextParser(),
+} as const;
+type DocType = keyof typeof DOC_PARSERS;
+const docUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: DOC_MAX_BYTES, files: 1 } });
 
 /* ── Load SQL files once at module init ─────────────────────────────────── */
 
@@ -399,6 +419,82 @@ export function createIngestionRouter(pool: Pool): Router {
       console.error('[Ingest:/text]', err);
       res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
     }
+  });
+
+  // ── POST /file ─────────────────────────────────────────────────────────
+  // Upload a document (PDF, Word, PowerPoint, text, markdown) into the
+  // knowledge graph. The text is read here, with the same parsers the Google
+  // Drive path uses, and the source then takes the pasted-text road: stored
+  // with raw_text, FILE_UPLOADED, the agent extracts it. A file with no
+  // readable text (a scanned PDF) is refused with the reason — never stored
+  // as an empty source that "completes" having learned nothing.
+  router.post('/file', (req: Request, res: Response) => {
+    docUpload.single('file')(req, res, async (uploadErr: unknown) => {
+      const jwt = requireAuth(req, res);
+      if (!jwt) return;
+      try {
+        if (uploadErr) {
+          const tooBig = (uploadErr as { code?: string })?.code === 'LIMIT_FILE_SIZE';
+          res.status(tooBig ? 413 : 400).json({
+            error: {
+              code: tooBig ? 'FILE_TOO_LARGE' : 'UPLOAD_FAILED',
+              message: tooBig ? `That file is over ${DOC_MAX_BYTES / 1024 / 1024} MB` : messageOf(uploadErr),
+            },
+          });
+          return;
+        }
+        const file = (req as Request & { file?: { originalname: string; buffer: Buffer } }).file;
+        if (!file) {
+          res.status(400).json({ error: { code: 'NO_FILE', message: 'Attach a file in the "file" field' } });
+          return;
+        }
+        const ext = path.extname(file.originalname).slice(1).toLowerCase();
+        if (!(ext in DOC_PARSERS)) {
+          res.status(415).json({
+            error: { code: 'UNSUPPORTED_FILE', message: `.${ext || '?'} files cannot be read yet — use PDF, Word (.docx), PowerPoint (.pptx), .txt or .md` },
+          });
+          return;
+        }
+
+        let text: string;
+        try {
+          text = (await DOC_PARSERS[ext as DocType].extract(file.buffer, file.originalname)).trim();
+        } catch (parseErr) {
+          res.status(422).json({ error: { code: 'FILE_UNREADABLE', message: `Could not read ${file.originalname}: ${messageOf(parseErr)}` } });
+          return;
+        }
+        if (text.length < 40) {
+          res.status(422).json({
+            error: {
+              code: 'NO_READABLE_TEXT',
+              message: `${file.originalname} has no readable text${ext === 'pdf' ? ' — a scanned PDF is an image, and VaNi cannot read images yet' : ''}`,
+            },
+          });
+          return;
+        }
+        const MAX_CHARS = 200_000;
+        const clipped = text.length > MAX_CHARS;
+        const rawText = clipped ? text.slice(0, MAX_CHARS) : text;
+
+        const db = createTenantDb(pool, jwt.tenant_id);
+        const sourceId = await db.transaction(async (tx) => {
+          const inserted = await tx.query<{ id: string }>(
+            `INSERT INTO gt_kb_sources (tenant_id, source_type, display_name, raw_text, status)
+             VALUES ($tenant_id, $source_type, $display_name, $raw_text, 'pending')
+             RETURNING id`,
+            { tenant_id: jwt.tenant_id, source_type: ext, display_name: file.originalname.slice(0, 500), raw_text: rawText },
+          );
+          return inserted.rows[0].id;
+        });
+
+        await emitEvent(pool, jwt.tenant_id, 'FILE_UPLOADED', 'human', { source_id: sourceId });
+
+        res.json({ source_id: sourceId, chars: rawText.length, clipped });
+      } catch (err) {
+        console.error('[Ingest:/file]', err);
+        res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+      }
+    });
   });
 
   // ── GET /sources ───────────────────────────────────────────────────────
