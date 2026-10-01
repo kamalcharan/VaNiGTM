@@ -341,9 +341,10 @@ clean at checkout. Pool tables keep RLS **off by design** (no tenant_id, as
 | S12 | Model enrichment may run as an Anthropic batch (`llm_mode`, `provider_batch_ids`); the daily LLM limit counts records per day either way — see §8 for what that means at 50,000 | yes |
 | S13 | The rotation policy of §9, including its rule-12 exception (free → Haiku escalation, declared and capped per run) | yes |
 | S14 | `model` on source rows; `provider/model/escalated_from/cost_inr/confidence` on enrichment items; `last_enriched_at` on `gt_prospects`; re-enrichment cadences in `.env` | yes |
+| S15 | Budgets as §10: tenant = tokens per day + per month (all intelligence, every lane); admin = records per run; BYOK uncapped (2026-09-15 ruling); + `gt_tenant_context.monthly_token_limit` | yes — once the daily number is checked against measured usage (§10.3) |
 | — | P7–P9 tables (§2.8) | approved at their own phase |
 
-Approving S1–S14 lets P1 start. Sprint 0 (the agentic foundation) needs no
+Approving S1–S15 lets P1 start. Sprint 0 (the agentic foundation) needs no
 schema and can start in parallel once its platform change is approved
 (`vani-app/CLAUDE.md` §5).
 
@@ -498,3 +499,88 @@ refresh run for the affected set (the person starts it).
 | classification | when the description changed, or the taxonomy version changed |
 | email verification (P8) | `ENRICH_REFRESH_VERIFY_DAYS` — 180 |
 | domain lookup "none found" | `ENRICH_REFRESH_DOMAIN_DAYS` — 180 |
+
+---
+
+## 10. Budgets — tokens for a tenant, records for the admin (S15)
+
+Charan, 2026-10-01: "for a tenant it will be 100,000 tokens a day (enrichment
+and other intelligence); there will be a monthly cap as well. For admin, he
+will enter the number of records."
+
+### 10.1 Tenant
+
+- **One meter for all intelligence**: enrichment, account research, story
+  drafting, the wizard's reading and drafting — every model call made for the
+  tenant. It already exists: `gt_tenant_context.daily_token_usage` (181/217),
+  per day, split by lane.
+- **Daily cap** `daily_token_limit` (exists, nullable since 217) and a
+  **monthly cap** — new column `monthly_token_limit`; the month's usage is the
+  sum of the daily map, so no new usage store.
+- **Every lane counts** — free pool, Vikuna's qwen, Haiku — split in the meter
+  (`free · vps · escalation`) so cost is visible, but one cap. A tenant must
+  get the same amount of work done whichever lane happened to answer; and free
+  quotas are Vikuna's shared resource, so they are part of fair share.
+- **Code and crawl steps cost no tokens** and do not count; they keep only
+  infrastructure rate limits (politeness to the sites crawled, J3's crawl
+  number), not a business cap.
+- **BYOK is uncapped** — the 2026-09-15 ruling stands: the cap exists because
+  Vikuna pays. Metered all the same.
+- **Where the numbers come from:** `.env` now (`TENANT_LLM_DAILY_TOKENS`,
+  `TENANT_LLM_MONTHLY_TOKENS`), the tenant's tier later (`vani_entitlement`,
+  POA D4). Migration 217's principle holds in a new form: the cap is a
+  decision Charan made for a tier, shown to the tenant — not a schema default
+  nobody chose.
+- **Shown in records, not just tokens.** A tenant thinks "enrich 200
+  companies", not "60,000 tokens": the estimate says both — "≈ 60,000 tokens,
+  60% of today, about 2 days at your limit" — and runs that exceed today roll
+  over, visibly, as enrichment items already do.
+- **Tenant data never rides a `may_train` free pool** (§9.3 extended): a
+  tenant's own prospect list is that tenant's targeting (rule 13's reasoning),
+  so tenant runs use `no_training` providers, Vikuna's own model, Haiku, or
+  the tenant's BYOK.
+
+### 10.2 Admin (Vikuna, the pool)
+
+- The admin **enters the number of records** for a run; there is no daily
+  cap. The estimate turns that into tokens, ₹ and time across the rotation
+  ladder (§9), and the admin confirms (R3).
+- Actual spend is recorded per run (`gt_enrichment_usage`) and shown month to
+  date on the Spend screen, beside the estimate it was approved against.
+- Vikuna's own tenant work outside the pool (its Smart Profile, research) is
+  `is_admin` and uncapped, metered the same way.
+
+### 10.3 Red flag — check 100,000 against what a day actually uses
+
+The number has been tried once. Migration 181 shipped
+`daily_token_limit = 100000` as a default; 217 removed it because **account
+research costs ~14,000 tokens per company — 100,000 is seven companies** —
+and the first real batch died at company eight.
+
+What 100,000 tokens/day buys, at the costs measured or estimated so far:
+
+| Work | ≈ tokens each | per 100,000 |
+|---|---|---|
+| account research (measured) | 14,000 / company | ~7 companies |
+| model enrichment, description only (§8 estimate) | 2,150 / record | ~45 records |
+| model enrichment with crawled text (§8 estimate) | 4,200 / record | ~23 records |
+| a Mission Wizard site read + profile draft (one call measured at 3,353 + 330; a site read is many calls) | likely tens of thousands | the onboarding day may spend most of it |
+
+So before the number is fixed, read what tenants really use — the meter has
+recorded it since 181 (read-only, run on the VPS):
+
+```sql
+SELECT t.slug, d.key AS day,
+       COALESCE((d.value->>'vps')::int, 0)        AS vps_tokens,
+       COALESCE((d.value->>'escalation')::int, 0) AS paid_tokens
+  FROM gt_tenant_context c
+  JOIN vn_tenants t ON t.id = c.tenant_id,
+       jsonb_each(c.daily_token_usage) d
+ ORDER BY d.key DESC, t.slug
+ LIMIT 60;
+```
+
+Options if onboarding alone approaches the cap: an onboarding allowance (the
+first N days, or the wizard's own calls, outside the cap), or the monthly cap
+as the real limit with the daily one as pacing only. Charan decides once the
+numbers are on the table.
