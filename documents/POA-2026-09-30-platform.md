@@ -39,8 +39,38 @@ name what is and is not true ("Applications unavailable", "importing does not
 authorise outreach"). What is built is listed under F and G above; the rest is
 F0/G0 remainder and the decisions D15–D17.
 
+### Deviation from this plan (recorded 2026-10-01, end of day)
+
+Planned for the day: **H (one repo) → F0 → G0**. What actually happened:
+most of the day went to work this plan did not schedule, each piece pulled in
+by something found while using the product. All of it is real and merged; none
+of it advanced H.
+
+| Unplanned work | Why it happened | Plan slot it belongs to |
+|---|---|---|
+| Industry asked in onboarding; research now runs (`DOMAIN_ENRICHMENT_REQUESTED`) | Vara had no families for connect@ — the wizard skipped the organisation step | D (Brain) / Onboarding |
+| Organisation step cut to name + industry; profile prefilled | Charan: "values already captured, why repeating" | Onboarding |
+| Invite links (`/join`) | People section said "sent", nothing was sent or acceptable | Onboarding |
+| UX audit brief (VaNi, Vara, GTM journeys + 26 issues) | External audit requested | — (input to F0/G0) |
+| Vara and GTM landings from the reviewed prototypes | Prototypes reviewed and adopted | **F0 / G0 — planned** |
+| Document upload into the knowledge graph | GTM "strengthen knowledge" had nothing to upload with | D |
+| Import: people from numbered columns (REP_BY1…) were lost | Found while measuring a "6-minute" import | G (pool/import) — a data-loss bug |
+| `GET /tenant/profile` 500 (`arn` column) | Exposed by the organisation-step prefill | — bug |
+
+Two findings from it change the order below:
+- **The 6-minute import was network, not code** (2,900 rows land in 2.5–5 s
+  next to the database). Imports must be run on vani.vikuna.io, never from a
+  laptop pointed at the production database.
+- **Every import made with numbered representative columns before 9f5d6dd
+  lost its people.** Charan's FTCCI-shaped file needs its people re-landed.
+
+**Rule from here:** a bug found in passing is fixed only if it loses data or
+blocks the slice in hand; everything else is written under "Smaller" and the
+slice continues. Track H is next and nothing else starts before it.
+
 ### Pending, in order
 
+0a. **Re-land the people of the FTCCI-shaped import** (lost before 9f5d6dd) — re-upload after deploy; if refused as already imported, clear that load first (steps given in chat).
 0. **nginx: copy `deploy/vani-main-vps/api.vikuna.io.conf` to the VPS and reload** (DEPLOY.md §5) — `/api/v1/ingest/` now allows 10 MB for document upload; without the copy, uploads over 2 MB get nginx's 413.
 1. **Track H** — move `vani-app/` into this repo, before the rest of F0.
 2. **F0 remainder (Vara)** — role-first JD Studio (needs D16, and D10 for the level field), the context-confirm step, publish → careers site instead of back to the doorway, server-side drafts (check whether `vara_jd` draft status carries it before asking for schema).
@@ -51,7 +81,7 @@ F0/G0 remainder and the decisions D15–D17.
 7. **Test-workspace cleanup** — keep `charans-workspace-e619cv`, `vikuna-funnel`, connect@'s and the seeded `vikuna` tenant.
 8. **C1 / C4** (needs D14), **C2 conversions** (need fixtures), **C3** (needs D5); **E3** (needs D4).
 9. **Needs schema approval (not started):** outreach channel identity (email / WhatsApp — check `gt_channels` 161 first), a tenant's own Apollo key (shape of `vani_llm_provider`).
-10. Smaller: BYOK "test connection" has no SSRF guard; no "withdraw invitation"; the organisation name defaults to the person when signup leaves it blank (fixable from the organisation step); the vikuna.io site's own Tailwind build (Charan's call).
+10. Smaller: GTM sidebar regrouping (do / look up / manage — proposed, not built); landing "chunked + background job" before any 25k+ file; uploaded .txt shows as "pasted" in sources; BYOK "test connection" has no SSRF guard; no "withdraw invitation"; the organisation name defaults to the person when signup leaves it blank (fixable from the organisation step); the vikuna.io site's own Tailwind build (Charan's call).
 
 ### 2026-09-30 detail (kept)
 
