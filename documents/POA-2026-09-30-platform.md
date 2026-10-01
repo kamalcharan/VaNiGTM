@@ -86,7 +86,7 @@ activation has three parts, each with a reason from Charan:
 4. **GTM activation, step 3 — send one approved email.** Draft from the offer → a person approves → `mayContact` (acceptance, suppression) → cadence slot → send through the tenant's channel → `gt_touch_log`; every email carries an unsubscribe link that writes suppression. No bulk, no automatic sends.
 5. **GTM activation, step 4 — "Activated" becomes real.** Offer ready + DPDP accepted + email connected → GTM live for the tenant; the landing's Activate card and milestones read it.
 6. **Tiers and entitlement** — when the business model is set: `vani_entitlement` (schema approval), checked at activation; research runs, pool reads and enrichment metered against the tier. Until then every tenant is on a "beta" grant.
-7. **The common pool** — discussion after GTM is ready (Charan).
+7. **The common pool** — discussed 2026-10-01; plan in `POA-2026-10-01-common-pool.md` (decisions D-P1…12, three tests Complete / Exit / Coverage, phases P0–P9). Next: P0 mapping for schema approval.
 8. **Vara: rest of the first-job journey (F0)** — role-first JD Studio etc. Needs two answers: do role families leave the main path (recommended yes), and seniority as an adjustment of one playbook (recommended).
 9. **RLS switch on production** — runtime to `vanigtm_app` per DEPLOY.md §4b.
 10. **Vara consent capture, then candidate intake.**
