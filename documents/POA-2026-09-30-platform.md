@@ -9,19 +9,19 @@
 > Facts in this plan were checked in code on 2026-09-29/30 (HANDOVER.md §2 has
 > the Vara evidence; the runtime audit is summarised in §4 below).
 
-## Status — 2026-10-01
+## Status — 2026-10-01 (end of day)
 
 | Track | State |
 |---|---|
 | A Foundations | **DONE.** `ARCH.md`, `AGENTS.md`, `documents/spec/{PLATFORM,VARA,GTM}.md`; May POA, May agent spec, Aug Vara POA marked superseded (A6) |
-| B Unblock | **DONE (2026-09-30).** Phase 4 gate passed (Charan: snippet on a real page, boot landed). B1 merged (migrations 254–258 applied on production); B2 fixed + DB test; B3 runs/events/awaiting real on both sides; B4 dashboard on the Brain, `vara.journey` and `gtm.journey` real (`edge.journey` a labelled preview by design); B5 drift fixed. **Correction (read off the VPS 2026-09-30 ~23:40): the runtime role is still `vikuna_admin` — the switch to `vanigtm_app` is NOT in effect and RLS is not enforced in production** (DEPLOY.md §4b). `DB_MIGRATE` is now set on the box |
-| C Harness | **C6, C5 DONE; C2 infrastructure DONE (2026-09-30)** — see the 2026-09-30 notes below. Open: converting agents onto the C2 primitives (waits on fixture material, `docs/fixtures-export.md`), C1 (needs D14), C3, C4 |
-| D Brain | **D2 complete for every Brain reader (2026-09-30).** D1 needs D8; D3 is a design decision; D4 needs D6/D7 |
-| E Funnel | **E1 + E2 LIVE (2026-10-01).** vani.vikuna.io: visitor enters a website → card + digital audit + their own knowledge graph from one page (migrations 261 + 262 applied by the runner; anonymous reads paid by the `vikuna-funnel` tenant; settings in `.env`). Closed-beta push: "Sign up with your access phrase" (→ gate → signup, the preview becomes the workspace's first Smart Profile) or "Request access" (→ a lead + `access_requested` event on the leads tenant; admin console list at `/access-requests`). The GTM animation replays the product's real screens. SSRF guard on every server-side fetch of a visitor's URL. **Open:** Vikuna's own graph snapshot for the landing (section hidden until exported); E3 (needs D4); E4 |
-| Onboarding / Smart Profile | **connect@vikuna.io onboarded on production (2026-10-01)**, marked admin. Brand step: colours come from what a real browser painted (n8n `vani-render-page` → browserless `/function` + `documents/n8n/brand-collector.js`), so JS-only and CSS-in-JS sites work; a regenerate fills empty fields and never overwrites typed ones; VaNi loader on every draft. Wizard finish no longer errors on the `vani:` lane. Domain step done (`vikuna.io`). **People: invite makes a copyable `/join` link** (nothing is emailed); the link signs up into the inviting workspace with the invited role — verified on production by Charan. Model stays a Settings menu item (ruling 2026-09-16) |
-| F Vara | gate passed 2026-09-30; D9 schema (260) applied and the `mayContact` gate deployed. **Next: Vara consent capture**, then candidate intake |
-| G GTM | parked, recorded |
-| H One repo | **not started.** Note: console work (E2, the wizard fixes, People) landed in `vikunawebsite/vani-app` before H — each was a fix or a slice Charan asked for. It moves with H; nothing was built twice |
+| B Unblock | **DONE (2026-09-30).** Phase 4 gate passed; B1–B5 done. **The runtime role is still `vikuna_admin` — RLS is NOT enforced in production** (read off the VPS 2026-09-30 ~23:40; DEPLOY.md §4b). `DB_MIGRATE` is set on the box |
+| C Harness | **C6, C5 DONE; C2 infrastructure DONE (2026-09-30).** Open: converting agents onto the C2 primitives (needs fixture material, `docs/fixtures-export.md`), C1 (needs D14), C3, C4 |
+| D Brain | **D2 complete for every Brain reader (2026-09-30).** **Industry is now a Smart Profile fact (2026-10-01):** asked on the wizard's company card, shown in Smart Profile → Company; stored where Vara and the research read it (`vn_tenant_profiles.industry`), so saving it starts the industry research. D1 needs D8; D3 is a design decision; D4 needs D6/D7 |
+| E Funnel | **E1 + E2 LIVE (2026-10-01)** at vani.vikuna.io: website → card, digital audit, knowledge graph; signup through the access phrase keeps the preview as the first Smart Profile; "Request access" → a lead (admin list `/access-requests`). Migrations 261 + 262 applied. **Open:** Vikuna's graph snapshot for the landing; E3 (needs D4); E4 |
+| Onboarding / Smart Profile | **connect@vikuna.io onboarded on production**, marked admin. Brand colours from what a real browser painted (n8n → browserless `/function`). **People: invite makes a copyable `/join` link** (verified on production). **Industry research now runs from onboarding** — before this, the wizard marked the organisation step done with no data, no industry was recorded and DOMAIN_ENRICHMENT_REQUESTED never fired, so Vara had no role families (found on connect@, fixed and verified 2026-10-01). The organisation step asks only name + industry; the wizard's finish routes to the remaining lane steps; `/onboarding/declare?step=&next=` reopens a step. Fixed on the way: `GET /tenant/profile` selected a nonexistent `arn` column (500) |
+| F Vara | **F0 landing DONE (2026-10-01)** — the reviewed journey prototype (`documents/prototypes/vara-journey.html`) as `/agents/vara`, on real data only: Smart Profile context (organisation, industry, domain), one next action in dependency order (domain → industry → activate → first job → careers site → another job), the industry-preparation band from the domain-pack research status, and milestones that never overclaim (Activated · Job published · **Website verified from an observed widget boot** · Applications unavailable). Old autoplay demo and the "what Vara does" claims removed. **F0 remainder:** role-first JD Studio (D16), context-confirm step, no redirect after publish (go to the careers site), server-side drafts. Then D9 consent capture → candidate intake |
+| G GTM | **G0 landing DONE (2026-10-01)** — the reviewed prototype (`documents/prototypes/gtm-journey.html`) as `/agents/gtm`, on real data only: one recommended next action (profile → offers → audience → research → people), discovery findings from the last website read, offers, audience counts (`gtm.journey` now returns them), knowledge sources. What does not exist is stated, not simulated: outreach channels (sending off until consent), activation + DPDP acknowledgement (D17 + notice wording in legal review). The "Preview data" badge now shows only on the four sample pages (Today, Motion, Journeys, Channels) instead of every GTM page. **G0 remainder:** activation (D17), hide or finish the sample pages |
+| H One repo | **not started.** Console work keeps landing in `vikunawebsite/vani-app` (E2, onboarding, People, both landings) — each a slice Charan asked for. **H is now the gate before the rest of F0** (JD Studio is the largest console slice yet) |
 
 ### Infrastructure changed 2026-10-01 (n8n server `srv1096269`)
 
@@ -29,16 +29,28 @@
 - browserless recreated with a **new token** (the old one was exposed in a chat) and **bound to `172.18.0.1` only** — port 3010 is closed from the internet (checked).
 - n8n user management was reset (backup `/root/n8n-backup-20261001-0637.tgz`).
 
+### Reviewed prototypes (2026-10-01) — what they changed in this plan
+
+The Vara and GTM journey prototypes (`documents/prototypes/`) were reviewed and
+adopted as the target. Their principles, kept in the code: inherit from the
+Smart Profile and never re-ask; preparation runs beside the task with distinct
+ready / preparing / failed / no-match states; one next action; milestones that
+name what is and is not true ("Applications unavailable", "importing does not
+authorise outreach"). What is built is listed under F and G above; the rest is
+F0/G0 remainder and the decisions D15–D17.
+
 ### Pending, in order
 
-1. **Landing graph snapshot** — a read-only export of connect@'s graph into `vani-app/src/site/vikuna-graph-snapshot.json`; the "see what VaNi builds" section appears once it has nodes. Needs Charan to approve the graph as public.
-2. **RLS switch, done deliberately** — runtime to `vanigtm_app` per DEPLOY.md §4b, preflight first.
-3. **Test-workspace cleanup** — kamal@k.com held `vikuna.io` (its domain row was removed 2026-10-01); keep `charans-workspace-e619cv`, `vikuna-funnel`, connect@'s and the seeded `vikuna` tenant.
-4. **D9 → Vara consent capture**, then candidate intake (Track F order).
-5. **Track H** — move `vani-app/` into this repo before the next large console slice.
-6. **C1 / C4** (run table + cost per run, needs D14), **C2 conversions** (need fixtures), **C3** evals (needs D5).
-7. **E3** agent catalog + entitlement (needs D4).
-8. Smaller: BYOK "test connection" has no SSRF guard; the vikuna.io site's own Tailwind build never compiles (Charan's call, separate from VaNi); invitations have no "withdraw" yet.
+1. **Track H** — move `vani-app/` into this repo, before the rest of F0.
+2. **F0 remainder (Vara)** — role-first JD Studio (needs D16, and D10 for the level field), the context-confirm step, publish → careers site instead of back to the doorway, server-side drafts (check whether `vara_jd` draft status carries it before asking for schema).
+3. **RLS switch, done deliberately** — runtime to `vanigtm_app` per DEPLOY.md §4b, preflight first.
+4. **G0 remainder (GTM)** — activation (D17) once the DPDP notice wording is approved and GTM has a `vani_agent` row; hide the four sample pages or finish them.
+5. **D9 → Vara consent capture**, then candidate intake (Track F order).
+6. **Landing graph snapshot** — needs Charan to approve connect@'s graph as public.
+7. **Test-workspace cleanup** — keep `charans-workspace-e619cv`, `vikuna-funnel`, connect@'s and the seeded `vikuna` tenant.
+8. **C1 / C4** (needs D14), **C2 conversions** (need fixtures), **C3** (needs D5); **E3** (needs D4).
+9. **Needs schema approval (not started):** outreach channel identity (email / WhatsApp — check `gt_channels` 161 first), a tenant's own Apollo key (shape of `vani_llm_provider`).
+10. Smaller: BYOK "test connection" has no SSRF guard; no "withdraw invitation"; the organisation name defaults to the person when signup leaves it blank (fixable from the organisation step); the vikuna.io site's own Tailwind build (Charan's call).
 
 ### 2026-09-30 detail (kept)
 
@@ -109,11 +121,14 @@ track stalls on an unanswered question.
 | D7 | Vector columns on `gt_kg_nodes`, `gt_tenant_profile`, `gt_semantic_clusters` | Approve (§7); pgvector is already on the VPS | D4 |
 | D8 | Per-field provenance on `gt_tenant_profile` | Approve the JSONB shape (§7); no new table | D1 |
 | D9 | Consent / suppression model, one for GTM outreach and Vara intake | **Decided 2026-09-30 (`documents/design-notes-consent.md` §6a); migration 260 APPLIED on production; the gate `comms/may-contact.ts` built (not deployed). Next in D9: Vara consent capture. Next after the gate: Track E, starting with the D3 table design.** Keeps `vara_consent`; adds `vani_consent_text` + `vani_suppression` (append-only, keyed hash); one `mayContact` gate. GTM's lawful basis (D9-e) needs legal advice | F2, G |
-| D10 | Vara seniority: modifier on the family shape vs pack per level | Modifier | F |
-| D11 | Vara: tenant shape supersedes at take-time (built) vs first publish | Keep take-time; say it in the UI | F |
+| D10 | Vara seniority: modifier on the family shape vs pack per level | Modifier — **now needed**: the prototype's Level field depends on it | F0 |
+| D11 | Vara: tenant shape supersedes at take-time (built) vs first publish | Keep take-time; say it in the UI. **If D16 is accepted this becomes first publish** | F |
 | D12 | Lane-aware onboarding status; industry as a master list (Aug 27 D1/D2) | Lane-aware status: yes. Industry list: draft 254 in `documents/drafts/` becomes real | E, F |
 | D13 | `vara_jd_position` | Design with F2 | F2 |
 | D14 | `gt_agent_runs` cleanup migration | Approve (§7) | C1 |
+| D15 | Who owns Discovery (website audit findings and fixes): GTM or Nova | Nova owns the fixes; GTM's landing shows the findings and points there (built that way, 2026-10-01) | N1, G0 |
+| D16 | Does "Take families" leave Vara's main path? | Yes: role first — a title matches the workspace's family, then the industry playbook; families are taken when the first matching role is published; the shape editor stays as an advanced option | F0 |
+| D17 | What "GTM activated" means | Offer ready + the DPDP acknowledgement accepted (`vani_tenant_acknowledgement`, 260), recorded and never inferred; GTM gets a `vani_agent` row so both agents activate the same way. Needs the notice wording (legal) | G0, E3 |
 
 ## 3. Track A — Foundations (documents)
 
@@ -211,6 +226,9 @@ Waits on D9 (consent) for anything that sends, and on the ICP data structure app
 | `vani_entitlement` | E3 | Per-agent paid activation has no record |
 | Consent / suppression | D9 | Nothing may send without it |
 | `vara_jd_position` | F | Immutable JD version cannot hold mutable seats |
+| Outreach channel identity (email sender, WhatsApp number) — check `gt_channels` (161) first | G0+ | Tenant-owned sending identity; nothing sends until consent |
+| A tenant's own data provider key (Apollo) — shape of `vani_llm_provider` | G | Third posture (ruled); results tenant-scoped, never the pool |
+| `vani_agent` row for GTM + the platform `outreach_notice` text in `vani_consent_text` | G0 (D17) | Data rows, no DDL — listed because the notice is legal wording |
 
 Everything else in this plan is code over existing tables.
 
@@ -226,6 +244,7 @@ Week 4   C3 evals · C5 lanes · D3 Vara in the graph · E1/E2 funnel front half
 Actual by 2026-10-01: A ✅ · B ✅ · C5/C6/C2-infra ✅ · D2 ✅ · E1/E2 ✅ (live) ·
 onboarding + brand + invite links ✅. Not reached: H, C1/C3/C4, D1/D3, the RLS switch.
 Order from here: "Pending, in order" under Status.
+Added 2026-10-01 (reviewed prototypes): Vara F0 and GTM G0 landings ✅ · next H → F0 remainder → G0 remainder → D9 consent capture → intake.
 ```
 
 Each week ends with something a tenant or an operator can see. After week 4:

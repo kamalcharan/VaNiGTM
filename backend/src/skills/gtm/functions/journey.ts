@@ -25,5 +25,10 @@ export async function journey(_params: Record<string, unknown>, ctx: SkillContex
     : !flags.motion ? `${x.contacts} people — put them in motion`
     : !flags.sending ? `${x.journeys} in motion — nothing sent yet (sending is gated on consent)`
     : `${x.journeys} in motion · ${x.touches} touches`;
-  return { done, current, note };
+  // The counts ride along for the GTM landing, which states them rather than
+  // re-querying (it is the same read).
+  return {
+    done, current, note,
+    counts: { score: x.score, companies: x.prospects, people: x.contacts, in_motion: x.journeys, touches: x.touches },
+  };
 }

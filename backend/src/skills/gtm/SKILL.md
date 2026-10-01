@@ -21,4 +21,5 @@ not pathway engine — the pathway definitions come next (POA Track D5).
 ### journey
 Which declared steps are done, which is current, and one line of state.
 - Parameters: none
-- Returns: { done: string[], current: string | null, note: string }
+- Returns: { done: string[], current: string | null, note: string, counts: { score: number | null, companies, people, in_motion, touches } }
+  (counts are what the GTM landing states; same read, no second query)
