@@ -531,6 +531,23 @@ will enter the number of records."
   POA D4). Migration 217's principle holds in a new form: the cap is a
   decision Charan made for a tier, shown to the tenant — not a schema default
   nobody chose.
+- **The default and how it applies (Charan, 2026-10-01: "default exists but
+  it never shows on the UI, and if BYOK this 100,000 does not impact at
+  all").** Effective daily cap = the tenant's own `daily_token_limit` if
+  someone set one, else `TENANT_LLM_DAILY_TOKENS` (100,000) from `.env`;
+  same shape for the month. This knowingly changes 217's meaning of NULL from
+  "no cap" to "the platform default" — an operator who wants a tenant uncapped
+  sets a high number for it. Today the code applies NO default (217 cleared
+  them all); `research-skill.set_budget` is the only setter and has no screen.
+- **Not shown as a plan meter — shown as a reason.** The cap is not displayed
+  on the console as a usage gauge. But the estimate accounts for it, and a run
+  that reaches it says so where it waits: "Paused — today's allowance is used;
+  resumes tomorrow" (rule 12, and 217's lesson: a batch died at company eight
+  with nothing on screen saying why).
+- **BYOK: no cap, and no Vikuna lanes.** A BYOK tenant's model calls run on
+  its own provider only — never the free pools, never Vikuna's qwen or Haiku
+  (the 2026-09-15 ruling: we never route BYOK onto our keys). Metered, never
+  capped.
 - **Shown in records, not just tokens.** A tenant thinks "enrich 200
   companies", not "60,000 tokens": the estimate says both — "≈ 60,000 tokens,
   60% of today, about 2 days at your limit" — and runs that exceed today roll
