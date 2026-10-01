@@ -118,6 +118,12 @@ export const API = {
    * reachable through it.
    */
   tenant: {
+    profile: {
+      method: 'GET',
+      path: '/api/v1/tenant/profile',
+      auth: true,
+      description: 'The organisation as registered (vn_tenant_profiles): name, website, industry. Prefills the organisation step when it is reopened.',
+    },
     domains: {
       method: 'GET',
       path: '/api/v1/tenant/domains',

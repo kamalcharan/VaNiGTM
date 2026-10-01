@@ -54,7 +54,6 @@ import {
   type VdfMissionMemoryItem,
 } from '@/platform/vdf';
 import s from '../mission-wizard.module.css';
-import { PRODUCT_LANE_ID } from '../lane';
 import { INTERNAL_STEPS, RESEARCH_ROTATION, RESEARCH_STEP_LABELS } from '@/skills/smart-profile/reading-steps';
 
 /* ── Types (backend contracts) ──────────────────────────────────────── */
@@ -948,30 +947,24 @@ export default function MissionWizardPage() {
   const finishOnboarding = useCallback(async () => {
     setFinishing(true);
     try {
-      const status = onboardingStatus.data
-        ?? await apiFetch<{ complete: boolean; steps: { step_id: string; status: string; title?: string }[] }>(API.onboarding.status);
-      const pending = status.steps.filter((st) => st.status !== 'completed');
-      // The wizard stands for the profile steps only. A `vani:` step (the
-      // domain today) is a declaration with its own screen at
-      // /onboarding/declare — completing it here with no data skipped it,
-      // and completing it WITHOUT a lane made the server read the legacy gtm
-      // lane and refuse: 'Step "vani:domain" is not a step of lane "gtm"'
-      // (2026-10-01). Name the lane; leave declarations to their screen.
-      const declarations = pending.filter((st) => st.step_id.startsWith('vani:'));
-      for (const st of pending.filter((x) => !x.step_id.startsWith('vani:'))) {
-        await apiFetch(API.onboarding.completeStep, {
-          body: { lane: PRODUCT_LANE_ID, step_id: st.step_id, status: 'completed', metadata: { via: 'mission-wizard' } },
-        });
-      }
+      // The wizard completes NO lane step. It used to mark user_profile and
+      // business_profile done with no data, which skipped their screens: the
+      // industry was never asked for, so the server never started the industry
+      // research (DOMAIN_ENRICHMENT_REQUESTED fires when business_profile is
+      // saved WITH an industry), and Vara met every tenant with "Setup needed"
+      // and no role families (2026-10-01, connect@vikuna.io). The lane's own
+      // screens at /onboarding/declare ask for those details; send them there.
+      const pending = (onboardingStatus.data?.steps ?? []).filter((st) => st.status !== 'completed');
       // Await it: the console gate reads the session, and navigating on a
       // stale snapshot is what caused a redirect loop once already.
       await refreshSession();
-      if (declarations.length) {
-        showToast({ message: `Mission configured. One more: ${declarations.map((d) => d.title || d.step_id).join(', ')}`, type: 'success' });
-        router.replace('/onboarding/declare');
-      } else {
-        showToast({ message: 'Mission configured — Storytelling is now unlocked in mission control', type: 'success' });
+      if (onboardingStatus.data?.complete) {
+        showToast({ message: 'Smart Profile confirmed.', type: 'success' });
         router.replace('/dashboard');
+      } else {
+        const what = pending.map((d) => d.title || d.step_id).join(', ');
+        showToast({ message: `Smart Profile confirmed. A few details to finish${what ? `: ${what}` : ''}.`, type: 'success' });
+        router.replace('/onboarding/declare');
       }
     } catch (err) {
       showToast({ message: (err as ApiError).message || 'Could not finish setup', type: 'error' });
@@ -979,6 +972,15 @@ export default function MissionWizardPage() {
       setFinishing(false);
     }
   }, [onboardingStatus.data, refreshSession, router, showToast]);
+
+  // Back on the wizard with the profile and brand already confirmed (a reload,
+  // or the session gate sending a tenant with pending lane steps to
+  // /onboarding): there is nothing left to do here, so go to the lane steps
+  // rather than leave them on a finished brand card.
+  useEffect(() => {
+    if (booting || !confirmed.has('brand') || !onboardingStatus.data) return;
+    if (!onboardingStatus.data.complete) router.replace('/onboarding/declare');
+  }, [booting, confirmed, onboardingStatus.data, router]);
 
   const approveIcp = useCallback(async () => {
     setApproving(true);

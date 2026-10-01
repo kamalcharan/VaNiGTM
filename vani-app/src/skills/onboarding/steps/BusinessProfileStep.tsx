@@ -6,8 +6,10 @@
  * of this again.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { StepArtefactProps, StepScreenProps } from '../lane';
+import { apiFetch } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
 import { ArtefactCard, ArtefactSection } from '@/platform/pathway';
 import { InlineLoader } from '@/platform/feedback';
 import s from '../onboarding.module.css';
@@ -25,6 +27,26 @@ export default function BusinessProfileStep({ initial, save, isSaving }: StepScr
   const [website, setWebsite] = useState((initial.website as string) ?? '');
   const [description, setDescription] = useState((initial.description as string) ?? '');
   const [error, setError] = useState('');
+
+  // Reopened after onboarding, the step has no values from this session —
+  // start from what is saved rather than blank fields. Only fields still empty
+  // are filled, so nothing typed is overwritten; a failed read leaves the form
+  // as it is (the person can still type everything).
+  useEffect(() => {
+    if (initial.industry || initial.name || initial.display_name) return;
+    let cancelled = false;
+    apiFetch<{ profile?: { name?: string; display_name?: string; industry?: string; website?: string; description?: string } }>(API.tenant.profile)
+      .then((r) => {
+        const p = r?.profile;
+        if (cancelled || !p) return;
+        setName((v) => v || p.display_name || p.name || '');
+        setIndustry((v) => v || (p.industry && INDUSTRIES.includes(p.industry) ? p.industry : ''));
+        setWebsite((v) => v || p.website || '');
+        setDescription((v) => v || p.description || '');
+      })
+      .catch(() => { /* prefill only */ });
+    return () => { cancelled = true; };
+  }, [initial.industry, initial.name, initial.display_name]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -66,7 +88,8 @@ export default function BusinessProfileStep({ initial, save, isSaving }: StepScr
           {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
         </select>
         <div className={s.note} style={{ marginTop: 6 }}>
-          Declared once. Every agent inherits it and never asks again.
+          Declared once. Every agent inherits it and never asks again. Saving it
+          starts VaNi researching how your industry hires, in the background.
         </div>
       </div>
 

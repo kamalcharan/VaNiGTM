@@ -8,14 +8,15 @@
  * OnboardingRunner, which reconciles against the server catalog and renders
  * whichever steps are still pending.
  *
- * RequireSession sends a tenant here when the wizard's steps are done but a
- * declaration step is not; the wizard's own finish line routes through the
- * gate, so it lands here automatically when a declaration is still owed.
+ * The wizard's finish line sends a tenant here whenever any lane step is
+ * still pending (it completes none itself — see finishOnboarding). With
+ * ?step=<id> a finished step reopens, which is how a detail such as the
+ * industry is changed after onboarding (DeclareScreen).
  */
 
-import OnboardingRunner from '@/skills/onboarding/screens/OnboardingRunner';
-import { PRODUCT_LANE_ID } from '@/skills/onboarding/lane';
+import { Suspense } from 'react';
+import DeclareScreen from '@/skills/onboarding/screens/DeclareScreen';
 
 export default function DeclarePage() {
-  return <OnboardingRunner laneId={PRODUCT_LANE_ID} done="/dashboard" />;
+  return <Suspense fallback={null}><DeclareScreen /></Suspense>;
 }

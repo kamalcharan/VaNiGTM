@@ -46,9 +46,14 @@ interface Props {
   laneId: string;
   /** Where to go once the lane completes. */
   done: string;
+  /**
+   * A finished step to open straight away — how a tenant changes a detail
+   * after onboarding (Vara's "Set your industry" sends ?step=business_profile).
+   */
+  reopen?: string | null;
 }
 
-export default function OnboardingRunner({ laneId, done }: Props) {
+export default function OnboardingRunner({ laneId, done, reopen = null }: Props) {
   const status = useOnboardingStatus(laneId);
   const { complete, isSaving } = useCompleteStep(laneId);
   const { logout, refresh, tenant } = useAuth();
@@ -59,7 +64,7 @@ export default function OnboardingRunner({ laneId, done }: Props) {
   /** Values confirmed this session, per step id. Feeds the rail and reopens. */
   const [confirmed, setConfirmed] = useState<Record<string, Record<string, unknown>>>({});
   /** Set when the user reopens a done step, overriding the server's "next". */
-  const [reopened, setReopened] = useState<string | null>(null);
+  const [reopened, setReopened] = useState<string | null>(reopen);
   const [finished, setFinished] = useState(false);
 
   // Leaving is the only escape from a gated lane, so it must always work — a

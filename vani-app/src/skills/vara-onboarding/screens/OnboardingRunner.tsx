@@ -383,7 +383,9 @@ function JdDetail({ jd }: { jd: ContextPublishedJd }) {
 const SETUP_GAPS: Record<string, { title: string; href: string; cta: string; why: string }> = {
   NO_INDUSTRY: {
     title: 'Vara needs your industry first',
-    href: '/smart-profile',
+    // The organisation step, reopened, then straight back here. The Smart
+    // Profile page has no industry field, so the old link was a dead end.
+    href: '/onboarding/declare?step=business_profile&next=/agents/vara/onboarding',
     cta: 'Set your industry →',
     why:
       'It selects the starting playbook — the must-haves, knockouts and titles '
