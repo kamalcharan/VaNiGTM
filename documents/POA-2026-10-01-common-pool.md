@@ -285,7 +285,7 @@ Everything after it runs agents in front of a person; build the frame once.
 | Phase | State |
 |---|---|
 | Sprint 0 | not started |
-| P0 | next — waiting for "go P0" |
+| P0 | written 2026-10-01 — `documents/pool/P0-mapping.md` + `documents/prototypes/pool-journey.html`; **waiting on Charan: S1–S8 and the UX map** |
 | P1–P9 | not started |
 
 ## 5. Dependencies outside this plan
