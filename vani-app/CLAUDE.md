@@ -355,3 +355,9 @@ Two states the gate must keep separate, both learned the hard way:
 - The signup gate in `lib/gate.ts` is a **front door, not a lock** — client-side,
   and `/api/v1/auth/register` is open on the API regardless. Do not describe it
   as access control.
+- **Invitations are links, not emails (2026-10-01).** People in the Smart
+  Profile makes a one-time `/join/<token>` link to copy and share; nothing is
+  sent, so no screen may say "sent". `/join` skips the access phrase (being
+  invited is the access) and joins the INVITING workspace with the invited
+  role, under the invitation's email. The raw token exists only in the invite
+  response; "New link" re-invites, which kills the old one.

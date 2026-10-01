@@ -278,6 +278,32 @@
 }
 .inviteSend:disabled { opacity: 0.55; cursor: not-allowed; }
 
+.inviteLink {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--ac-line);
+  border-radius: 9px;
+  background: var(--bg2);
+}
+.inviteLink .inviteRow { margin-bottom: 0; }
+.inviteLink .inviteInput { font-family: var(--font-mono); font-size: var(--fs-ui); }
+.inviteLink .sectionEdit { align-self: flex-start; margin-left: 0; }
+
+.rowLinkBtn {
+  padding: 0;
+  font: inherit;
+  color: var(--gold);
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+}
+.rowLinkBtn:hover { border-bottom-color: var(--gold); }
+.rowLinkBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+
 .rowTag, .rowTagMuted {
   margin-left: 8px;
   font-family: var(--font-label);

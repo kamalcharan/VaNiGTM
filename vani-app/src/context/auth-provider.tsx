@@ -95,6 +95,8 @@ interface AuthContextValue {
   needsOnboarding: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (input: SignupInput) => Promise<void>;
+  /** Accept an invitation link: the account is created INSIDE the inviting workspace. */
+  join: (input: { token: string; name: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   /**
    * Re-read /api/v1/auth/me.
@@ -179,6 +181,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [hydrate],
   );
 
+  /**
+   * Join an existing workspace from an invitation link. Same response as
+   * register (tokens + refresh cookie), so it signs straight in. No access
+   * phrase: being invited is the access, and the gate is not consumed.
+   */
+  const join = useCallback(
+    async (input: { token: string; name: string; password: string }) => {
+      const result = await apiFetch<unknown>(API.auth.invitationAccept, { body: input });
+      const token = readAccessToken(result);
+      if (!token) throw new ApiError('Joining did not return a session.', 0);
+      setAccessToken(token);
+      await hydrate();
+    },
+    [hydrate],
+  );
+
   const logout = useCallback(async () => {
     // Clear the in-memory token first so nothing else goes out authenticated,
     // then tell the server to revoke the session and drop the cookie. The
@@ -206,6 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         needsOnboarding: !!user && tenant?.onboarding_complete === false,
         login,
         signup,
+        join,
         logout,
       }}
     >

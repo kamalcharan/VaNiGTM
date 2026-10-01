@@ -74,7 +74,20 @@ export const API = {
       method: 'POST',
       path: '/api/v1/auth/invite',
       auth: true,
-      description: 'Invite people by email and role. Body: { invitations: [{ email, role_id }] }.',
+      description: 'Make invitation links by email and role — nothing is emailed; each row carries a one-time token. Body: { invitations: [{ email, role_id }] }.',
+    },
+    /** Append `/${token}`. Public: the join page reads it before anyone signs in. */
+    invitationPreview: {
+      method: 'GET',
+      path: '/api/v1/auth/invitation',
+      auth: false,
+      description: 'Who invited which email to which workspace, with what role. Refuses used, withdrawn and expired links with the reason.',
+    },
+    invitationAccept: {
+      method: 'POST',
+      path: '/api/v1/auth/invitation/accept',
+      auth: false,
+      description: 'Create the account inside the inviting workspace and sign in. Body: { token, name, password }.',
     },
     invitations: {
       method: 'GET',
