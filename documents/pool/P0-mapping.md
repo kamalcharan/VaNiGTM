@@ -308,13 +308,13 @@ its phase lands.
 
 | # | File | Phase | Contains |
 |---|---|---|---|
-| 264 | `264_pool_sources_and_loads.sql` | P1 | §2.1, §2.2 (enrichment FK added in 266) |
+| 264 | `264_pool_sources_and_loads.sql` | P1 | §2.1, §2.2 (enrichment FK added in 268) |
 | 265 | `265_pool_staging_lifecycle.sql` | P1 | §2.3 |
 | 266 | `266_pool_universe_lifecycle.sql` | P1 | §2.4, §2.5, `pg_trgm` (S2) |
-| 267 | `267_pool_enrichment.sql` | P2 | `gt_enrichment_requests`, `_items`, `_usage`; FK from loads |
-| 268 | `268_pool_company_signals.sql` | P4 | `gt_company_signals` |
-| 269 | `269_gt_cleanup_gap.sql` | P5 | `gt_cleanup_gap` |
-| 270 | `270_industry_master.sql` | P1 | §2.8a columns + the seed (NIC sections/divisions, normalizer clusters, onboarding mapping) |
+| 267 | `267_industry_master.sql` | P1 | §2.8a columns + the seed (NIC sections/divisions, normalizer clusters, onboarding mapping) |
+| 268 | `268_pool_enrichment.sql` | P2 | `gt_enrichment_requests`, `_items`, `_usage`; FK from loads (renumbered 2026-10-01: P1's four come first so the runner applies them in order) |
+| 269 | `269_pool_company_signals.sql` | P4 | `gt_company_signals` |
+| 270 | `270_gt_cleanup_gap.sql` | P5 | `gt_cleanup_gap` |
 
 Each guarded and idempotent, applied with the runner on the VPS, `--status`
 clean at checkout. Pool tables keep RLS **off by design** (no tenant_id, as
@@ -329,13 +329,13 @@ clean at checkout. Pool tables keep RLS **off by design** (no tenant_id, as
 |---|---|---|
 | S1 | Core pool = golden rows with `lifecycle_state = complete`; everything earlier is staging | yes |
 | S2 | `CREATE EXTENSION pg_trgm` | yes |
-| S3 | §2.1–§2.6 column changes (migrations 264–266) | yes |
-| S4 | New tables `gt_enrichment_requests`, `_items`, `_usage` (267) | yes |
-| S5 | New table `gt_company_signals` (268) | yes |
-| S6 | `gt_cleanup_gap` as proposed (269) | yes |
+| S3 | §2.1–§2.6 column changes (migrations 264–266, 267) | yes |
+| S4 | New tables `gt_enrichment_requests`, `_items`, `_usage` (268) | yes |
+| S5 | New table `gt_company_signals` (269) | yes |
+| S6 | `gt_cleanup_gap` as proposed (270) | yes |
 | S7 | Match ladder §4 with rung 2b | yes |
 | S8 | `.env` variables §5 with the suggested values | yes |
-| S9 | `gt_industries` is the one industry master: `nic_prefixes`, `source`, approval columns; seeded (270) | yes |
+| S9 | `gt_industries` is the one industry master: `nic_prefixes`, `source`, approval columns; seeded (267) | yes |
 | S10 | Taxonomy discovery through `gt_cleanup_gap` (`taxonomy_proposal`); admin approves every node and alias | yes |
 | S11 | Onboarding picker, Vara domain packs and the normalizer read/write the master | yes |
 | S12 | Model enrichment may run as an Anthropic batch (`llm_mode`, `provider_batch_ids`); the daily LLM limit counts records per day either way — see §8 for what that means at 50,000 | yes |
