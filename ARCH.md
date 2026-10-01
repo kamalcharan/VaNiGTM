@@ -200,6 +200,29 @@ on `gt_events`, so each is a schema decision.
   never touch an approved value [deviation → Track D1, schema pending].
 - The graph stays in Postgres. No second knowledge store.
 
+## 7a. The common pool — one master, a copy per tenant (2026-10-01)
+
+Decided with Charan; the plan is `documents/POA-2026-10-01-common-pool.md`.
+
+- **Companies are pooled, people are not.** `gt_universe_*` is the master
+  (no tenant_id, platform-written); a tenant works on its own copy
+  (`gt_prospects`, people in `gt_contacts` / `gt_contact_channels`). Adoption
+  COPIES; a pool improvement reaches a tenant as an offer to refresh with a
+  diff; a tenant's edits never flow back. People's names never enter the pool.
+- **One road in:** source → staging (as delivered) → match → enrich → the
+  **Complete** test → pool. A row that has not passed stays staged, visible
+  with its state; junk and duplicate are states, never deletions, and
+  duplicates are flagged, never merged.
+- **Three tests per record:** Complete (admission to the pool), Exit
+  (campaign-ready, per contact per channel, ending at `mayContact` and the
+  governor), Coverage (strength 0–100, ranking only).
+- **Who enriches:** admin on the pool and Vikuna's copy; a tenant on its own
+  copy only — tenant enrichment never writes the pool (rule 13). Daily limits
+  per kind of work, from `.env`; paid work behind an estimate and a ₹ cap.
+- **Suppression is shared, people are not:** unsubscribe per tenant; bounce,
+  complaint and erasure platform-wide; addresses as a keyed hash
+  (`vani_suppression`, 260).
+
 ## 8. Migrations and schema
 
 - **Manual, guarded, idempotent, numbered once.** `npm run db:migrate`; a
@@ -227,6 +250,12 @@ boundary — a platform change is logged and decided); the access token lives in
 memory only; calls go direct to the API origin with credentials; preview
 functions are declared, stamped, and leave the list the day their backend
 lands.
+
+**Agentic IX** (`AGENTS.md` §9a): the console shows an agent's work live from
+one server-sent-events stream per run (intended `GET /api/v1/runs/:id/stream`)
+and decides through one decision-card component — no chat-first surfaces, no
+AG-UI dependency. An SSE location in nginx needs `proxy_buffering off` and a
+long read timeout, or the stream arrives all at once at the end.
 
 ## 10. Environments, deploy, and what is where
 

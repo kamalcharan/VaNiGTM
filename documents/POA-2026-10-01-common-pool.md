@@ -6,8 +6,9 @@
 > records every decision taken. Companion to `POA-2026-09-30-platform.md`
 > (where it is Pending 7, "the common pool").
 >
-> Discussion only so far — **no code until P0 is approved.** Each phase is one
-> branch and stops at a gate for Charan's review.
+> Discussion only so far — **no code until P0 is approved.** Each phase is two
+> sprints, each ending in a checkout (§3); agents follow `AGENTS.md` §6a–§9a
+> (risk classes, eval tiers, self-awareness, agentic IX).
 
 ---
 
@@ -130,102 +131,164 @@ the P0 gate** (CLAUDE.md: no table, column, enum or index without it).
 
 ---
 
-## 3. Phases
+## 3. How every phase runs — sprints, UX, checkout
 
-One branch per phase; each ends at a gate with something visible. P4 can run
-alongside P2–P3 once P1 is merged.
+Charan, 2026-10-01: "every phase to be like a couple of sprints with checkout."
 
-### P0 — Mapping and schema approval (no code)
-- `documents/pool/P0-mapping.md`: §2 at column level, every DDL change, the
-  `.env` variables (J3 limits, provider costs), the migration numbers.
-- **Gate:** Charan approves the schema list.
+**A phase is two sprints** (one where noted). Each sprint ends in something
+visible on the deployed stack and a **checkout** — nothing merges to `main`
+without one.
 
-### P1 — Staging lifecycle and admission
-- Lifecycle states and junk reasons on staging; licence class on sources.
-- Landing admits only Complete rows; everything else stays staged and
-  visible with its state.
-- **Chunked loading as a worker job** — today's path does 2,913 rows in one
-  request; MCA and Udyam need streaming.
-- Steward screen: Sources (loads, counts by state, junk, held, errors).
-- **Gate:** FTCCI, analytica (exhibitors + products) and the prospector file
-  re-landed through the new road; counts by state shown; nothing reaches the
-  pool that fails Complete.
+| Sprint | Opens with | Ends with |
+|---|---|---|
+| **A — shape** | the phase's **UX prototype** (static HTML in `documents/prototypes/`, like the reviewed GTM/Vara journeys) reviewed by Charan; schema for the phase approved | backend core + its tests; the prototype's screens wired to fixtures |
+| **B — make it real** | the review notes from A | screens on real data, agentic patterns in place, evals, docs — then checkout |
 
-### P2 — Enrichment engine: code and crawl
-- `gt_enrichment_requests`: select → **estimate** (records, kinds, days at
-  the cap) → confirm → run → progress. Admin on pool + Vikuna's copy; tenant
-  on its own copy only (D-P11, rule 13).
-- Daily limits per kind from `.env` (J3); overflow rolls to the next day,
-  visible, never dropped.
-- Code steps: normalise, domain from corporate email, liveness, phone to E.164.
-- Crawl: about / contact / leadership pages → role emails, phones,
-  social URLs (J6), description. **Names found are NOT written to the pool**
-  (D-P5).
-- Domain discovery: SearXNG + name/city check.
-- Every value lands as a source row with method, date, confidence (D-P12).
-- **Gate:** ≥70% of analytica Indian exhibitors with a verified domain;
-  limits hold under a forced overrun.
+### 3.1 The UX layer
 
-### P3 — Enrichment engine: the model
-- Haiku classification: our industry, B2B/B2C, is_individual,
-  domain-to-name relation (`same | brand_or_group | unrelated`).
-- Lowest limit (J3); budget via `charBudgetFor`; `truncated` checked on every
-  answer; the LLM gate already serialises calls.
-- **Gate:** 100 hand-labelled FTCCI rows — agreement measured and recorded
-  (the Laya trial's harness, `backend/scripts/laya-trial/`, is the template).
+- **Prototype before wiring, every phase.** The screens are drawn first,
+  reviewed, then built. An external UX audit runs at three points: after P2
+  (staging), P5 (review + coverage) and P9 (segments + Exit).
+- **Where screens live:** `vani-app/src/skills/gtm-*` behind the registry
+  boundary; pool and steward screens `adminOnly` under `gtm-pool`; limits and
+  spend under Settings. No new top-level destination.
+- **Agentic IX on every screen that runs an agent** (`AGENTS.md` §9a): the
+  agent proposes the next step, its work streams live, it stops at decision
+  cards that show evidence, confidence and its track record; conversation
+  steers, never leads.
+- **Five states, phone width, rule 9b** (every empty state names its next
+  action) — as for every console screen.
 
-### P4 — Government data and signals (parallel to P2–P3)
-- MCA RoC CSV import keyed on CIN.
-- Udyam OGD pull by state, resumable from the last page, Telangana first;
-  rows hashed (Udyam has no stable id). **What gets enriched** is chosen by
-  admin by state and NIC code — everything lands in staging, only the chosen
-  slice is enriched and admitted.
-- `gt_company_signals`: trade show (event, hall, booth, products), chamber
-  member, new registration (< 180 days), with expiry.
-- **Gate:** Telangana MCA complete with unique CINs; a killed Udyam pull
-  resumes with no duplicates; all 327 analytica exhibitors carry a signal.
+| Phase | Screens | Agentic pattern carried |
+|---|---|---|
+| Sprint 0 | run feed, decision card, `/runs/awaiting` on both | live work, decision cards |
+| P1 | Sources (loads, states, junk, held) | junk/held as decision cards |
+| P2–P3 | Enrich: select → estimate → confirm → live run → results | proposes, estimates cost, streams, abstains visibly |
+| P4 | Government data pulls; signals on the company card | resumable run, live progress |
+| P5 | Review queue; Coverage on the company card | side-by-side decision cards with provenance |
+| P7 | People (tenant copy), adoption with refresh diff | proposes who matters, persona with confidence |
+| P8 | Verification; Spend vs cap | estimate → confirm, cap visible |
+| P9 | Segment builder; reachable vs not, with reasons | proposes a segment from the ICP; Exit reasons |
 
-### P5 — Review queue and Coverage
-- Steward review queue (held, duplicate, reported junk) — side by side with
-  provenance; link / new / junk / skip.
-- Coverage score per company (J4), shown on the company card.
-- **Gate:** FTCCI's flagged groups resolvable from the screen; the score
-  explains itself (each dimension visible).
+### 3.2 Checkout — the definition of done for a sprint
 
-### P6 — Isolation (prerequisite for people)
-- Production switched to `vanigtm_app` (DEPLOY.md §4b); the two-tenant test
-  extended to the spine and the new tables.
-- **Gate:** the test passes on production; Charan confirms `current_user`.
+A sprint checks out when Charan says so, after every line below is true:
 
-### P7 — People in the tenant's copy
-- **Decide projects first** (D-P9 yellow flag).
-- Persons, roles and contact points on `gt_contacts` / `gt_contact_channels`
-  / `gt_person_company_link`; lawful basis; title → persona.
-- Sources: FTCCI reps → Vikuna; Charan's LinkedIn export (own relationships);
-  manual MCA director entry from the company card.
-- Adoption: pool company → tenant copy, with the refresh-offer diff (D-P6).
-- **Gate:** FTCCI people in Vikuna only — another tenant sees none; adoption
-  re-run is idempotent.
-
-### P8 — Verification and paid providers
-- One adapter interface; Findymail verify (all addresses, legacy first) and
-  find; monthly ₹ cap, unset = refused (J3); every call logged with cost.
-- Spend screen (month to date per provider vs cap).
-- **Gate:** 100-record trial per provider before any scale; spend never
-  passes the cap in a forced test.
-
-### P9 — Segments and Exit
-- `gt_segments`: filters over pool + own copy → live count → save; the same
-  count on re-run unless data changed.
-- Exit evaluated per contact per channel (§1.2) → "reachable" counts, with the
-  reason for every contact that is not.
-- Hand-off into the journey (UC10).
-- **Gate:** a Vikuna segment of FTCCI companies shows reachable vs not, with
-  reasons; nothing unverified or suppressed is counted reachable.
+1. **Demo** — the visible thing runs on vani.vikuna.io → api.vikuna.io
+   (deployed, not a laptop), shown end to end.
+2. **UX** — matches the reviewed prototype; five states; phone width; no
+   horizontal scroll; screenshots attached.
+3. **Tests** — unit + DB tests (three-check pattern, restricted role), CI green.
+4. **Evals** — any prompt or model touched: offline report, no regression;
+   shadow report before promotion (`AGENTS.md` §7).
+5. **Risk** — every new action declared with its class (R0–R5); R3/R4 refuse
+   without approval; limits hold under a forced overrun.
+6. **Ops** — migrations applied by the runner and `--status` clean on the VPS;
+   backend deployed; nginx copied if it changed.
+7. **Docs** — ARCH / AGENTS / specs / CLAUDE / HANDOVER updated where touched;
+   this POA's status table updated.
+8. **Sign-off** — Charan: "checkout" → merge to `main`.
 
 ---
 
-## 4. Dependencies outside this plan
+## 4. Phases and sprints
+
+### Sprint 0 — Agentic foundation (0a, 0b)
+Everything after it runs agents in front of a person; build the frame once.
+- **0a:** SSE run stream (`/api/v1/runs/:id/stream`, nginx with buffering
+  off); the run-event vocabulary (`AGENTS.md` §9a); risk classes declared in
+  `SKILL.md` and checked by the harness; the approval token for R3/R4.
+- **0b:** run-feed and decision-card components (a logged platform change —
+  needs approval); `/runs/awaiting` and the failover queue moved onto them;
+  runs carry inputs, gaps, confidence, cost (`AGENTS.md` §8a).
+- **Checkout:** a real run streams live on vani.vikuna.io; a failover decision
+  is taken on the new card; polling removed where the stream replaces it.
+
+### P0 — Mapping and schema approval (one sprint, no code)
+- `documents/pool/P0-mapping.md`: §2 at column level, every DDL change, the
+  `.env` variables (J3 limits, provider costs), migration numbers.
+- UX map of the whole pool journey as one prototype.
+- **Checkout:** Charan approves the schema list and the UX map.
+
+### P1 — Staging lifecycle and admission
+- **A:** lifecycle states and junk reasons on staging; licence class on
+  sources; **chunked loading as a worker job** (today: 2,913 rows per request).
+- **B:** Complete test in landing — only Complete rows reach the pool;
+  Sources screen; FTCCI, analytica and the prospector file re-landed.
+- **Checkout:** counts by state shown; nothing in the pool fails Complete.
+
+### P2 — Enrichment engine: code and crawl
+- **A:** `gt_enrichment_requests` (select → estimate → confirm → run); daily
+  limits per kind from `.env`, overflow rolls over visibly; code steps
+  (normalise, domain from email, liveness, E.164).
+- **B:** crawl (about / contact / leadership → role emails, phones, social
+  URLs, description; **no names into the pool**); domain discovery (SearXNG +
+  check); provenance per value; the Enrich screen, agentic.
+- **Checkout:** ≥70% of analytica Indian exhibitors with a verified domain;
+  limits hold under a forced overrun. **External UX audit #1.**
+
+### P3 — Enrichment engine: the model
+- **A:** Haiku classification (industry, B2B/B2C, is_individual, domain-name
+  relation) with fixtures; `charBudgetFor`; `truncated` checked; offline eval.
+- **B:** shadow eval on 100 hand-labelled FTCCI rows; online acceptance
+  recorded; confidence and abstain on the decision card.
+- **Checkout:** agreement measured and recorded; abstentions visible, not
+  guessed.
+
+### P4 — Government data and signals (parallel to P2–P3)
+- **A:** MCA RoC CSV keyed on CIN; Udyam OGD pull by state, resumable, rows
+  hashed; everything staged, admin picks the slice to enrich (state × NIC).
+- **B:** `gt_company_signals` (trade show, chamber, new registration, with
+  expiry); signals on the company card.
+- **Checkout:** Telangana MCA with unique CINs; a killed Udyam pull resumes
+  with no duplicates; 327 analytica exhibitors carry a signal.
+
+### P5 — Review queue and Coverage
+- **A:** review queue (held, duplicate, reported junk) — side by side with
+  provenance; link / new / junk / skip.
+- **B:** Coverage score (J4), every dimension visible on the card.
+- **Checkout:** FTCCI's flagged groups resolvable from the screen; the score
+  explains itself. **External UX audit #2.**
+
+### P6 — Isolation (one sprint; prerequisite for people)
+- Production on `vanigtm_app` (DEPLOY.md §4b); the two-tenant test extended to
+  the spine and the new tables.
+- **Checkout:** the test passes on production; `current_user` confirmed.
+
+### P7 — People in the tenant's copy
+- **Decide projects first** (D-P9).
+- **A:** persons, roles, contact points (`gt_contacts`, `gt_contact_channels`,
+  `gt_person_company_link`); lawful basis; title → persona; FTCCI reps →
+  Vikuna; Charan's LinkedIn export.
+- **B:** adoption pool → tenant copy with the refresh diff; manual MCA director
+  entry from the company card; the People screen.
+- **Checkout:** FTCCI people in Vikuna only — another tenant sees none;
+  adoption re-run idempotent.
+
+### P8 — Verification and paid providers
+- **A:** one provider adapter; Findymail verify (legacy first) and find;
+  monthly ₹ cap, unset = refused; every call logged with cost.
+- **B:** Spend screen; 100-record trial per provider.
+- **Checkout:** spend never passes the cap in a forced test.
+
+### P9 — Segments and Exit
+- **A:** `gt_segments` (filters over pool + own copy, live count, save);
+  Exit per contact per channel with reasons.
+- **B:** reachable vs not on screen; hand-off into the journey; VaNi proposes
+  a first segment from the ICP.
+- **Checkout:** a Vikuna segment of FTCCI companies shows reachable vs not with
+  reasons; nothing unverified or suppressed counted reachable. **External UX
+  audit #3.**
+
+### Status
+
+| Phase | State |
+|---|---|
+| Sprint 0 | not started |
+| P0 | next — waiting for "go P0" |
+| P1–P9 | not started |
+
+## 5. Dependencies outside this plan
 
 - **Sending** is POA Pending 3–4 (connect the tenant's email, send one
   approved email). Exit is meaningless without it, and it needs nothing from
@@ -235,7 +298,7 @@ alongside P2–P3 once P1 is merged.
 - **Business tiers** (POA Pending 6) — J3's limits become per tier later;
   until then `.env`.
 
-## 5. Open questions (from the spec, still open)
+## 6. Open questions (from the spec, still open)
 
 - MCA director provider (Probe42, Tofler, Attestr, Surepass) and per-CIN cost.
 - Findymail plan and unit cost.

@@ -9,6 +9,12 @@
 > DAG runner; the event bus stays and becomes visible; the Smart Profile is the
 > feeding engine for every agent; models are `.env`; evaluation is mandatory;
 > a model is never a legal actor and learning is human-gated.
+>
+> Added 2026-10-01 (Charan: "agents should be self-aware, able to improve,
+> with proper evals and risk boundaries"; "agentic is not a chatbot — it should
+> be handheld by an agent"): §6a risk boundaries, §7 eval tiers, §8a
+> self-awareness, §8b the improvement loop, §9a agentic IX. AG-UI is NOT
+> adopted as a dependency; its event vocabulary is borrowed (§9a).
 
 ## 1. What an agent is
 
@@ -154,6 +160,38 @@ Rules:
 - **A parked run whose work was since done elsewhere is SUPERSEDED**, and the
   queue says so before anyone approves spending on it.
 
+## 6a. Risk boundaries — what an agent may do on its own
+
+Every action an agent can take is DECLARED in its `SKILL.md` with a risk
+class, and the harness enforces the class, not the agent's good intentions.
+
+| Class | Kind of action | Autonomy | Examples |
+|---|---|---|---|
+| **R0** | read and derive, inside the tenant | autonomous within its run budget | read the Brain, classify, crawl a public page, compute a score |
+| **R1** | write the tenant's OWN working data, reversibly | autonomous; recorded as a suggestion with provenance; a person can undo | enrich the tenant's copy, draft a story, propose a segment |
+| **R2** | write SHARED or platform data | autonomous only behind declared validators, labelled (`unreviewed`, its own source tier) and reversible by admin; otherwise propose | admit a record to the common pool, publish a domain pack |
+| **R3** | spend money | **estimate → a person confirms**; hard caps (daily per kind, monthly ₹); unset cap = refused | paid provider call, LLM work over the free lane, failover to the paid model |
+| **R4** | externally visible — reaches a person or the public | **never autonomous in v1**: a person approves the item, or an approved template for an approved batch; `mayContact` + the governor on every send | send an email or WhatsApp, publish a page, post |
+| **R5** | forbidden | refused in code, whoever asks | contact a suppressed person; read another tenant's data; scrape LinkedIn/X/Facebook profiles; act as a legal actor; change its own prompt, config, budget or class |
+
+Rules:
+
+- **The class is the ceiling.** An agent may ask for less autonomy than its
+  class allows (park at `awaiting`), never more.
+- **Approval is a token, not a flag in the payload.** R3/R4 actions run only
+  with an approval recorded against the run by a `human` actor (the
+  `allow_failover` pattern generalised); an unreadable approval counts as none.
+- **Budgets are per run, per tenant per day, per kind of work** (code, crawl,
+  LLM, paid — POA common pool J3), from `.env` or the tenant's tier; overflow
+  waits, visibly, and is never dropped.
+- **A pause switch per agent per tenant** stops new runs at once; runs in
+  flight finish their current step and park.
+- **Blast radius is stated before the run**: how many records, which data,
+  which tenants (one, always — except R2 platform jobs, which say so).
+
+[deviation → the classes are declared in this document only; the harness
+check and the `SKILL.md` declarations land with the common pool's Sprint 0.]
+
 ## 7. Evaluation — mandatory, not aspirational
 
 Every prompt contract ships with fixtures and is measured on three things:
@@ -182,6 +220,25 @@ Rules:
 - Evaluation covers the whole harness, not only the model: a fixture may
   assert the run's steps, its checkpoint, and what it wrote.
 
+**Three tiers** — every agent is measured at all three before a phase checks
+out:
+
+| Tier | When | What |
+|---|---|---|
+| **Offline** | every PR touching a prompt, parser or model; CI | fixtures: schema pass rate, field agreement, regression vs last recorded |
+| **Shadow** | before a new prompt version or model goes live | the candidate runs beside the live one on real inputs, writes nothing, and its disagreements are reviewed by a person |
+| **Online** | continuously in production | human acceptance per field, abstention rate, cost per accepted output, and for outreach the response it earned (signals spine) |
+
+- **Golden sets grow from human decisions.** Every edit or rejection a person
+  makes is a candidate fixture (redacted); the set is curated, never
+  auto-appended.
+- **A model may grade, never decide.** An LLM judge is allowed only with a
+  rubric calibrated against human labels, and never as the sole gate.
+- **A quality drop is an alert, not a silent rollback.** When online acceptance
+  for a prompt version falls below its recorded baseline, an item appears in
+  `/runs/awaiting` with the numbers and a one-click return to the previous
+  version — a person chooses (rule 12).
+
 [deviation → Track C3 builds the runner and the first fixture sets: profile
 drafter, ingestion extractor, domain-pack families/starter, pool industry pass.]
 
@@ -206,6 +263,45 @@ No fine-tuning. No unattended prompt rewriting. **A model is not a legal
 actor**: `actor_type` is `human | rule | timer | system`, enforced in the
 database, and an agent's decision is a proposal until one of those confirms it.
 
+## 8a. Self-awareness — what every agent knows about itself, and says
+
+An agent is self-aware in a precise, testable sense: at every decision point it
+can answer six questions, and its run records the answers.
+
+| Question | What the run carries |
+|---|---|
+| **What am I for, and what can't I do?** | its declared purpose, actions and risk classes (§2, §6a) — shown on its agent card |
+| **What did I read, and what was missing?** | inputs used (Brain sections, sources, records) and the **gaps** — "no offer defined", "no domain for 31 of 400" |
+| **How sure am I?** | a confidence per output with its reason; **abstaining is a legal answer** — "not enough evidence" is recorded as such, never replaced by a guess |
+| **How good am I, here?** | its own track record in THIS workspace: acceptance per field (§8), shown at the decision card — "industry: 92% accepted; buyer role: 61% — check this one" |
+| **What does this cost, and what's left?** | estimate before, actual after, budget remaining today (§6a) |
+| **What changed since last time?** | the diff against its previous run on the same subject — new findings, retracted ones |
+
+This is code and data, not a model introspecting: the harness supplies the
+budget, the track record and the diff; the agent's code supplies the inputs,
+gaps and confidence; the prompt contract (§5) requires the model to return
+`confidence` and `evidence` fields and permits `abstain`.
+
+## 8b. The improvement loop — how an agent gets better
+
+```
+online signals ─► weakest prompt/field ─► candidate version ─► offline eval
+  (§7 tiers)        (acceptance, abstain,     (prompt, examples,   (fixtures +
+                     cost, response)           validator, rule)     new golden)
+                                                       │
+                     promote ◄── a person ◄── shadow run on real inputs
+```
+
+- The loop is **proposed by the system and decided by a person**, every time:
+  no unattended prompt rewriting, no fine-tuning (§8).
+- What may change: the prompt text, few-shot examples from approved outputs,
+  a validator, a deterministic rule that replaces a model call (the cheap lane
+  is code), a threshold through a calibration proposal.
+- What may not: the agent's risk class, its budget, its declared actions —
+  those change by a human editing the declaration.
+- Every promotion is a new version with its eval report attached; rollback is
+  choosing the previous version.
+
 ## 9. Visibility — what every run owes a person
 
 - The run appears in `/runs` the moment it is created, with its actor,
@@ -220,6 +316,36 @@ database, and an agent's decision is a proposal until one of those confirms it.
   preview until it has server state.
 - Cost per run is shown once C4 lands. Until then "what did this run cost" is
   answered per tenant per day only, and the UI does not pretend otherwise.
+
+## 9a. Agentic IX — the agent leads, the person decides
+
+Not a chatbot. The agent proposes, works in view, and stops at decisions; a
+person steers and approves. Six patterns, every agent:
+
+1. **It proposes the next step** — from its pathway definition (§10), with why.
+2. **Its work is visible as it happens** — steps arrive live, not on refresh.
+3. **It stops at decision cards** — approve / edit / reject, with evidence,
+   confidence and its track record (§8a); never a free-text "what next?".
+4. **Every artefact carries its evidence** — source, method, date, confidence.
+5. **It keeps working when the person leaves** — and the return is
+   "done — 3 things need you", via `/runs/awaiting`.
+6. **Conversation steers, it does not lead** — "focus on pharma", "skip this"
+   are inputs to a running pathway, not the main surface.
+
+**Transport.** One server-sent-events stream per run (intended:
+`GET /api/v1/runs/:id/stream`) carrying the step records the harness already
+writes, replacing polling. Event vocabulary borrowed from AG-UI so an adapter
+is cheap if ever wanted — `run_started`, `step_started`, `step_finished`,
+`finding`, `artefact`, `decision_needed`, `run_finished`, `run_failed` — but no
+AG-UI/CopilotKit dependency: our runs are event-bus jobs, not a
+request/response chat. nginx must serve the stream with buffering off.
+
+**Components.** One run-feed and one decision-card component in the console's
+platform layer, used by every pathway — a logged platform change
+(`vani-app/CLAUDE.md` §5), PENDING approval.
+
+[deviation → none of the transport or components exist yet; the console polls
+in 7 places. Built as Sprint 0 of the common pool POA.]
 
 ## 10. Orchestration — the event bus, and pathways
 
@@ -272,3 +398,8 @@ database, and an agent's decision is a proposal until one of those confirms it.
    exists.
 10. Appears correctly in `/runs`, `/runs/events`, the dashboard and the agents
     list before it is called done.
+11. Every action declared with its risk class (§6a); R3/R4 paths tested to
+    refuse without an approval; budgets tested by a forced overrun.
+12. Runs report inputs, gaps, confidence (with abstain), cost and budget left
+    (§8a); the decision card shows its track record.
+13. An eval report at all three tiers (§7) attached to the phase checkout.

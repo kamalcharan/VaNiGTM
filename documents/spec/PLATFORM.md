@@ -276,6 +276,10 @@ Legend — **Built today**: ✅ built (file/route) · ◐ partial (what is missi
 | P-94 | The common pool is an admin-tenant surface | `SkillRoute.adminOnly`; server 403 for non-admin; `vn_tenants.is_admin` | ✅ `platform/registry.ts` `adminOnly`, migration 012; `gtm-pool` (per repo-consolidation POA §4, not opened) |
 | P-95 | An event nobody handles is not silently done | Left `pending` with a visible reason | ✗ — POA C6 |
 | P-96 | Answer a failover question | Approve re-emits with `allow_failover`; decline fails with cause; superseded runs lead with Decline | ✅ `llm-provider-skill/functions/pending-failovers.ts`, `resolve-failover.ts` (console queue per HANDOVER, merge to vikunawebsite `main` pending) |
+| P-97 | Every agent action carries a risk class R0–R5 and the harness enforces it | R3 (spend) and R4 (externally visible) need a recorded human approval; R5 refused in code; pause switch per agent per tenant | ✗ — `AGENTS.md` §6a; common pool POA Sprint 0 |
+| P-98 | Agents are self-aware at every decision point | runs carry inputs, gaps, confidence (abstain allowed), cost and budget left; the decision card shows the agent's acceptance rate in this workspace | ✗ — `AGENTS.md` §8a |
+| P-99 | Evaluation at three tiers, improvement human-gated | offline fixtures in CI; shadow runs before promotion; online acceptance with a drop raised as an alert, not a silent rollback | ◐ — offline runner is Track C3; shadow + online ✗ (`AGENTS.md` §7, §8b) |
+| P-100 | Agentic IX: the agent leads, the person decides | one SSE stream per run; one run-feed + one decision-card component; no chat-first surface; no AG-UI dependency | ✗ — `AGENTS.md` §9a; console polls in 7 places |
 
 ---
 

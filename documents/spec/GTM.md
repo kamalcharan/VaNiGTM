@@ -183,6 +183,14 @@ the `cleanup` source puts model-derived text in the pool for the first time.
 
 ### 3.6 The pool
 
+> **Decided 2026-10-01 (Charan)** — `documents/POA-2026-10-01-common-pool.md`
+> D-P1…12 and `ARCH.md` §7a supersede anything below that disagrees: the pool
+> is the master and a tenant works on a copy; one road in (staging → match →
+> enrich → **Complete** → pool); three tests per record (Complete, Exit,
+> Coverage); junk and duplicate are states; pool enrichment is Vikuna's (admin),
+> a tenant enriches only its copy; people's names never enter the pool;
+> daily limits per kind of work; paid work behind estimate + ₹ cap.
+
 | Concern | Intended | Today |
 |---|---|---|
 | Entitlement | tenants read the pool "based on business model" — a plan grant, not a default (HANDOVER); one entitlement model for all agents (POA D4 `vani_entitlement`) | ✗ only `is_admin` gates `scope:'pool'` reads; no tenant can read the pool at all |
@@ -280,7 +288,7 @@ aggregate (ads → informs the story, never the individual). ✗ no signals tabl
 | G-23 | "Enrich" tries providers in order and shows each hit or miss; with no provider it says "what was in the upload" — no fake spinner | waterfall over connectors; honest single-source row today | ◐ honest today (`gtm-audience/INTEGRATION.md`); waterfall ✗ (no connector) |
 | G-24 | A people delivery (vendor export: company string, name, title, headline) is staged as delivered, matched to companies in code, and only the gap goes to Haiku; an unmatched person stays, held | `company-matcher.ts`: key/acronym/token/headline; ≥0.85 match, 0.55–0.85 gap with shortlist; measured 61/68, 0 wrong | ◐ matcher built + 11 tests (`src/etl/company-matcher.ts`); landing of people deliveries, link rows, gap register ✗ (pending approval, §6.6) |
 | G-25 | Each person carries a persona (economic/technical buyer, champion, user, gatekeeper × function) from title rules, the model only on the residue | `gt_personas` + `gt_person_persona` | ✗ PROPOSED. Note the legacy `icp-skill` personas are per-CAMPAIGN (`gt_personas`, 160) — a different object with the same name; reconcile at approval |
-| G-26 | People are never in the pool; nobody is contacted until suppression exists | schema: no platform people table without the decision; `gt_suppression` approved together with any people asset | ✅ posture holds today (people only in `gt_contacts`); decision PENDING (§8) |
+| G-26 | People are never in the pool; nobody is contacted until suppression exists | people stay tenant-scoped (D-P5, 2026-10-01); suppression is `vani_suppression` (260) — unsubscribe per tenant, bounce/complaint/erasure platform-wide, keyed hash | ✅ posture holds (people only in `gt_contacts`); suppression + gate live (`comms/may-contact.ts`); DECIDED 2026-10-01 |
 
 ### E5 — Common pool (admin)
 
@@ -289,7 +297,7 @@ aggregate (ads → informs the story, never the individual). ✗ no signals tabl
 | G-27 | As a Vikuna admin I add a delivery to the pool — publisher, region, as-of, tags — through the same wizard, and see every delivery with live rows and quality | `POST /etl/sessions {destination:'universe_companies', source_code, load_region, load_as_of, tag_ids}`; `get_loads scope pool` | ✅ `gtm-pool` (REAL, admin-gated; `vn_tenants.is_admin` from JWT, `ki_import_sessions.destination` 197) |
 | G-28 | Pool source rows are immutable, one per record per delivery, never merged silently; sister companies on one website are flagged, never collapsed | upsert `(source_id, source_record_id)`; dedup key = source id or row hash | ✅ `landing.ts:645–683`; FTCCI measured 2,912 rows, 137 flagged |
 | G-29 | Golden records are derived field by field (validity × tier × freshness), re-runnable; late merges keep aliases so adopted prospects keep resolving | `gt_universe_companies`, `gt_universe_company_aliases`, `field_sources` | ✗ merge engine — before the second delivery of any list |
-| G-30 | Pass 1: Haiku reads every pool description once → industry, offering, buyer, B2B/B2C, `is_individual`; domain relation `same | brand_or_group | unrelated`; company LinkedIn/X from the footer | cleanup source with its own tier; ≈$900 at 600k; Laya rejected on measurement (31% agreement) | ✗ needs Charan's go (cleanup source) |
+| G-30 | Pass 1: Haiku reads every pool description once → industry, offering, buyer, B2B/B2C, `is_individual`; domain relation `same | brand_or_group | unrelated`; company LinkedIn/X from the footer | cleanup source with its own tier; ≈$900 at 600k; Laya rejected on measurement (31% agreement) | ✗ GO given 2026-10-01 (D-P4: pool enrichment is Vikuna's, labelled with its own source) — POA common pool P3 |
 | G-31 | A list label from a provider ("growth stage startups") lands as a tag on the LOAD, never a column, shown as "tagged by <provider>" | `gt_load_tags` | ✅ mechanism; convention documented (CLAUDE.md) |
 | G-32 | Coverage per industry × state × freshness gates what a tenant is shown and ranks what to buy | `gt_universe_coverage` | ✗ |
 | G-33 | I retire a bad delivery and its rows stop contributing, without deletion | `status='retired'` honoured by `gt_record_view` | ◐ column exists (193); view ignores it — migration pending |
@@ -534,11 +542,11 @@ infrastructure (no `tenant_id`, RLS off by design): `gt_data_sources`,
 
 | Table | Shape | Why |
 |---|---|---|
-| `gt_universe_people_sources` | immutable per-delivery person rows: `source_id`, `load_id`, `source_record_id` (profile URL else hash of name|company), `full_name`, `name_key`, `title_raw`, `headline_raw`, `company_string`, `email`, `phone`, `profile_url`, `raw`, `source_as_of`, quality pair | the people set as delivered. **Platform-level only if Charan rules people are a shared asset; otherwise the same table takes `tenant_id`** |
+| `gt_universe_people_sources` | immutable per-delivery person rows: `source_id`, `load_id`, `source_record_id` (profile URL else hash of name|company), `full_name`, `name_key`, `title_raw`, `headline_raw`, `company_string`, `email`, `phone`, `profile_url`, `raw`, `source_as_of`, quality pair | the people set as delivered. **Ruled 2026-10-01 (D-P5): people are NOT a shared asset — the table takes `tenant_id`** |
 | `gt_person_company_link` | `person_source_id`, `company_source_id` (NULL while unmatched), `method key/acronym/tokens/headline/model/human`, `score`, `status matched/gap/none/confirmed/rejected`, `shortlist` JSONB, `decided_by/at` | the club, revisable; a wrong match is a new link, the delivered row untouched |
 | `gt_cleanup_gap` | `entity_type`, `entity_id`, `step` (company_match, industry, domain_relation, is_individual, persona…), `reason`, `candidates`, `status open/model_resolved/human_resolved/dismissed`, `resolved_value`, `resolved_by`, `model_cost_tokens` | **Haiku's ONLY work queue** (`WHERE status='open'`); doubles as the correctness report per step per load |
 | `gt_personas` + `gt_person_persona` | platform taxonomy (buyer role × function); per-person link with `source list_filter/title_rule/model`, `confidence` | title rules in code; model on the residue via the gap |
-| `gt_suppression` | `identifier_hash`, `kind`, `reason`, `source`, `tenant_id NULL = platform-wide`, `created_at`, append-only | prerequisite for contacting anything in the people set; approved together with the people asset, never the asset alone |
+| ~~`gt_suppression`~~ | — | **superseded:** built as `vani_suppression` (260, D9) and applied |
 
 Order once approved: chunked upload + landing as a worker job → the migration
 (one file, guarded) → companies Pass 0 (code) / Pass 1 (Haiku) → people landing
