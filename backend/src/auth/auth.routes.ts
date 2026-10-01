@@ -9,7 +9,9 @@
  * GET   /api/v1/auth/sessions        — List active sessions
  * POST  /api/v1/auth/sessions/revoke — Revoke specific sessions
  * PATCH /api/v1/auth/preferences     — Update user profile fields
- * POST  /api/v1/auth/invite          — Send team invitations
+ * POST  /api/v1/auth/invite          — Create invitation links (copied and shared; nothing is emailed)
+ * GET   /api/v1/auth/invitation/:token — Public: who invited whom, to which workspace
+ * POST  /api/v1/auth/invitation/accept — Public: create the account inside that workspace
  * POST  /api/v1/auth/forgot-password — Request reset link
  * POST  /api/v1/auth/reset-password  — Reset password with token
  */
@@ -22,6 +24,7 @@ import { login as loginService, type LoginInput } from './login.service';
 import { verifyAccessToken, refreshSession, parseDeviceInfo, type JwtPayload } from './token.service';
 import { emitEvent } from '../agent-core/event.store';
 import { withTenantClient } from '../db';
+import { acceptInvitation, emailHasAccount, newInviteToken, previewInvitation } from './invitation.service';
 
 /* ── Refresh-cookie helpers ─────────────────────────── */
 
@@ -238,9 +241,12 @@ export function createAuthRouter(pool: Pool): Router {
         return;
       }
 
-      // For each invitation, insert into vn_invitations
+      // Nothing is emailed. Each result carries the raw token ONCE, and the
+      // console turns it into a link the inviter copies and shares. Only the
+      // hash is stored, so a link that was not copied cannot be shown again —
+      // inviting the same address again makes a NEW link and the old one
+      // stops working ('renewed').
       const results = [];
-      const crypto = await import('crypto');
 
       for (const inv of invitations) {
         const email = String(inv.email || '').trim().toLowerCase();
@@ -251,21 +257,13 @@ export function createAuthRouter(pool: Pool): Router {
           continue;
         }
 
-        // Check if already invited
-        const existing = await pool.query(
-          `SELECT id FROM vn_invitations WHERE tenant_id = $1 AND email = $2 AND status = 'pending'`,
-          [jwt.tenant_id, email],
-        );
-
-        if (existing.rows.length > 0) {
-          results.push({ email, role: roleId, status: 'error', message: 'Already invited' });
+        // An account belongs to one workspace, so an address that already has
+        // one could never accept. Say so now, not when they open the link.
+        if (await emailHasAccount(pool, email)) {
+          results.push({ email, role: roleId, status: 'error',
+            message: `${email} already has a VaNi account. An account belongs to one workspace, so it cannot join this one.` });
           continue;
         }
-
-        // Generate token
-        const rawToken = crypto.randomBytes(32).toString('hex');
-        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
         // Look up role UUID — check tenant-specific roles first, then global (tenant_id IS NULL)
         const roleResult = await pool.query(
@@ -281,20 +279,82 @@ export function createAuthRouter(pool: Pool): Router {
           continue;
         }
 
-        await pool.query(
-          `INSERT INTO vn_invitations (id, tenant_id, invited_by, email, role_id, token_hash, status, expires_at, created_at)
-           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'pending', $6, now())`,
-          [jwt.tenant_id, jwt.user_id, email, roleUuid, tokenHash, expiresAt],
-        );
+        const { raw, hash } = newInviteToken();
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-        results.push({ email, role: roleId, status: 'sent', token: rawToken });
+        const renewed = await pool.query(
+          `UPDATE vn_invitations
+              SET token_hash = $3, role_id = $4, expires_at = $5, invited_by = $6, created_at = now()
+            WHERE tenant_id = $1 AND email = $2 AND status = 'pending'
+            RETURNING id`,
+          [jwt.tenant_id, email, hash, roleUuid, expiresAt, jwt.user_id],
+        );
+        if (!renewed.rows.length) {
+          await pool.query(
+            `INSERT INTO vn_invitations (id, tenant_id, invited_by, email, role_id, token_hash, status, expires_at, created_at)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'pending', $6, now())`,
+            [jwt.tenant_id, jwt.user_id, email, roleUuid, hash, expiresAt],
+          );
+        }
+
+        results.push({ email, role: roleId, status: renewed.rows.length ? 'renewed' : 'created',
+          token: raw, expires_at: expiresAt.toISOString() });
       }
 
       res.status(201).json({ invitations: results });
     } catch (err: any) {
       console.error('[Auth:invite]', err);
       res.status(500).json({
-        error: { code: 'INVITE_FAILED', message: err.message || 'Failed to send invitations' },
+        error: { code: 'INVITE_FAILED', message: err.message || 'Failed to create the invitation' },
+      });
+    }
+  });
+
+  /* ── GET /api/v1/auth/invitation/:token ────────────── */
+  // Public — the join page reads this before the person types anything.
+
+  router.get('/invitation/:token', async (req, res) => {
+    try {
+      res.json({ invitation: await previewInvitation(pool, req.params.token) });
+    } catch (err: any) {
+      if (err.status && err.code) {
+        res.status(err.status).json({ error: { code: err.code, message: err.message } });
+        return;
+      }
+      console.error('[Auth:invitation:get]', err);
+      res.status(500).json({ error: { code: 'INVITE_LOOKUP_FAILED', message: 'Could not read this invitation. Please try again.' } });
+    }
+  });
+
+  /* ── POST /api/v1/auth/invitation/accept ───────────── */
+  // Public — creates the user INSIDE the inviting workspace and signs them in,
+  // the same response shape as /register. No access phrase: being invited is
+  // the access.
+
+  router.post('/invitation/accept', async (req, res) => {
+    try {
+      const result = await acceptInvitation(pool, {
+        token: req.body.token,
+        name: req.body.name,
+        password: req.body.password,
+        country_code: req.body.country_code,
+        mobile: req.body.mobile,
+      }, req);
+      setRefreshCookie(res, result.tokens.refresh_token);
+      res.status(201).json({ tokens: result.tokens, user: result.user, tenant: result.tenant });
+    } catch (err: any) {
+      if (err.status && err.code) {
+        res.status(err.status).json({ error: { code: err.code, message: err.message } });
+        return;
+      }
+      console.error('[Auth:invitation:accept]', err);
+      res.status(500).json({
+        error: {
+          code: 'JOIN_FAILED',
+          message: process.env.NODE_ENV === 'production'
+            ? 'Could not create your account. Please try again.'
+            : err.message || 'Unknown error',
+        },
       });
     }
   });
