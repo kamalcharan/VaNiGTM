@@ -16,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { DataBoundary, SkeletonRows, useToast } from '@/platform/feedback';
 import { formatDate } from '@/lib/format';
 import s from '../smart-profile.module.css';
-import { isReading, useSourcesRead, useTeach, type KbSource } from '../useKnowledge';
+import { DOC_ACCEPT, DOC_MAX_MB, isReading, useSourcesRead, useTeach, useUploadDocument, type KbSource } from '../useKnowledge';
 import { useProfileRead } from '../useSmartProfile';
 import { ReadingProgress } from './ReadingProgress';
 
@@ -52,7 +52,9 @@ export function KnowledgeSection({ n, compact }: { n?: number; compact?: boolean
   const q = useSourcesRead();
   const profile = useProfileRead();
   const score = profile.data?.data?.completion_score;
-  const { submitUrl, submitText, remove, isBusy } = useTeach();
+  const { submitUrl, submitText, remove, isBusy: teaching } = useTeach();
+  const { upload, isUploading } = useUploadDocument();
+  const isBusy = teaching || isUploading;
   // When the last read finishes, the profile is re-scored by a SEPARATE run
   // (KNOWLEDGE_UPDATED → profile recalc), so the score is asked for again at
   // once and once more after it has had time to land. Without this the row
@@ -70,12 +72,18 @@ export function KnowledgeSection({ n, compact }: { n?: number; compact?: boolean
   }, [reading, qc]);
   const { showToast } = useToast();
   const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState<'url' | 'text'>('url');
+  const [kind, setKind] = useState<'url' | 'file' | 'text'>('url');
+  const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
 
   async function send() {
+    if (kind === 'file') {
+      if (!file) { showToast({ message: 'Choose a file first', type: 'error' }); return; }
+      if (await upload(file)) { setFile(null); setOpen(false); }
+      return;
+    }
     if (kind === 'url') {
       const v = url.trim();
       if (!v) { showToast({ message: 'Enter a URL first', type: 'error' }); return; }
@@ -110,9 +118,24 @@ export function KnowledgeSection({ n, compact }: { n?: number; compact?: boolean
           <div className={s.teach}>
             <div className={s.teachSeg} role="group" aria-label="What to teach">
               <button type="button" aria-pressed={kind === 'url'} onClick={() => setKind('url')}>A web page</button>
+              <button type="button" aria-pressed={kind === 'file'} onClick={() => setKind('file')}>A document</button>
               <button type="button" aria-pressed={kind === 'text'} onClick={() => setKind('text')}>Pasted text</button>
             </div>
-            {kind === 'url' ? (
+            {kind === 'file' ? (
+              <div className={s.inviteRow}>
+                <input
+                  className={s.inviteInput}
+                  type="file"
+                  accept={DOC_ACCEPT}
+                  aria-label={`A document: PDF, Word, PowerPoint, text or markdown, up to ${DOC_MAX_MB} MB`}
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  disabled={isBusy}
+                />
+                <button type="button" className={s.inviteSend} onClick={() => void send()} disabled={isBusy || !file}>
+                  {isUploading ? 'Uploading…' : 'Read it'}
+                </button>
+              </div>
+            ) : kind === 'url' ? (
               <div className={s.inviteRow}>
                 <input
                   className={s.inviteInput}

@@ -26,6 +26,8 @@ import { SkeletonRows } from '@/platform/feedback';
 import u from '@/platform/shell/ui.module.css';
 import { useProfileRead } from '@/skills/smart-profile/useSmartProfile';
 import { useOffers } from '@/skills/smart-profile/useOffers';
+import { FINDING_TAGS, SITE_HEALTH_ADVICE, parseSiteHealth } from '@/skills/onboarding/site-health';
+import { formatDate } from '@/lib/format';
 import s from './landing.module.css';
 
 interface Journey {
@@ -35,35 +37,51 @@ interface Journey {
   counts?: { score: number | null; companies: number; people: number; in_motion: number; touches: number };
 }
 
-/** The five crawlability checks the website read measures, in plain words. */
-const FINDING: Record<string, [string, string]> = {
-  title: ['Search visibility', 'Your page has no title, so search results show a guess.'],
-  meta_description: ['Search visibility', 'Search engines have no summary of you to quote.'],
-  og_tags: ['Shared links', 'Links to your site show no preview on WhatsApp or LinkedIn.'],
-  json_ld: ['AI search readiness', 'AI assistants have to guess who you are.'],
-  body_text: ['AI search readiness', 'Your page is mostly scripts; crawlers see almost nothing.'],
+/** Offer fields as the catalogue names them (research-skill offer-catalogue.ts) → plain words. */
+const OFFER_FIELD: Record<string, string> = {
+  one_line: 'one-line summary', who_for: 'who it is for', problem: 'the problem it solves',
+  what_we_do: 'what you do', signals: 'buying signals', disqualifiers: 'disqualifiers',
+  price_band: 'price band', proof: 'proof', name: 'name',
 };
 
-interface SiteRead { sources: number; site: string | null; missing: string[] | null; read: boolean }
+/** "AI Automation Sprint: signals is empty — …" → { offer, field } in plain words. */
+function missingByOffer(problems: string[]): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const p of problems) {
+    const m = p.match(/^(.*?): (\w+) (?:is|contains)/);
+    if (!m) continue;
+    const list = out.get(m[1]) ?? [];
+    const word = OFFER_FIELD[m[2]] ?? m[2].replace(/_/g, ' ');
+    if (!list.includes(word)) list.push(word);
+    out.set(m[1], list);
+  }
+  return out;
+}
+
+interface SiteRead { sources: number; site: string | null; missing: string[] | null; read: boolean; readAt: string | null }
 
 /** The newest website read and what its site_health step found missing. */
 function useSiteRead() {
   return useQuery<SiteRead, Error>({
     queryKey: ['gtm', 'landing', 'site-read'],
     queryFn: async () => {
-      const list = await callSkill<{ sources: { id: string; source_type: string; title?: string | null; url?: string | null }[] }>(
+      const list = await callSkill<{ sources: { id: string; source_type: string; url?: string | null; updated_at?: string | null }[] }>(
         'ingestion-skill', 'list_sources', { limit: 20 },
       );
       const sources = list.sources ?? [];
       const web = sources.find((x) => x.source_type === 'url');
-      if (!web) return { sources: sources.length, site: null, missing: null, read: false };
+      if (!web) return { sources: sources.length, site: null, missing: null, read: false, readAt: null };
       const one = await callSkill<{ source: { url?: string | null; run_steps?: { step_name: string; output_summary?: string }[] | null } }>(
         'ingestion-skill', 'get_source', { source_id: web.id },
       );
-      const step = (one.source.run_steps ?? []).find((st) => st.step_name === 'site_health');
-      const m = step?.output_summary?.match(/missing:\s*([^;]+)/);
-      const missing = m ? m[1].split(',').map((x) => x.trim()).filter((x) => x && x !== 'none') : null;
-      return { sources: sources.length, site: one.source.url ?? web.url ?? null, missing: step ? (missing ?? []) : null, read: true };
+      // The same parse the Mission Wizard's audit rail uses: null when the
+      // read recorded no health check, [] when it found nothing missing.
+      const steps = one.source.run_steps ?? [];
+      const checked = steps.some((st) => st.step_name === 'site_health');
+      return {
+        sources: sources.length, site: one.source.url ?? web.url ?? null,
+        missing: checked ? (parseSiteHealth(steps) ?? []) : null, read: true, readAt: web.updated_at ?? null,
+      };
     },
   });
 }
@@ -81,6 +99,9 @@ export default function GtmLanding() {
   const loading = profile.isLoading || offers.isLoading || journey.isLoading;
 
   const hasProfile = !!p?.product_name;
+  const missing = missingByOffer(o?.problems ?? []);
+  const unfinished = o?.offers.find((x) => !x.is_ready) ?? null;
+  const unfinishedMissing = unfinished ? missing.get(unfinished.name) ?? [] : [];
   const offerCount = o?.offers.length ?? 0;
   const offersReady = !!o?.ready;
   const companies = c?.companies ?? 0;
@@ -89,7 +110,9 @@ export default function GtmLanding() {
   // One recommended action, in the order the work depends on.
   const next =
     !hasProfile ? { h: 'Finish your Smart Profile', p: 'GTM starts from what VaNi knows about your company. Point it at your website first.', cta: 'Open the Smart Profile →', href: '/onboarding' }
-    : !offersReady ? { h: offerCount ? 'Finish your offers' : 'Confirm what you want to sell', p: offerCount ? `${o?.problems.length ?? 0} detail${(o?.problems.length ?? 0) === 1 ? '' : 's'} still missing. Research scores companies against your offers, so it waits for them.` : 'GTM uses your offer to judge which companies fit and what conversation could be relevant.', cta: offerCount ? 'Review your offers →' : 'Add your first offer →', href: '/agents/gtm/offers' }
+    : !offersReady ? (unfinished
+      ? { h: `Finish “${unfinished.name}”`, p: `${unfinishedMissing.length ? `Still missing: ${unfinishedMissing.join(', ')}. ` : ''}Research scores companies against your offers, so it waits for this.`, cta: 'Finish the offer →', href: '/agents/gtm/offers' }
+      : { h: 'Confirm what you want to sell', p: 'GTM uses your offer to judge which companies fit and what conversation could be relevant.', cta: 'Add your first offer →', href: '/agents/gtm/offers' })
     : companies === 0 ? { h: 'Bring your first audience', p: 'Import the companies and people you already know, then choose who to research.', cta: 'Import a list →', href: '/agents/gtm/import' }
     : people === 0 ? { h: 'Research and qualify your companies', p: `${companies} ${companies === 1 ? 'company' : 'companies'} in your audience. Research them, decide fit, then pick the people.`, cta: 'Open Build the audience →', href: '/agents/gtm/audience' }
     : { h: 'Review your people', p: `${people} ${people === 1 ? 'person' : 'people'} found. Sending stays off until consent and opt-out are in place.`, cta: 'Open People →', href: '/agents/gtm/people' };
@@ -129,7 +152,9 @@ export default function GtmLanding() {
         <section className={`${s.card} ${s.wide}`}>
           <div className={s.cardHead}>
             <div><div className={u.eyebrow}>01 · Get discovered</div><h2>How easily can customers find you?</h2></div>
-            <span className={`${u.tag} ${u.tagDim}`}>From your website read</span>
+            {site.data?.read && (
+              <span className={`${u.tag} ${u.tagDim}`}>{site.data.readAt ? `Found during onboarding · ${formatDate(site.data.readAt)}` : 'Found during onboarding'}</span>
+            )}
           </div>
           {site.isLoading ? <SkeletonRows rows={1} /> : site.isError ? (
             <p>The website findings could not be loaded: {site.error.message}</p>
@@ -141,13 +166,13 @@ export default function GtmLanding() {
             <p>The last read of {site.data.site ?? 'your site'} found title, description, link previews, structured data and readable text all present.</p>
           ) : (
             <>
-              <p>From the last read of {site.data.site ?? 'your site'}: {site.data.missing.length} {site.data.missing.length === 1 ? 'thing' : 'things'} make you harder to find.</p>
+              <p>VaNi&rsquo;s audit of {site.data.site ?? 'your site'}, from your onboarding read: {site.data.missing.length} {site.data.missing.length === 1 ? 'thing makes' : 'things make'} you harder to find.</p>
               <div className={s.findings}>
                 {site.data.missing.map((k) => (
                   <div key={k} className={s.finding}>
-                    <span className={`${u.tag} ${u.tagWarn}`}>Action suggested</span>
-                    <b>{FINDING[k]?.[0] ?? k}</b>
-                    <span>{FINDING[k]?.[1] ?? `Missing: ${k}`}</span>
+                    <span className={`${u.tag} ${u.tagWarn}`}>{FINDING_TAGS[k]?.tag ?? k}</span>
+                    <b>{FINDING_TAGS[k]?.hook ?? 'missing signal'}</b>
+                    <span>{SITE_HEALTH_ADVICE[k] ? `${SITE_HEALTH_ADVICE[k].label}: ${SITE_HEALTH_ADVICE[k].why}.` : ''}</span>
                   </div>
                 ))}
               </div>
@@ -175,9 +200,16 @@ export default function GtmLanding() {
           </div>
           <h2>What should GTM lead with?</h2>
           {offers.isLoading ? <SkeletonRows rows={1} /> : offerCount ? (
-            <p>{o!.offers.slice(0, 3).map((x) => x.name).join(' · ')}{offerCount > 3 ? ` and ${offerCount - 3} more` : ''}</p>
+            <div style={{ marginBottom: 12 }}>
+              {o!.offers.map((x) => (
+                <div key={x.id} className={s.row}>
+                  <span>{x.name}</span>
+                  <span>{x.is_ready ? 'Ready to research against' : `Needs ${missing.get(x.name)?.length ?? 'more'} detail${(missing.get(x.name)?.length ?? 2) === 1 ? '' : 's'}`}</span>
+                </div>
+              ))}
+            </div>
           ) : <p>No offer yet. VaNi can draft one from your Smart Profile for you to confirm.</p>}
-          <Link href="/agents/gtm/offers" className={s.link}>{offerCount ? 'Review offers →' : 'Create an offer →'}</Link>
+          <Link href="/agents/gtm/offers" className={s.link}>{offerCount ? 'Open offers →' : 'Create an offer →'}</Link>
         </section>
 
         <section className={s.card}>
@@ -200,7 +232,7 @@ export default function GtmLanding() {
             {site.data && <span className={`${u.tag} ${u.tagDim}`}>{site.data.sources >= 20 ? '20+' : site.data.sources} {site.data.sources === 1 ? 'source' : 'sources'} read</span>}
           </div>
           <h2>Give GTM proof to work with</h2>
-          <p>Case studies, product documents and customer outcomes help GTM explain relevance with evidence.</p>
+          <p>Case studies, product documents and customer outcomes help GTM explain relevance with evidence. Upload a PDF, Word or PowerPoint file, or point VaNi at a page.</p>
           <Link href="/smart-profile/knowledge" className={s.link}>Add supporting material →</Link>
         </section>
 

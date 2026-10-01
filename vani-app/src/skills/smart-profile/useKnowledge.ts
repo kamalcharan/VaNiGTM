@@ -16,10 +16,13 @@
  * the profile. While any source is still being read the list polls, so the row
  * moves from "reading" to "read · N entries" without a reload.
  */
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useSkillQuery, type SkillResult } from '@/lib/useSkill';
 import { useSkillMutation } from '@/lib/useSkillMutation';
+import { apiRequest, ApiError } from '@/lib/api-client';
+import { IS_LIVE } from '@/lib/transport';
+import { useToast } from '@/platform/feedback';
 
 export type SourceStatus = 'pending' | 'processing' | 'complete' | 'error';
 
@@ -80,6 +83,57 @@ export function useTeach() {
   const remove = useCallback((id: string) => del.mutate({ source_id: id }), [del]);
 
   return { submitUrl, submitText, remove, isBusy: url.isPending || text.isPending || del.isPending };
+}
+
+/** File types the API reads into the knowledge graph (ingestion.routes.ts POST /file). */
+export const DOC_ACCEPT = '.pdf,.docx,.pptx,.txt,.md';
+export const DOC_MAX_MB = 10;
+
+/**
+ * Upload a document into the knowledge graph. Multipart, so it cannot ride the
+ * JSON skill runner: it goes through apiRequest with FormData, like the ETL
+ * import. One upload at a time (ref guard, not state), and it always says
+ * something — the server's own reason when it refuses (no readable text, too
+ * large, unsupported type).
+ */
+export function useUploadDocument() {
+  const qc = useQueryClient();
+  const { showToast } = useToast();
+  const inFlight = useRef(false);
+  const [isUploading, setUploading] = useState(false);
+
+  const upload = useCallback(async (file: File): Promise<boolean> => {
+    if (inFlight.current) return false;
+    if (!IS_LIVE) {
+      showToast({ message: 'Document upload needs the live API.', type: 'error' });
+      return false;
+    }
+    if (file.size > DOC_MAX_MB * 1024 * 1024) {
+      showToast({ message: `${file.name} is over ${DOC_MAX_MB} MB.`, type: 'error' });
+      return false;
+    }
+    inFlight.current = true;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const r = await apiRequest<{ source_id: string; chars: number; clipped: boolean }>('POST', '/api/v1/ingest/file', { body: form });
+      showToast({
+        message: `Reading ${file.name} now — ${r.chars.toLocaleString()} characters of text${r.clipped ? ' (the first part of a long document)' : ''}.`,
+        type: 'success',
+      });
+      await qc.invalidateQueries({ queryKey: ['skill', 'ingestion-skill'] });
+      return true;
+    } catch (err) {
+      showToast({ message: err instanceof ApiError ? err.message : `Could not upload ${file.name}.`, type: 'error' });
+      return false;
+    } finally {
+      inFlight.current = false;
+      setUploading(false);
+    }
+  }, [qc, showToast]);
+
+  return { upload, isUploading };
 }
 
 /* ── What VaNi knows: the graph as a list (ingestion-skill.knowledge, REAL) ── */
