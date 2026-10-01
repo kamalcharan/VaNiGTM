@@ -220,7 +220,7 @@ async function fetchCssText(url: string): Promise<string> {
 /** Best-effort logo/colors/typography from raw HTML + up to 2 linked
  *  stylesheets. Never guesses — an absent signal stays absent rather than
  *  being filled with a plausible one. */
-export async function extractVisualHints(html: string, baseUrl: string): Promise<BrandVisual> {
+export async function extractVisualHints(html: string, baseUrl: string, which: 'static' | 'rendered' = 'static'): Promise<BrandVisual> {
   const visual: BrandVisual = {};
 
   const iconRe = /<link[^>]+rel=["'](?:apple-touch-icon|icon|shortcut icon)["'][^>]*>/gi;
@@ -261,7 +261,8 @@ export async function extractVisualHints(html: string, baseUrl: string): Promise
   // fetched fine but nothing color-like matched) and "no colors" looks
   // identical from the outside in all 4 cases. Log which one it actually was.
   console.log(
-    `[Brand:extractVisualHints] logo=${bestIcon ? 'found' : 'none'} `
+    `[Brand:extractVisualHints] page=${which} html=${html.length}B styleAttrs=${(html.match(/\sstyle\s*=/gi) ?? []).length} `
+    + `logo=${bestIcon ? 'found' : 'none'} `
     + `stylesheets=${stylesheetUrls.length} (${stylesheetUrls.join(', ') || 'none found'}) `
     + `fetchedBytes=${fetchedSheets.map((s) => s.length).join(',') || 'n/a'} `
     + `themeColorMeta=${themeColorMatch ? themeColorMatch[1] : 'none'} `
@@ -356,7 +357,7 @@ export async function generateBrand(
       try {
         const renderedHtml = await IngestionAgent.renderPageViaN8n(siteUrl);
         const renderedText = IngestionAgent.extractFromHtml(renderedHtml).text;
-        const renderedVisual = await extractVisualHints(renderedHtml, siteUrl);
+        const renderedVisual = await extractVisualHints(renderedHtml, siteUrl, 'rendered');
         if (renderedText.length > siteText.length) siteText = renderedText;
         // From a shell, the static page's icon and font are the framework's,
         // not the company's — the rendered page's win. Otherwise the static
