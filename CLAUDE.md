@@ -1351,3 +1351,12 @@ writing a sequencer.
 - Run it, don't read it. Phase 0's highest-value finding — 18 tables whose policies
   were inert — came from executing the isolation test, not from reading schema.
 - Findings go in the repo, not in chat. docs/db/ and docs/gtm/ already hold several.
+- **Phases run as sprints with a checkout (Charan, 2026-10-01).** A phase is
+  two sprints: A opens with a UX prototype reviewed by Charan, B makes it real.
+  A sprint merges only after its checkout — demo on the deployed stack, UX
+  against the prototype, tests, evals, risk classes, ops, docs, sign-off.
+  The checklist is `documents/POA-2026-10-01-common-pool.md` §3.2.
+- **Agents follow `AGENTS.md` §6a–§9a** — risk classes R0–R5 enforced by the
+  harness, three eval tiers, self-awareness at every decision point, the
+  human-gated improvement loop, and agentic IX (the agent leads, the person
+  decides; not a chatbot; no AG-UI dependency).

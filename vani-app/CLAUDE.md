@@ -307,6 +307,11 @@ integration contract.
   2026-09-30: the console layout (`app/(console)/layout.tsx`) filters on it
   too, the same way GtmShell does, for `/access-requests` — requests from
   vani.vikuna.io land only in Vikuna's own workspace. No platform file changed.
+- **PENDING — agentic IX components (2026-10-01).** A run-feed and a
+  decision-card component in `platform/`, plus a hook over the run's SSE
+  stream, so every pathway shows an agent's work live and decides on one card
+  (`AGENTS.md` §9a). Requested as the common pool POA's Sprint 0b; not built
+  until Charan approves it as a platform change.
 
 ---
 

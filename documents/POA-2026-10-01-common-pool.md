@@ -148,7 +148,7 @@ without one.
 
 - **Prototype before wiring, every phase.** The screens are drawn first,
   reviewed, then built. An external UX audit runs at three points: after P2
-  (staging), P5 (review + coverage) and P9 (segments + Exit).
+  (staging + enrichment), P5 (review + coverage) and P9 (segments + Exit).
 - **Where screens live:** `vani-app/src/skills/gtm-*` behind the registry
   boundary; pool and steward screens `adminOnly` under `gtm-pool`; limits and
   spend under Settings. No new top-level destination.
