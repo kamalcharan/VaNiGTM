@@ -166,6 +166,7 @@ signals spine (outreach design note §9), never pooled.
 | `estimate` jsonb — records per kind, ₹, days at today's limits | |
 | `status` — `estimated · confirmed · running · waiting_limit · done · cancelled · failed` | |
 | `confirmed_by`, `confirmed_at` (the R3 approval), `progress` jsonb, `run_ids` | |
+| `llm_mode` — `realtime · batch`; `provider_batch_ids` text[] | model work through the LLM lane, or Anthropic's Message Batches (50% price, results within 24 h, usually ~1 h) — §8 |
 
 **`gt_enrichment_items`** (P2) — the per-record queue: what lets a run roll
 over the daily limit and resume after a crash.
@@ -191,6 +192,39 @@ over the daily limit and resume after a crash.
 shape: `entity_type, entity_id, step, reason, candidates, status
 (open · model_resolved · human_resolved · dismissed), resolved_value,
 resolved_by, model_cost_tokens`.
+
+### 2.8a The industry master — one list, grown by the pool (S9–S11)
+
+Charan, 2026-10-01: "it provides critical data infra." Today there are FOUR
+industry lists and nothing joins them:
+
+| List | Where | State |
+|---|---|---|
+| 10 onboarding choices | `vani-app/src/skills/onboarding/industries.ts` (hardcoded) → `vn_tenant_profiles.industry` | live; drives Vara's industry research |
+| `gt_industries` + `gt_industry_aliases` (raw → industry, `confidence`, `mapped_by rule/llm/human`) | 194 | **empty** — never seeded |
+| clusters + sub-clusters (manufacturing → pharma, food, chemicals…) | `etl/industry-normalizer.ts` → `gt_prospects.industry_canonical` / `_sub` (206, 218) | live for FTCCI; "not the taxonomy" by its own header |
+| domain packs | `vani_domain_pack.domain` | keyed by its own code |
+
+**One master: `gt_industries`.** Hierarchy by `parent_id` (sector →
+industry → sub-segment, any depth).
+
+| Change | What | Why |
+|---|---|---|
+| + | `gt_industries.nic_prefixes text[]` | each node maps to NIC 2008 code prefixes, so MCA/Udyam rows classify **by code, free** — the cheap lane is code |
+| + | `gt_industries.source` — `seed · nic · proposal` and `approved_by`, `approved_at` | a node's origin and who let it in |
+| seed | sectors and industries from NIC 2008 sections/divisions, named for selling (not "Manufacture of pharmaceuticals, medicinal chemical and botanical products" but "Pharmaceuticals"); the normalizer's clusters and sub-clusters as the first sub-segments; the 10 onboarding choices mapped onto top-level codes | one list from day one; existing tenants' values stay valid |
+| reuse | `gt_industry_aliases` for every prose value (FTCCI's 2,149 BUSINESS strings, provider labels, model output) — raw kept, mapped into the master | prose never becomes a node by itself |
+| reuse | `gt_cleanup_gap` step `taxonomy_proposal` | unmapped values pile up → the agent groups them and PROPOSES a node or an alias → admin approves; a model never creates a node |
+
+**Two kinds of segment, kept apart:** taxonomy sub-segments are platform
+(`gt_industries`, approved by admin); a tenant's segment is a private saved
+filter (`gt_segments`, P9) built from them and never harvested into the
+taxonomy (same ruling as role families).
+
+**S11 — readers move onto the master** (code, P1 sprint B): the onboarding
+picker reads the top level from the API instead of the hardcoded list; Vara's
+domain packs key to master codes (mapping table for existing packs, nothing
+renamed); the normalizer writes `industry_id` beside `industry_canonical`.
 
 ### 2.8 Listed for direction, approved at their own phase (P7–P9)
 
@@ -256,6 +290,7 @@ Thresholds come from `.env` (§5), not code.
 | `CRAWL_MAX_PAGES_PER_DOMAIN`, `CRAWL_TIMEOUT_MS`, `CRAWL_USER_AGENT` | 6 / 15000 / "VaNiBot/1.0 (+https://vikuna.io/bot)" | P2 |
 | `MATCH_LINK_MIN`, `MATCH_REVIEW_MIN`, `MATCH_DOMAIN_NAME_MIN` | 0.86 / 0.75 / 0.90 | P1 |
 | `UDYAM_OGD_API_KEY`, `UDYAM_PAGE_SIZE` | — / 100 | P4 |
+| `ENRICH_LLM_MODE` (`realtime · batch`), `ENRICH_BATCH_MAX_REQUESTS` | batch / 10000 | P3 |
 | `PROVIDER_FINDYMAIL_UNIT_INR`, `PROVIDER_FINDYMAIL_MONTHLY_CAP_INR` | from the plan / **unset = refused** | P8 |
 | `PROVIDER_MCA_DIRECTORS_UNIT_INR`, `_MONTHLY_CAP_INR` | provider TBD / unset | P8 |
 
@@ -277,6 +312,7 @@ its phase lands.
 | 267 | `267_pool_enrichment.sql` | P2 | `gt_enrichment_requests`, `_items`, `_usage`; FK from loads |
 | 268 | `268_pool_company_signals.sql` | P4 | `gt_company_signals` |
 | 269 | `269_gt_cleanup_gap.sql` | P5 | `gt_cleanup_gap` |
+| 270 | `270_industry_master.sql` | P1 | §2.8a columns + the seed (NIC sections/divisions, normalizer clusters, onboarding mapping) |
 
 Each guarded and idempotent, applied with the runner on the VPS, `--status`
 clean at checkout. Pool tables keep RLS **off by design** (no tenant_id, as
@@ -297,8 +333,51 @@ clean at checkout. Pool tables keep RLS **off by design** (no tenant_id, as
 | S6 | `gt_cleanup_gap` as proposed (269) | yes |
 | S7 | Match ladder §4 with rung 2b | yes |
 | S8 | `.env` variables §5 with the suggested values | yes |
+| S9 | `gt_industries` is the one industry master: `nic_prefixes`, `source`, approval columns; seeded (270) | yes |
+| S10 | Taxonomy discovery through `gt_cleanup_gap` (`taxonomy_proposal`); admin approves every node and alias | yes |
+| S11 | Onboarding picker, Vara domain packs and the normalizer read/write the master | yes |
+| S12 | Model enrichment may run as an Anthropic batch (`llm_mode`, `provider_batch_ids`); the daily LLM limit counts records per day either way — see §8 for what that means at 50,000 | yes |
 | — | P7–P9 tables (§2.8) | approved at their own phase |
 
-Approving S1–S8 lets P1 start. Sprint 0 (the agentic foundation) needs no
+Approving S1–S12 lets P1 start. Sprint 0 (the agentic foundation) needs no
 schema and can start in parallel once its platform change is approved
 (`vani-app/CLAUDE.md` §5).
+
+---
+
+## 8. What model enrichment costs and how long it takes — 50,000 records
+
+Prices from Anthropic's current list (Haiku 4.5: $1 / $5 per million input /
+output tokens; Message Batches 50% off every token; cache reads 0.1×, but
+Haiku 4.5 caches only a prefix of ≥ 4,096 tokens). Token counts per record
+are ESTIMATES until the P3 100-record trial measures them.
+
+| Shape of one call | Input | Output | 50k realtime | 50k batch |
+|---|---|---|---|---|
+| description only (name, raw industry, ≤ 1 paragraph) + rubric + taxonomy | ~2,000 | ~150 | ≈ $140 | **≈ $70** |
+| with the crawled about-page text | ~4,000 | ~200 | ≈ $250 | **≈ $125** |
+| the second shape once the taxonomy in the prompt grows to 4,500 tokens — cached | 4,500 cached + 2,500 | ~200 | ≈ $200 (uncached ≈ $400) | ≈ $100 (uncached ≈ $200; cache hits in a batch are best-effort) |
+
+At ~₹85/$ the first two shapes are roughly **₹6,000–11,000 for 50,000 records** in batch. Caching matters only once the prompt's fixed part passes 4,096 tokens; below that Haiku 4.5 does not cache it at all.
+
+**What the model never sees** (and so costs nothing): rows the code lane
+settles — NIC codes from MCA/Udyam mapped through `nic_prefixes`, values
+already in `gt_industry_aliases`, the normalizer's rules. And **distinct
+values, not rows**: a directory's industry prose is classified once per
+distinct string (FTCCI: 2,149 distinct of 2,913 rows), descriptions once per
+company.
+
+**Time — the binding constraint is our own daily limit, not Anthropic:**
+
+| Mode | Throughput | 50,000 records |
+|---|---|---|
+| realtime through the LLM lane (Haiku, 4 at a time, ~2–4 s a call) | ~1–2 calls/s | ~7–14 hours of calls |
+| batch | one or a few submissions | usually ~1 hour, at most 24 |
+| **our pool LLM limit (J3: 5,000/day)** | 5,000/day | **10 days, whichever mode** |
+| qwen on Vikuna's VPS, for comparison (measured 26-Sep: 3,353 + 330 tokens in 95 s) | one slot | ~5 weeks — not a bulk lane |
+
+So for a 50k bulk job the decision is the limit, not the model: keep 5,000/day
+(10 days, ≈ ₹600–1,100 a day), or raise the pool LLM limit for an approved
+batch run (e.g. 25,000/day → 2 days). The estimate screen shows both before
+anyone confirms (R3). Anthropic's own rate limits depend on the account's
+tier and are checked on the console before the first bulk run.
