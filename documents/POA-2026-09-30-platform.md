@@ -9,7 +9,39 @@
 > Facts in this plan were checked in code on 2026-09-29/30 (HANDOVER.md §2 has
 > the Vara evidence; the runtime audit is summarised in §4 below).
 
-## Status — 2026-09-30, end of day
+## Status — 2026-10-01
+
+| Track | State |
+|---|---|
+| A Foundations | **DONE.** `ARCH.md`, `AGENTS.md`, `documents/spec/{PLATFORM,VARA,GTM}.md`; May POA, May agent spec, Aug Vara POA marked superseded (A6) |
+| B Unblock | **DONE (2026-09-30).** Phase 4 gate passed (Charan: snippet on a real page, boot landed). B1 merged (migrations 254–258 applied on production); B2 fixed + DB test; B3 runs/events/awaiting real on both sides; B4 dashboard on the Brain, `vara.journey` and `gtm.journey` real (`edge.journey` a labelled preview by design); B5 drift fixed. **Correction (read off the VPS 2026-09-30 ~23:40): the runtime role is still `vikuna_admin` — the switch to `vanigtm_app` is NOT in effect and RLS is not enforced in production** (DEPLOY.md §4b). `DB_MIGRATE` is now set on the box |
+| C Harness | **C6, C5 DONE; C2 infrastructure DONE (2026-09-30)** — see the 2026-09-30 notes below. Open: converting agents onto the C2 primitives (waits on fixture material, `docs/fixtures-export.md`), C1 (needs D14), C3, C4 |
+| D Brain | **D2 complete for every Brain reader (2026-09-30).** D1 needs D8; D3 is a design decision; D4 needs D6/D7 |
+| E Funnel | **E1 + E2 LIVE (2026-10-01).** vani.vikuna.io: visitor enters a website → card + digital audit + their own knowledge graph from one page (migrations 261 + 262 applied by the runner; anonymous reads paid by the `vikuna-funnel` tenant; settings in `.env`). Closed-beta push: "Sign up with your access phrase" (→ gate → signup, the preview becomes the workspace's first Smart Profile) or "Request access" (→ a lead + `access_requested` event on the leads tenant; admin console list at `/access-requests`). The GTM animation replays the product's real screens. SSRF guard on every server-side fetch of a visitor's URL. **Open:** Vikuna's own graph snapshot for the landing (section hidden until exported); E3 (needs D4); E4 |
+| Onboarding / Smart Profile | **connect@vikuna.io onboarded on production (2026-10-01)**, marked admin. Brand step: colours come from what a real browser painted (n8n `vani-render-page` → browserless `/function` + `documents/n8n/brand-collector.js`), so JS-only and CSS-in-JS sites work; a regenerate fills empty fields and never overwrites typed ones; VaNi loader on every draft. Wizard finish no longer errors on the `vani:` lane. Domain step done (`vikuna.io`). **People: invite makes a copyable `/join` link** (nothing is emailed); the link signs up into the inviting workspace with the invited role — verified on production by Charan. Model stays a Settings menu item (ruling 2026-09-16) |
+| F Vara | gate passed 2026-09-30; D9 schema (260) applied and the `mayContact` gate deployed. **Next: Vara consent capture**, then candidate intake |
+| G GTM | parked, recorded |
+| H One repo | **not started.** Note: console work (E2, the wizard fixes, People) landed in `vikunawebsite/vani-app` before H — each was a fix or a slice Charan asked for. It moves with H; nothing was built twice |
+
+### Infrastructure changed 2026-10-01 (n8n server `srv1096269`)
+
+- `vani-render-page` imported fresh and published; its Render node calls browserless `/function` at the Docker gateway (`172.18.0.1:3010`).
+- browserless recreated with a **new token** (the old one was exposed in a chat) and **bound to `172.18.0.1` only** — port 3010 is closed from the internet (checked).
+- n8n user management was reset (backup `/root/n8n-backup-20261001-0637.tgz`).
+
+### Pending, in order
+
+1. **Landing graph snapshot** — a read-only export of connect@'s graph into `vani-app/src/site/vikuna-graph-snapshot.json`; the "see what VaNi builds" section appears once it has nodes. Needs Charan to approve the graph as public.
+2. **RLS switch, done deliberately** — runtime to `vanigtm_app` per DEPLOY.md §4b, preflight first.
+3. **Test-workspace cleanup** — kamal@k.com held `vikuna.io` (its domain row was removed 2026-10-01); keep `charans-workspace-e619cv`, `vikuna-funnel`, connect@'s and the seeded `vikuna` tenant.
+4. **D9 → Vara consent capture**, then candidate intake (Track F order).
+5. **Track H** — move `vani-app/` into this repo before the next large console slice.
+6. **C1 / C4** (run table + cost per run, needs D14), **C2 conversions** (need fixtures), **C3** evals (needs D5).
+7. **E3** agent catalog + entitlement (needs D4).
+8. Smaller: BYOK "test connection" has no SSRF guard; the vikuna.io site's own Tailwind build never compiles (Charan's call, separate from VaNi); invitations have no "withdraw" yet.
+
+### 2026-09-30 detail (kept)
+
 
 | Track | State |
 |---|---|
@@ -70,7 +102,7 @@ track stalls on an unanswered question.
 |---|---|---|---|
 | D1 | ~~Merge VaNiGTM `claude/session-setup-qrxev9` with its five migrations renumbered 254–258~~ **DONE 2026-09-30**: merged (06a9635), 254–258 applied on production | — | — |
 | D2 | Pre-signup input is the website URL; the wizard's step 1 is pre-done **[ruled]** | — | E |
-| D3 | Anonymous pre-signup session row, later bound to the tenant | **Design written 2026-09-30: `documents/design-notes-funnel-anon-session.md` — seven sub-decisions D3-a…g, awaiting Charan** | E1 |
+| D3 | Anonymous pre-signup session row, later bound to the tenant | **Approved as recommended and BUILT** (`documents/design-notes-funnel-anon-session.md`; migrations 261 + 262 applied on production; live since 2026-10-01) | — |
 | D4 | Entitlement / purchase model, one for all agents (Vara, GTM, Edge) | Approve `vani_entitlement` (§7); payment provider later | E3, Edge |
 | D5 | Eval results storage | One table `gt_eval_runs` (§7) | C3 |
 | D6 | Embedding provider (Haiku has no embeddings; Ollama is off the path) | Env-configured OpenAI-compatible `/v1/embeddings` endpoint; provider named in `.env` | D4 |
@@ -150,8 +182,8 @@ signup  →  token bound to the new tenant                (D3)
 
 | Slice | What |
 |---|---|
-| E1 | Anonymous session (D3): crawl runs as an event with no tenant, keyed to a session token; signup binds it; ingestion nodes re-parent to the tenant in one transaction |
-| E2 | The landing "enter your website" surface on the website repo, teaser card, signup handoff. The existing signup gate stays a front door, not a lock |
+| E1 ✅ | Anonymous session (D3): crawl runs as an event with no tenant, keyed to a session token; signup binds it; ingestion nodes re-parent to the tenant in one transaction |
+| E2 ✅ (live 2026-10-01) | The landing "enter your website" surface on the website repo, teaser card, signup handoff. The existing signup gate stays a front door, not a lock |
 | E3 | Agent catalog reads real `vani_agent` + `vani_tenant_agent`; activation per agent through the existing lane model; entitlement check (D4) before activation; payment provider is a later slice behind the same check |
 | E4 | Wizard reads the pre-done step; the rest unchanged |
 
@@ -190,6 +222,10 @@ Week 1   A1 ARCH.md · A2 AGENTS.md · B1 merge · B2 failover fix   ✅ 2026-09
 Week 2   A3 PLATFORM spec · B3 visibility · B4 journey readers + dashboard · C1 run table
 Week 3   A4/A5 Vara + GTM specs · C2 contracts + primitives · D1 provenance · D2 brain.context
 Week 4   C3 evals · C5 lanes · D3 Vara in the graph · E1/E2 funnel front half
+
+Actual by 2026-10-01: A ✅ · B ✅ · C5/C6/C2-infra ✅ · D2 ✅ · E1/E2 ✅ (live) ·
+onboarding + brand + invite links ✅. Not reached: H, C1/C3/C4, D1/D3, the RLS switch.
+Order from here: "Pending, in order" under Status.
 ```
 
 Each week ends with something a tenant or an operator can see. After week 4:
