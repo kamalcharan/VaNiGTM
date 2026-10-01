@@ -1,3 +1,4 @@
+import path from 'path';
 import type { NextConfig } from 'next';
 
 /**
@@ -15,6 +16,10 @@ import type { NextConfig } from 'next';
  */
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // This app has its own lockfile inside the VaNiGTM monorepo (since
+  // 2026-10-01). Without this Next infers the repo root from the root
+  // package-lock.json and resolves from there.
+  turbopack: { root: path.join(__dirname) },
   // Appearance and Model Provider were top-level SYSTEM routes until
   // 2026-09-22; they are tabs of /settings now. Bookmarks and any link that
   // still says the old path land on the tab, not on a 404.

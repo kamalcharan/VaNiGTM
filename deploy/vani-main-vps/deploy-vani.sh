@@ -9,7 +9,7 @@
 #
 # WHY BUILD HERE rather than pull. The running containers use
 # vikuna/vani-backend:latest from Docker Hub, but NOTHING IN THIS REPO BUILDS
-# THAT IMAGE — build-push.sh builds vikuna/prokey-backend, a different product.
+# THAT IMAGE — the ProKey build script that built vikuna/prokey-backend was deleted 2026-10-01.
 # So the image was built and pushed by hand at some point, and the repo has no
 # way to reproduce it. Building here, tagged the same, closes that gap: the
 # tag resolves to a local image and compose uses it.
@@ -25,7 +25,7 @@ set -euo pipefail
 say() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 die() { printf '\n\033[31mSTOP: %s\033[0m\n\n' "$*" >&2; exit 1; }
 
-[ -f backend/Dockerfile ] || die "Run this from the root of a VaNiGTM checkout.
+[ -f deploy/vani-main-vps/Dockerfile ] || die "Run this from the root of a VaNiGTM checkout.
   The VPS had no checkout at all on 2026-09-16 — /opt/vikuna/docker/vani held
   only compose files. If that is still true:
     cd /opt && git clone https://github.com/kamalcharan/VaNiGTM.git

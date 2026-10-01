@@ -9,7 +9,7 @@
 > **Built today** is stated against the VaNiGTM working tree on 2026-09-30, which
 > has `claude/session-setup-qrxev9` merged with its migrations renumbered
 > **254–258** (D1, ruled: merge). Every ✅ names the file it was read from.
-> Paths: `backend/…` = `VaNiGTM/backend`, `vani-app/…` = `vikunawebsite/vani-app`,
+> Paths: `backend/…` = `VaNiGTM/backend`, `vani-app/…` = `VaNiGTM/vani-app` (in `vikunawebsite` until 2026-10-01),
 > `migrations/NNN` = `VaNiGTM/backend/migrations`.
 >
 > Legend: ✅ built and read in code · ◐ partly built (what is missing is named) ·

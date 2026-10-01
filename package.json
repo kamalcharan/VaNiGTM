@@ -2,30 +2,21 @@
   "name": "vanigtm",
   "version": "2.0.0",
   "private": true,
-  "description": "VaNi-GTM — Go-to-Market platform",
+  "description": "VaNi — the API and agent core (backend/), the console (vani-app/), the website (web/)",
   "scripts": {
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "dev": "cd frontend && npm run dev",
-    "dev:all": "concurrently --names api,ui --prefix-colors blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "build:backend": "cd backend && npm run build",
-    "build:frontend": "cd frontend && npm run build",
-    "build": "npm run build:backend && npm run build:frontend",
-    "test:backend": "cd backend && npm test",
-    "test:frontend": "cd frontend && npm test",
-    "test": "npm run test:backend"
+    "install:all": "npm install && npm --prefix backend install && npm --prefix vani-app install && npm --prefix web install",
+    "dev:api": "npm --prefix backend run dev",
+    "dev:worker": "npm --prefix backend run worker",
+    "dev:ui": "npm --prefix vani-app run dev",
+    "dev:web": "npm --prefix web run dev",
+    "dev:all": "concurrently --names api,worker,ui --prefix-colors blue,magenta,green \"npm run dev:api\" \"npm run dev:worker\" \"npm run dev:ui\"",
+    "build:api": "npm --prefix backend run build",
+    "build:ui": "npm --prefix vani-app run build",
+    "build:web": "npm --prefix web run build",
+    "build": "npm run build:api && npm run build:ui && npm run build:web",
+    "test": "npm --prefix backend test"
   },
   "devDependencies": {
-    "@types/node": "25.5.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "concurrently": "^9.1.0",
-    "typescript": "6.0.2"
-  },
-  "dependencies": {
-    "next": "^16.2.1",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "concurrently": "^9.1.0"
   }
 }

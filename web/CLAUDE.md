@@ -16,116 +16,18 @@ There is no test runner configured — the "test" step for changes is `npm run b
 
 Note: `npm run lint` is genuinely broken (ESLint flat config invoked with the removed `--ext` flag, and `eslint.config.js` imports `typescript-eslint` which is not in `package.json`) — pre-existing, not gating.
 
-## VaNi AI (in progress)
+## VaNi — not here
 
-> **2026-09-30:** the product's architecture and agent contract are
-> `VaNiGTM/ARCH.md` and `VaNiGTM/AGENTS.md`; the specs are
-> `VaNiGTM/documents/spec/{PLATFORM,VARA,GTM}.md`; the plan is
-> `VaNiGTM/documents/POA-2026-09-30-platform.md`, whose Track H moves
-> `vani-app/` into that repo. Work under `vani-app/` still obeys
-> `vani-app/CLAUDE.md`.
->
-> **Production and the VPS:** `VaNiGTM/DEPLOY.md` — where the API, worker,
-> nginx and console run, and every deploy / migrate / rollback command. The
-> console calls `api.vikuna.io` directly, so any API route it needs must be
-> reachable through that nginx config (DEPLOY.md §5).
+This folder is the marketing website (www.vikuna.io) and nothing else. Since
+2026-10-01 it lives inside VaNiGTM next to the API (`backend/`) and the
+console (`vani-app/`). For anything VaNi — product, console, database, deploy
+— read the repo root's `CLAUDE.md`, `HANDOVER.md` and `DEPLOY.md`, and
+`vani-app/CLAUDE.md` for console work. The rule that no table, column, enum
+or index is added without Charan's approval holds here as everywhere.
 
-**VaNi AI is NOT built in this repo.** The plan changed on 2026-07-31 (Option A, in-repo lazy routes, was superseded twice on the same day). The assessment funnel — public flow, report, console, backend, database — lives in `kamalcharan/VaNiGTM`, attached here as a submodule at `vanigtm/`. This repo now holds only the handover record and the governing documents.
-
-Before touching anything VaNi-related, read `docs/VANI_AI_HANDOVER.md` — phase status, guardrails (no Supabase for VaNi data, config-driven survey engine, deterministic SQL scoring), and what is waiting on whom. For code or database work, read `vanigtm/CLAUDE.md` and `vanigtm/docs/db/*.md` instead; the latter document what the schema does behind the application's back, and exist so the next session does not rediscover it the hard way.
-
-`.mcp.json` configures the read-only `gtm-postgres` MCP channel to `vani_gtm_db`, but **it has never once connected from inside a Claude session** — `GTM_MCP_BASIC` is unset in the Claude environment settings. Every database result on record came either from Charan running SQL and pasting it back, or from a local rebuild of the schema from VaNiGTM's migration files. Do not plan around live DB access.
-
-## Database changes require approval — repo-wide
-
-**No new tables, columns, enums or indexes anywhere in this project without
-Charan's explicit approval.** Not a helper table, not "only one column", and not
-structured data smuggled into an existing JSONB field. Build against what the
-specs and the running system already define: `docs/vani/sql/*.sql`,
-`docs/vani/vara-data-model-v1.0.html`, and VaNiGTM's `vn_*` schema. If the model
-cannot carry what you are building, say what is missing and wait — that is a
-schema change request, not a blocker to route around.
-
-There is no live database access from a Claude session (see the VaNi note
-below), so every schema claim must trace to a migration file or a spec.
-
-## Scope discipline for VaNi work
-
-The current focus is **tenant (product-level) onboarding**.
-
-**Corrected 2026-08-17 — the previous version of this section was wrong**, and it
-misdirected a session. It said the mission wizard was off the onboarding path
-because "GTM reads from the Smart Profile later". The actual architecture, from
-Charan:
-
-> The mission wizard **is step 1 of the Smart Profile.** GTM picks *from* the
-> Smart Profile afterwards, as and when it wants.
-
-So the Smart Profile is, in order:
-
-1. **Mission wizard** — company research, market vocabulary, competitors, ideal
-   customer, brand. This is the substance: what the product is, the problem it
-   solves, the buyer, the pain, the voice, the proof.
-2. **Domain** → `vani_tenant_domain`
-3. **People** → `vani_membership`
-4. **Model** → `vani_llm_provider`. A default provider already exists; BYOK is a
-   later field on the same step, not a later step.
-
-**`user_profile` and `business_profile` are NOT the Smart Profile.** They capture
-name, mobile, designation, industry — registration detail. Useful, required, and
-completely separate. Do not report onboarding progress as though they were part
-of it; that was the specific mistake, and it read as "half done" when the half
-that carries meaning had not started.
-
-Competitor research, vocabulary clusters and SearXNG are therefore **on** the
-path, as sub-steps of mission wizard — not off it. What remains true is that they
-are blocked on infrastructure (LLM reachability, the worker, headless crawl for
-JS sites, the `gt_tenant_brand` migration), so they are expensive, not optional.
-
-Steps 2–4 cost almost nothing by comparison: pure declarations, no LLM, no
-worker, no queue. Their screens, writers, engine and gate are built and sit
-behind `enabled: false` in `backend/src/onboarding/lanes.ts`, waiting on one
-`\dt vani_*` to confirm the `vani_` spine is applied.
-
-Environmental failures found on the Main VPS while scoping this are recorded in
-**`vanigtm/CLAUDE.md`** under "Main VPS — known broken, DEFERRED", including one
-genuine open bug (the event queue has no stale-row reclaim, so a dying worker
-orphans its in-flight events — which can trap a user behind a blocking UI).
-Note and move on; do not fix those while onboarding is unfinished.
-
-One decision is pending on Charan: the pre-2026-08-17 `vani-backend` image was
-built from an uncommitted working tree, so code referencing `gt_tenant_brand`
-exists in no branch. It survives only as the
-`vikuna/vani-backend:pre-onboarding-20260817` image tag on the VPS. Commit it
-from local before the next rebuild, or it is gone.
-
-## VaNi console engineering standards
-
-Work under `vani-app/` is governed by **`vani-app/CLAUDE.md`** — read it before
-touching that folder. It is mandatory, not advisory, and covers: the five states
-every screen owes the user (loading, error, empty, content, outcome) via
-`<DataBoundary>` and `useToast`, the loader taxonomy, writes through
-`useSkillMutation` with double-submit guards and idempotency keys, race
-conditions, what two-phase commit does and does not mean in a UI, and the
-registry boundary.
-
-Loader and toast APIs there are deliberately identical to VaNiGTM's
-(`FullPageLoader`, `InlineLoader`, `sm|md|lg`, `showToast({message, type})`), so
-code moves between the repos without edits. Keep them aligned.
-
-**We own the UI and the backend, so features land on both sides in one slice.**
-Two rules follow and are enforced, not aspirational:
-
-- **Idempotency** — the client mints and sends `Idempotency-Key`; the VaNiGTM
-  handler **stores the key with its result and replays it** on a repeat, in the
-  same transaction as the write. A write endpoint shipped with only the client
-  half is unfinished, and a key nothing honours is worse than no key: the UI
-  then looks safe to retry when it is not.
-- **Two-phase commit** — multi-step writes that must not half-apply are **one
-  transaction in VaNiGTM**, not a sequence the UI orchestrates. One endpoint per
-  atomic outcome. Where an external system genuinely sits in the middle, model
-  it as prepare → confirm with staged rows that are never visible as committed.
-  The UI never reports success until the whole operation confirms.
+The VaNi sections that used to sit here (handover pointer, database-approval
+rule, scope discipline, console standards) are in git history and the
+`pre-consolidation-2026-10-01` tag of kamalcharan/vikunawebsite.
 
 ## Architecture
 

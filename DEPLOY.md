@@ -16,8 +16,8 @@
 
 ```
                        ┌───────────────────────── Vercel ─────────────────────────┐
-browser ──────────────►│ www.vikuna.io   vikunawebsite repo, root /  (Vite site)  │
-                       │ vani.vikuna.io  vikunawebsite repo, root vani-app/       │
+browser ──────────────►│ www.vikuna.io   VaNiGTM repo, root web/  (Vite site)     │
+                       │ vani.vikuna.io  VaNiGTM repo, root vani-app/             │
                        │                 (Next.js console, NEXT_PUBLIC_API_ORIGIN │
                        │                  = https://api.vikuna.io)                │
                        └──────────────────────────────────────────────────────────┘
@@ -38,9 +38,10 @@ browser (console, widget iframe) calls the API DIRECTLY, credentials included
 LLM: platform model from .env (Haiku today, api.anthropic.com); SearXNG from SEARXNG_URL
 ```
 
-`frontend/` in this repo is **retired** and is not deployed anywhere.
-Track H (`documents/POA-2026-09-30-repo-consolidation.md`) moves `vani-app/`
-into this repo; when it lands, §1 and §5 change — update them in that PR.
+One repo since 2026-10-01 (Track H): the console and the website build on
+Vercel from this repo's `vani-app/` and `web/`. Until the two Vercel projects
+are re-pointed (§7) they still build from `kamalcharan/vikunawebsite` — check
+the project's Git settings before trusting either line above.
 
 ## 2. Folder structure that matters for deploys
 
@@ -333,8 +334,8 @@ Restore on failure: copy the `.bak-…` file back and reload.
 | Platform LLM | **Haiku as primary since 2026-09-30 evening (Charan: "let haiku run now")**: `claude-haiku-4-5` at `https://api.anthropic.com/v1`, window 100000, 4 at a time, no system suffix. The qwen settings (`qwen3-4b` at `http://vikuna-llm:8080`, window 16384, 1 at a time, suffix `/no_think`) are kept in the compose dir as `.env.bak-qwen-<date>`; restoring is `cp` of that file + recreate |
 | Database | `vani_gtm_db` |
 | Runtime DB role | **`vikuna_admin` as checked 2026-09-30 23:40** — the §4b switch to `vanigtm_app` is not in effect on the box (see the warning at §4b); RLS is NOT enforced. Intended: `vanigtm_app`. `DB_MIGRATE` keeps the owner connection for the migration runner. Before the switch: `vikuna_admin` (SUPERUSER + BYPASSRLS) |
-| Console | `vani.vikuna.io` (Vercel, vikunawebsite repo, root `vani-app/`); env `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` |
-| Website | `www.vikuna.io` (Vercel, vikunawebsite repo, root `/`) |
+| Console | `vani.vikuna.io` (Vercel, VaNiGTM repo, root `vani-app/`); env `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` |
+| Website | `www.vikuna.io` (Vercel, VaNiGTM repo, root `web/`) |
 | Other vhosts on the same nginx | `dristiq.com`, `mcp-db.dristiq.com` (the read-only DB MCP) — not ours to change from here |
 
 ### Environment variables (names only — values live on the box)
@@ -357,7 +358,10 @@ Never commit a value. Never print `.env` into a chat.
 
 ## 7. The console (Vercel)
 
-Deploys automatically from `main` of **kamalcharan/vikunawebsite**. Nothing to
+Deploys automatically from `main` of **kamalcharan/VaNiGTM**, project root
+`vani-app` (the website: same repo, root `web`). Each project's *Ignored Build
+Step* is `git diff --quiet HEAD^ HEAD -- .`, which Vercel runs inside the root
+directory, so a commit that touches only `backend/` builds neither. Nothing to
 run. Two things make it work against production and both live outside Vercel:
 the API routes it calls must exist behind nginx (§5), and its origin must be in
 the `$cors_origin` map. "Cannot reach the VaNi service" in the console is

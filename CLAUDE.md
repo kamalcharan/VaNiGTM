@@ -8,6 +8,12 @@
 > This file is the working notebook — rulings, traps, recipes — and defers to
 > those where they overlap.
 >
+> **One repo since 2026-10-01 (Track H).** `backend/` is the API and the
+> worker, `vani-app/` the console (vani.vikuna.io), `web/` the website
+> (www.vikuna.io). `kamalcharan/vikunawebsite` is retired (archived once Vercel builds from here); its history lives
+> on here. The old `frontend/` and the ProKey files were deleted the same day
+> — tag `pre-consolidation-2026-10-01` keeps them readable.
+>
 > **Deploying or touching the VPS: read `DEPLOY.md`** — what runs where, the
 > folder layout on the box, deploy / migrate / nginx commands, rollback, and
 > the VPS reference. Keep it current when any of that changes.
@@ -62,8 +68,7 @@ Pathways read as verbs and are things you DO. Reference surfaces read as nouns a
 are things you LOOK AT. Do not add a top-level destination — extend a pathway or
 add a drill-down. Old routes redirect; do not add paths outside this hierarchy.
 
-⚠️ **That navigation tree was `frontend/`'s, which is retired** (see
-Architecture). The PRODUCT MODEL above — brain / agents / pathways — still
+⚠️ **That navigation tree was the deleted `frontend/`'s.** The PRODUCT MODEL above — brain / agents / pathways — still
 holds and is what the API is shaped around. The routes and the sidebar are
 `vani-app`'s to define, under its own registry boundary
 (`vani-app/CLAUDE.md` §5: a skill is one folder plus one line in
@@ -71,23 +76,17 @@ holds and is what the API is shaped around. The routes and the sidebar are
 
 ## Architecture
 
-> ⚠️ **`frontend/` IS RETIRED. The frontend is `vani-app`** (user, 2026-09-16),
-> which lives in the OTHER repo: `kamalcharan/vikunawebsite`, at `vani-app/`,
-> Next.js on port **3100**. This repo is the **API and the agent core**.
->
-> `backend/frontend/` is still on disk and still builds. It is not run, not
-> deployed, and not where a feature lands. Anything below describing it —
-> the VDF library, `serviceURLs.ts`, the navigation tree, the settings tabs —
-> documents a retired app. **Read `vikunawebsite/vani-app/CLAUDE.md` before
-> writing any UI**; it is mandatory and covers the five states every screen
-> owes, `useSkillMutation`, idempotency and the registry boundary.
+> **The console is `vani-app/`** (Next.js, port **3100**), in this repo
+> since 2026-10-01. **Read `vani-app/CLAUDE.md` before writing any UI**; it is
+> mandatory and covers the five states every screen owes,
+> `useSkillMutation`, idempotency and the registry boundary. The website is
+> `web/` (Vite) with its own `web/CLAUDE.md`.
 
-- **Two processes here:** Express API (`backend/`, port 3002 in dev) + the
-  worker. The UI is a separate repo.
-- ~~Next.js 16 App Router (`frontend/`, port 3000)~~ — retired, see above.
+- **Backend processes:** Express API (`backend/`, port 3002 in dev) + the
+  worker. The console and the website deploy to Vercel from this repo.
 - **Worker:** separate process (`npm run worker`) polling the `gt_events` bus
   and dispatching agents.
-- **Stack:** React + TypeScript frontend, Node.js + Express + TypeScript
+- **Stack:** Next.js console + Vite website, Node.js + Express + TypeScript
   backend, PostgreSQL on VPS (`vani_gtm_db` — connection via `DB_PRIMARY`).
 - **LLM configuration — .env only (Charan, 2026-09-30).** qwen on Vikuna's own
   VPS is the platform model; Haiku is the fallback; **no hardcoded value
@@ -132,12 +131,14 @@ backend/
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
   migrations/         — 001…259 (highest applied = 259; TWO files are numbered 249)
-frontend/            — ⚠️ RETIRED (2026-09-16). Still on disk, still builds,
-                      NOT the product. The frontend is vikunawebsite/vani-app.
-                      Kept for reference; do not add features here.
+vani-app/             — the console (Next.js, :3100) — read vani-app/CLAUDE.md
+web/                  — the website www.vikuna.io (Vite) — read web/CLAUDE.md
 documents/            — PRD, POA, roadmap, gtm-engine-ui mockups, ux-references
+documents/vani/       — the Vara/VaNi design history (came with vikunawebsite)
 docs/                 — mcp-db-setup.md, rls-cutover-checklist
 scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
+deploy/vani-main-vps/ — the VPS: compose, Dockerfile, deploy script, nginx
+.github/workflows/    — ci.yml: each app checked when its folder changes
 .mcp.json             — gtm-postgres read-only DB connector (see docs/)
 ```
 
@@ -329,39 +330,19 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
 - Backend: every route/handler wrapped in try/catch; structured errors
   `{ error: { code, message } }`; log with a `[Scope]` prefix; never leak
   stack traces in production.
-- Frontend: every call through hooks (`useSkill*`) with loading state
-  (VdfLoader) + error toasts (components/toast.tsx). No component calls
-  fetch directly — Component → hook → apiFetch → serviceURLs.
+- Console: every call through `useSkillQuery` / `useSkillMutation`, every
+  screen through `<DataBoundary>` + `useToast` — `vani-app/CLAUDE.md` §1–2.
 
-## Frontend conventions — ⚠️ RETIRED APP
+## Conventions that outlived the retired frontend
 
-**This section documents `frontend/`, which is no longer used.** The live UI is
-`vikunawebsite/vani-app` and is governed by **`vani-app/CLAUDE.md`** — read
-that one. Its loader and toast APIs were deliberately kept identical to the
-ones below (`FullPageLoader`, `InlineLoader`, `showToast({message, type})`) so
-code moves between them, but everything else here (VDF, the theme registry,
-`serviceURLs.ts`, the tab layout) belongs to the retired app.
+The UI rules are `vani-app/CLAUDE.md`'s. Three facts are about the API and
+stay here, because they are worth not re-deciding:
 
-Kept because the API contracts below are still true of the backend, and
-because a date format or a token convention is worth not re-deciding.
-
-- **serviceURLs.ts** is the single registry of endpoints; **api-client.ts**
-  the sole fetch wrapper (JWT inject, 401 → silent refresh → retry once).
-- Tokens in BOTH sessionStorage and localStorage (`pk-access-token`, …);
-  tenant_id lives inside the JWT only.
-- **VDF component library** (`components/vdf/`, `Vdf<Name>`): every UI
-  element comes from VDF or shared CSS; CSS variables from the theme system
-  only — no hardcoded colors; `var(--glass)`/`var(--glass-border)` are NOT
-  valid (use `--color-surface`/`--color-border`).
-- **VdfPageHeader is mandatory** on every (app) page: `.page` has no
-  padding, `.body` carries it; `min-height: 100%` (never `calc(100vh-…)`).
-- Theme: 12 themes via CSS variables; default vikuna-black (gold-on-black).
-  Brand strings from `constants/brand.ts` (BRAND.name = 'Vikuna GTM').
 - **Dates: `DD-MMM-YYYY` (e.g. 27-Jul-2026) everywhere** — always via
   `lib/format.ts` (`formatDate`/`formatDateTime`), never inline
   `toLocaleDateString`. Server stores UTC; format.ts is the single
-  conversion gateway. Tenant timezone prefs + date-input parsing are
-  DEFERRED (tracked in HANDOVER) and will land in format.ts only.
+  conversion gateway.
+- tenant_id lives inside the JWT only, never in a request body.
 - `onboarding_complete` is DERIVED: `count(vn_tenant_onboarding WHERE
   status != 'completed') == 0`. Seeded steps at registration:
   `user_profile`, `business_profile`. `POST /profile/approve` does NOT
@@ -410,7 +391,7 @@ because a date format or a token convention is worth not re-deciding.
    `gt_events` poll, `gt_prompts` system rows, public share-token lookups).
 2. **Every write in a transaction** via `ctx.db.transaction()`.
 3. **Every endpoint/handler has error handling** (structured, logged).
-4. **Every page: VdfLoader + toasts; every UI element from VDF**; CSS
+4. **Every screen: the five states** (`vani-app/CLAUDE.md` §1); CSS
    variables only; no per-page CSS for shared patterns.
 5. **Table prefix `gt_`** for new product tables (`vn_` is the auth
    framework; no new `ki_`).
@@ -502,11 +483,11 @@ because a date format or a token convention is worth not re-deciding.
 
 ## Running locally
 ```bash
-cd backend  && npm run dev      # API on PORT (dev .env uses 3002)
-cd backend  && npm run worker   # agent worker (separate terminal)
-
-# The UI is in the OTHER repo — frontend/ here is retired:
-cd ../../vikunawebsite/vani-app && npm run dev    # Next.js on 3100
+npm run install:all   # root, backend, vani-app, web — each has its own lockfile
+npm run dev:api       # API on PORT (dev .env uses 3002)
+npm run dev:worker    # agent worker (separate terminal)
+npm run dev:ui        # the console, Next.js on 3100
+npm run dev:web       # the website, Vite
 ```
 `vani-app` needs `NEXT_PUBLIC_API_ORIGIN=http://localhost:3002` in its own
 `.env`, and this backend needs `3100` in `CORS_ORIGIN`. Miss either and the
@@ -656,10 +637,10 @@ Runbook in §8 of the doc.
   `vani:llm_provider` stays `enabled: false` in `lanes.ts`. Do not flip it.
 
   **The surface is `vani-app` → System → Settings → Model** (`/settings/model`,
-  `vikunawebsite/vani-app/src/skills/settings/screens/ModelProvider.tsx`;
+  `vani-app/src/skills/settings/screens/ModelProvider.tsx`;
   it was a top-level `/model-provider` until 2026-09-22, which now
   redirects). A first version was
-  written into the retired `frontend/` before that was established; it has been
+  written into the retired `frontend/` before that was established; it was
   deleted rather than left as a second, unreachable BYOK screen.
 
   **It reaches the backend as a SKILL, not as REST.** `llm-provider-skill`
@@ -671,10 +652,10 @@ Runbook in §8 of the doc.
   at `/api/v1/llm-provider` remain for direct API use.
 
   It was enabled for one day and **trapped a live tenant**, which is worth
-  knowing because the missing piece was in the OTHER repo. `enabled` also
+  knowing because the missing piece was in the console, not the API. `enabled` also
   means REQUIRED (`requiredSteps` filters on it), so the server began
   answering `next_incomplete_step='vani:llm_provider'`. The console
-  (`vikunawebsite/vani-app`) keeps its OWN client-side step catalog at
+  (`vani-app/`) keeps its OWN client-side step catalog at
   `src/skills/onboarding/lanes/product.ts` — three steps, no entry for this
   one — so `OnboardingRunner` found no step to render, while
   `RequireSession` held the tenant at `/onboarding/declare` because the only
@@ -683,7 +664,7 @@ Runbook in §8 of the doc.
 
   **Before enabling ANY `vani:` step, check that vani-app's `product.ts` has
   a matching entry and a step component.** The two catalogs are in different
-  repos and nothing keeps them in sync.
+  folders and nothing keeps them in sync.
 
 Two rulings (user, 2026-09-15) that the code enforces, not just documents:
 1. **The daily token cap does not apply to BYOK.** It exists because Vikuna

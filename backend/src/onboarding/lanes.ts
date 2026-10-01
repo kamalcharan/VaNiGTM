@@ -121,8 +121,8 @@ const VANI_LANE: Lane = {
     //     has no SCREEN.
     //
     //     Enabling it on 2026-09-15 trapped a live tenant, and the trap is
-    //     worth recording because the missing piece is in ANOTHER REPO. The
-    //     console (vikunawebsite/vani-app) keeps its own client-side catalog
+    //     worth recording because the missing piece is in the CONSOLE. The
+    //     console (vani-app/) keeps its own client-side catalog
     //     at src/skills/onboarding/lanes/product.ts, listing user_profile,
     //     business_profile and vani:domain. Turning this on made the server
     //     answer next_incomplete_step='vani:llm_provider'; OnboardingRunner

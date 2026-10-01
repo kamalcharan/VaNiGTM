@@ -127,9 +127,10 @@ Loaders come in three kinds, and picking the wrong one is a real defect:
 - **First paint of a route** → `VaniLoader`.
 
 `FullPageLoader`, `InlineLoader` and their `sm | md | lg` sizes are
-**API-identical to VaNiGTM's `frontend/src/components/loader.tsx`**, and
-`VaniLoader` mirrors `VdfLoader`. Keep them that way — code moves between these
-repos, and a diverged signature turns a copy-paste into a debugging session.
+**API-identical to the retired `frontend/src/components/loader.tsx`** (deleted
+2026-10-01; tag `pre-consolidation-2026-10-01`), and `VaniLoader` mirrors
+`VdfLoader`. Keep the signatures stable: older notes and ported code assume
+them.
 `useToast().showToast({ message, type, duration, dismissible })` matches
 VaNiGTM's toast for the same reason.
 

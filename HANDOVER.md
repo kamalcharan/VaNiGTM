@@ -2,8 +2,38 @@
 
 > **This doc is the sole continuity between sessions.** The next session starts
 > with zero memory — read this first, then `CLAUDE.md`.
-> **Current state (2026-09-29):** see the RESTART HANDOVER section directly
-> below — order of work is Edge UX → Vara → GTM. Older sections are history.
+> **Current state (2026-10-01):** one repo — see the first section below;
+> then the RESTART HANDOVER section — order of work is Edge UX → Vara → GTM. Older sections are history.
+
+---
+
+# ▶ 2026-10-01 — one repo (Track H)
+
+VaNiGTM now holds everything; `kamalcharan/vikunawebsite` is retired and gets
+archived once Vercel builds from here.
+
+| Folder | What | Deploys |
+|---|---|---|
+| `backend/` | API + worker | VPS, `deploy/vani-main-vps/deploy-vani.sh` (DEPLOY.md) |
+| `vani-app/` | the console | Vercel → vani.vikuna.io (project root `vani-app`) |
+| `web/` | the website | Vercel → www.vikuna.io (project root `web`) |
+| `documents/vani/` | Vara/VaNi design history from vikunawebsite `docs/vani/` | — |
+
+- Brought in with history (`git filter-repo`), so `git log -- vani-app/` and
+  `git blame` reach back to the first console commit.
+- Deleted: `frontend/` (never deployed; D6 says nothing needed porting),
+  the ProKey build/deploy files, a committed Next dev build (`backend/dev/`),
+  and uploaded spreadsheets that had been committed (`uploads/`,
+  `backend/uploads/` — now gitignored; they are still in git history).
+  Tag `pre-consolidation-2026-10-01` keeps all of it readable.
+- Root scripts: `npm run install:all`, `dev:api`, `dev:worker`, `dev:ui`,
+  `dev:web`, `build:*`, `test`. CI: `.github/workflows/ci.yml` checks each
+  app when its folder changes (the `*.db.test.ts` suites skip there — no
+  Postgres in CI).
+- The website's `docs/VANI_AI_HANDOVER.md` and the VaNi sections of
+  `web/CLAUDE.md` are pointers to this file and `CLAUDE.md` now.
+- Older sections below still say "vikunawebsite/vani-app" and `frontend/…`;
+  read those as `vani-app/…` and as the tag, respectively.
 
 ---
 

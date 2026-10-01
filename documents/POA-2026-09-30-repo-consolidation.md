@@ -14,7 +14,23 @@
 > So: **one repository holding the website, the console and the API**, and the
 > retired `frontend/` removed with every reference to it.
 >
-> Facts checked in code on 2026-09-30. Nothing here has been started.
+> Facts checked in code on 2026-09-30.
+>
+> **Status 2026-10-01:** H1 and H3 done on branch `claude/wizardly-darwin-778r2w`
+> (Charan: "we can delete prokey things … go ahead with the repo cleanup and
+> unification"). vikunawebsite `main` 64e7f3e came in as 328 commits;
+> `frontend/` (381 files), the ProKey files (D2), `jest.config.ts` at the root
+> (pointed at folders that do not exist), the root `components/` and
+> `recipes/` (ProKey leftovers, unreferenced), a committed Next dev build
+> (`backend/dev/`, 119 files) and committed upload spreadsheets went with it.
+> `vani-app`, `web` and the backend (tsc + 531 tests) build from the new
+> places. **Charan's:** H0 tags (the session's git proxy refuses tag pushes),
+> H2, H4, H5. Dates and the tenant-id-in-JWT rule stayed in CLAUDE.md's
+> "Conventions that outlived the retired frontend" rather than ARCH.md; the
+> old token-storage convention was dropped (vani-app keeps the access token in
+> memory only). Dated records (old handovers, design notes) keep their
+> `frontend/` and `vikunawebsite/…` paths — they describe their day; HANDOVER's
+> 2026-10-01 section says how to read them.
 
 ## 0. What is where today
 
@@ -121,8 +137,11 @@ Both existing projects, **re-linked** (keeps domains and env vars):
 
 | Project | Repo | Root Directory | Ignored Build Step |
 |---|---|---|---|
-| website (www.vikuna.io) | VaNiGTM | `web` | `git diff --quiet HEAD^ HEAD -- web/` |
-| console (vani.vikuna.io) | VaNiGTM | `vani-app` | `git diff --quiet HEAD^ HEAD -- vani-app/` |
+| website (www.vikuna.io) | VaNiGTM | `web` | `git diff --quiet HEAD^ HEAD -- .` |
+| console (vani.vikuna.io) | VaNiGTM | `vani-app` | `git diff --quiet HEAD^ HEAD -- .` |
+
+The command runs inside the Root Directory, so the path is `.` — `-- web/`
+would look for `web/web/`, find no change, and never build.
 
 `web/vercel.json` and `web/api/*` (the advisor/health functions) are read
 relative to the Root Directory, so they keep working unchanged. Verify: a

@@ -263,7 +263,7 @@ Legend — **Built today**: ✅ built (file/route) · ◐ partial (what is missi
 | P-85 | Auth is the only non-generic surface | Access token in memory; refresh cookie httpOnly; direct to `api.vikuna.io`; envelopes read through `readAccessToken()` / `readError()` | ✅ `vani-app/CLAUDE.md` §6; `PLATFORM_ROUTES` in `live-transport.ts` is the countable exception list (onboarding.status, complete_step, …) |
 | P-86 | The dashboard is about the tenant | Reads profile completion, weakest section, next action, awaiting queue, real journey cards | ✗ — `Dashboard.tsx` reads `dashboard.counters`, `dashboard.activity`, `agents.list`: all `CONSOLE_PREVIEW_READS` fixtures |
 | P-87 | Runs & Traces is real | `runs.list` / `runs.get` (steps, cost, "what this run changed"); `events.list` with status/attempts/age; unconsumed panel; one awaiting queue | ✗ — `skills/runs/screens/RunsList.tsx` reads `runs.list` (fixture). API has only `GET /api/v1/vani/runs` (vani-skill) and the failover queue |
-| P-88 | UI and API live in one repository with one CI | `vani-app/` inside VaNiGTM; PR runs backend tests + `next build`; `frontend/` deleted | ✗ — Track H (`POA-2026-09-30-repo-consolidation.md`) |
+| P-88 | UI and API live in one repository with one CI | `vani-app/` inside VaNiGTM; PR runs backend tests + `next build`; `frontend/` deleted | ✅ 2026-10-01 — `vani-app/`, `web/`, `documents/vani/` merged in with history; `frontend/` + ProKey deleted; `.github/workflows/ci.yml`. Vercel re-point and the archive are Charan's (H2/H5) |
 
 ### E10 · Operator surfaces (VaNi operator)
 
@@ -287,8 +287,8 @@ Legend — **Built today**: ✅ built (file/route) · ◐ partial (what is missi
 |---|---|---|---|
 | **API** | `VaNiGTM/backend/src/server.ts` — Express, port 3002 dev, `api.vikuna.io` prod | one process | Postgres as `vanigtm_app`; LLM endpoints per tenant posture; SearXNG; n8n (HMAC, env-routed) |
 | **Worker** | `backend/src/agent-core/worker.ts` (`npm run worker`) | separate process on the Main VPS (supervisor not described in the repo — deploy-story gap) | polls `gt_events` every 3s; `AGENT_REGISTRY[event_type]`; heartbeat on `gt_events.started_at` |
-| **Console** | `vikunawebsite/vani-app` — Next.js, port 3100 dev, `vani.vikuna.io` (Vercel) → moves into VaNiGTM (Track H) | browser | `api.vikuna.io` directly with `credentials:'include'`; never proxied through Vercel |
-| **Website** | `vikunawebsite/src` — Vite SPA, `www.vikuna.io` (Vercel) | browser | n8n lead webhooks; will host the F0 "enter your website" surface handing off to the console |
+| **Console** | `vani-app/` — Next.js, port 3100 dev, `vani.vikuna.io` (Vercel) | browser | `api.vikuna.io` directly with `credentials:'include'`; never proxied through Vercel |
+| **Website** | `web/` — Vite SPA, `www.vikuna.io` (Vercel) | browser | n8n lead webhooks; will host the F0 "enter your website" surface handing off to the console |
 | **Embed** | `vani-app/public/embed/vani.js` + `app/embed/chat`; API half `backend/src/vani/embed.routes.ts` *(B1 branch — not on `main`/VPS yet)* | inside tenant pages | `POST /api/v1/embed/boot`, `/embed/intent` |
 
 Mounted routes (`server.ts` 73–92): `/api/v1/auth`, `/onboarding`, `/tenant`, `/etl`, `/vani`, `/ingest`, `/profile`, `/storyteller`, `/assessment`, `/vara`, `/llm-provider`, the generic runner `POST /api/v1/skills/:skill/:fn`, and — *(B1 branch — not on `main`/VPS yet)* — `/tenant/embed`, `/embed/boot`, `/embed/intent` via `createEmbedRouter` mounted at `/api/v1` (`server.ts` 92).

@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "module": "Node16",
     "moduleResolution": "Node16",
     "strict": true,
@@ -13,12 +15,11 @@
     "outDir": "./dist"
   },
   "include": [
-    "backend/src/**/*.ts",
-    "shared/**/*.ts"
+    "backend/src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "kewalinvest",
-    "frontend"
+    "vani-app",
+    "web"
   ]
 }
