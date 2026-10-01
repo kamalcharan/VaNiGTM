@@ -4,6 +4,13 @@
  * VN-10, the organisation. Declared once here and delegated to every agent —
  * "one declaration, N projections". An agent activating later must not ask any
  * of this again.
+ *
+ * Two fields only (Charan, 2026-10-01): the name, shown because signup leaves
+ * it defaulting to the person ("kamal's Workspace") and it may need fixing,
+ * and the industry, which nothing else captures and which starts the industry
+ * research. The website is already known from the Smart Profile and the
+ * Domain step, and what the organisation does IS the Smart Profile — asking
+ * either again here was repetition.
  */
 
 import { useEffect, useState, type FormEvent } from 'react';
@@ -24,8 +31,6 @@ const INDUSTRIES = [
 export default function BusinessProfileStep({ initial, save, isSaving }: StepScreenProps) {
   const [name, setName] = useState((initial.display_name as string) ?? (initial.name as string) ?? '');
   const [industry, setIndustry] = useState((initial.industry as string) ?? '');
-  const [website, setWebsite] = useState((initial.website as string) ?? '');
-  const [description, setDescription] = useState((initial.description as string) ?? '');
   const [error, setError] = useState('');
 
   // Reopened after onboarding, the step has no values from this session —
@@ -35,14 +40,12 @@ export default function BusinessProfileStep({ initial, save, isSaving }: StepScr
   useEffect(() => {
     if (initial.industry || initial.name || initial.display_name) return;
     let cancelled = false;
-    apiFetch<{ profile?: { name?: string; display_name?: string; industry?: string; website?: string; description?: string } }>(API.tenant.profile)
+    apiFetch<{ profile?: { name?: string; display_name?: string; industry?: string } }>(API.tenant.profile)
       .then((r) => {
         const p = r?.profile;
         if (cancelled || !p) return;
         setName((v) => v || p.display_name || p.name || '');
         setIndustry((v) => v || (p.industry && INDUSTRIES.includes(p.industry) ? p.industry : ''));
-        setWebsite((v) => v || p.website || '');
-        setDescription((v) => v || p.description || '');
       })
       .catch(() => { /* prefill only */ });
     return () => { cancelled = true; };
@@ -66,8 +69,6 @@ export default function BusinessProfileStep({ initial, save, isSaving }: StepScr
       name: name.trim(),
       display_name: name.trim(),
       industry,
-      website: website.trim(),
-      description: description.trim(),
     });
   }
 
@@ -91,24 +92,6 @@ export default function BusinessProfileStep({ initial, save, isSaving }: StepScr
           Declared once. Every agent inherits it and never asks again. Saving it
           starts VaNi researching how your industry hires, in the background.
         </div>
-      </div>
-
-      <div className={s.field}>
-        <label className={s.label} htmlFor="ob-website">
-          Website <span className={s.optional}>— optional</span>
-        </label>
-        <input id="ob-website" className={s.input} value={website}
-          onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com"
-          autoComplete="url" spellCheck={false} disabled={isSaving} />
-      </div>
-
-      <div className={s.field}>
-        <label className={s.label} htmlFor="ob-desc">
-          What the organisation does <span className={s.optional}>— optional</span>
-        </label>
-        <input id="ob-desc" className={s.input} value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="One line an agent could read and act on" disabled={isSaving} />
       </div>
 
       {error && <div className={s.err} role="alert"><span aria-hidden="true">⚠</span><span>{error}</span></div>}
@@ -135,8 +118,6 @@ export function BusinessProfileArtefact({ values, onReopen }: StepArtefactProps)
         fields={[
           { label: 'Name', value: values.display_name as string },
           { label: 'Industry', value: values.industry as string },
-          { label: 'Website', value: values.website as string },
-          { label: 'What it does', value: values.description as string },
         ]}
       />
     </ArtefactSection>

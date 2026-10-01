@@ -9,10 +9,13 @@ import { useState, type FormEvent } from 'react';
 import type { StepArtefactProps, StepScreenProps } from '../lane';
 import { ArtefactCard, ArtefactSection } from '@/platform/pathway';
 import { InlineLoader } from '@/platform/feedback';
+import { useAuth } from '@/context/auth-provider';
 import s from '../onboarding.module.css';
 
 export default function UserProfileStep({ initial, save, isSaving }: StepScreenProps) {
-  const [name, setName] = useState((initial.name as string) ?? '');
+  // The name was given at signup; start from it rather than ask again.
+  const { user } = useAuth();
+  const [name, setName] = useState((initial.name as string) || user?.name || '');
   const [designation, setDesignation] = useState((initial.designation as string) ?? '');
   const [countryCode, setCountryCode] = useState((initial.country_code as string) ?? '+91');
   const [mobile, setMobile] = useState((initial.mobile as string) ?? '');

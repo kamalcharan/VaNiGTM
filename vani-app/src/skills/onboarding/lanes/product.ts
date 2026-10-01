@@ -40,7 +40,7 @@ export const productLane: OnboardingLane = {
       title: 'Your organisation',
       shortLabel: 'Organisation',
       summary:
-        'What the organisation is and what it works on. This binds the domain pack every agent inherits.',
+        'Your organisation\'s name and industry. The industry picks the playbooks every agent starts from.',
       Screen: BusinessProfileStep,
       Artefact: BusinessProfileArtefact,
     },
