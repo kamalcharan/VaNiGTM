@@ -105,6 +105,9 @@ export interface TenantDomain {
   purpose: 'workspace' | 'candidate';
   verified_at: string | null;
   created_at: string;
+  /** Sites allowed to load the widget, and when each last actually loaded it. */
+  embed_origins?: string[];
+  boot_pings?: Record<string, string> | null;
 }
 
 /** The organisation as registered: its name and the industry (vn_tenant_profiles). */

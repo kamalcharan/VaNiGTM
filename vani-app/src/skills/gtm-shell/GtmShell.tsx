@@ -9,7 +9,7 @@
  * edits: gtm-migration-poa.md §1.
  */
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RequireSession } from '@/platform/shell/RequireSession';
@@ -21,10 +21,20 @@ import { GTM_SKILLS } from './gtm-nav';
 import s from './gtm-shell.module.css';
 import { PreviewBadge } from './PreviewBadge';
 
+/**
+ * The GTM pages that still answer from fixtures on the live site (lib/preview.ts
+ * shadows their functions). Only these carry the badge: it used to sit on every
+ * GTM page, so Imports, Companies, People and the pool — all real — read as
+ * sample data too (UX audit brief, 2026-10-01).
+ */
+const SAMPLE_PAGES = ['/agents/gtm/today', '/agents/gtm/motion', '/agents/gtm/journeys', '/agents/gtm/channels'];
+
 installSkillTransport();
 
 export default function GtmShell({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname() ?? '';
+  const showBadge = IS_LIVE && SAMPLE_PAGES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const { tenant, logout } = useAuth();
   const toast = useToast();
   const [qc] = useState(
@@ -62,7 +72,7 @@ export default function GtmShell({ children }: { children: ReactNode }) {
               <span>·</span>
               <span className={s.crumbCurr}>Growth workspace</span>
             </div>
-            <PreviewBadge />
+            {showBadge && <PreviewBadge what="this page" />}
           </div>
           {children}
         </Shell>

@@ -57,3 +57,13 @@
   width: 6px; height: 6px; border-radius: 50%;
   background: currentColor;
 }
+
+/* Phone: the persona switcher is wider than the screen, which pushed the whole
+   page into a sideways scroll. Wrap the bar and let the switcher scroll on
+   its own instead. */
+@media (max-width: 680px) {
+  .top { flex-wrap: wrap; row-gap: 8px; }
+  .back { white-space: nowrap; }
+  .persona { margin-left: 0; max-width: 100%; overflow-x: auto; }
+  .personaBtn { white-space: nowrap; }
+}
