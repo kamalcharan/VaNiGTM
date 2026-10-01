@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Readiness Assessment | Vikuna Technologies</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,300;1,9..144,400;1,9..144,700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #080C1A;
+    --ink-mid: #141928;
+    --ink-soft: #2D3450;
+    --paper: #F7F6F2;
+    --accent: #E8420A;
+    --teal: #0B7B6B;
+    --teal-light: #12A090;
+    --gold: #C9973A;
+    --gold-light: #E0B050;
+    --white: #FFFFFF;
+    --dim: rgba(255,255,255,0.06);
+    --border-dim: rgba(255,255,255,0.08);
+    --font-display: 'Fraunces', serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-body);
+    background: var(--ink);
+    color: var(--white);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+  h1,h2,h3,h4 { font-family: var(--font-display); }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 48px;
+    background: rgba(8,12,26,0.85); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-dim);
+  }
+  .nav-logo {
+    font-family: var(--font-display); font-weight: 800;
+    font-size: 18px; letter-spacing: -0.5px;
+    color: var(--white); text-decoration: none;
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-back {
+    font-size: 13px; color: rgba(255,255,255,0.4);
+    text-decoration: none; display: flex; align-items: center; gap: 6px;
+    transition: color 0.2s;
+  }
+  .nav-back:hover { color: rgba(255,255,255,0.8); }
+
+  /* ── LANDING ── */
+  #landing {
+    min-height: 100vh; display: flex; align-items: center;
+    justify-content: center; padding: 100px 48px 60px;
+    position: relative; overflow: hidden;
+  }
+  .landing-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 60% 40%, rgba(11,123,107,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 20% 70%, rgba(232,66,10,0.06) 0%, transparent 60%);
+  }
+  .landing-grid-bg {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .landing-content {
+    position: relative; z-index: 2;
+    max-width: 720px; text-align: center;
+  }
+  .landing-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(201,151,58,0.3);
+    background: rgba(201,151,58,0.07);
+    padding: 6px 16px; border-radius: 100px;
+    font-size: 11px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--gold-light);
+    margin-bottom: 32px;
+  }
+  .landing-eyebrow-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--gold-light); animation: blink 2s infinite;
+  }
+  @keyframes blink {
+    0%,100%{opacity:1;} 50%{opacity:0.3;}
+  }
+  .landing-content h1 {
+    font-size: clamp(36px, 5vw, 64px); font-weight: 800;
+    letter-spacing: -2px; line-height: 1.05;
+    margin-bottom: 20px; color: var(--white);
+  }
+  .landing-content h1 em {
+    font-style: italic; color: var(--gold-light);
+  }
+  .landing-content p {
+    font-size: 17px; font-weight: 300; line-height: 1.75;
+    color: rgba(255,255,255,0.55); max-width: 520px;
+    margin: 0 auto 16px;
+  }
+  .landing-content p strong { color: rgba(255,255,255,0.85); font-weight: 500; }
+  .landing-meta {
+    font-size: 13px; color: rgba(255,255,255,0.3);
+    margin-bottom: 40px;
+  }
+  .landing-meta span { margin: 0 10px; }
+  .btn-start {
+    background: var(--gold); color: var(--white);
+    padding: 16px 40px; border-radius: 4px;
+    font-size: 15px; font-weight: 700; letter-spacing: 0.3px;
+    border: none; cursor: pointer;
+    transition: all 0.2s; display: inline-block;
+    font-family: var(--font-body);
+  }
+  .btn-start:hover { background: var(--gold-light); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(201,151,58,0.3); }
+  .landing-dimensions {
+    display: flex; justify-content: center; gap: 10px;
+    flex-wrap: wrap; margin-top: 40px;
+  }
+  .landing-dim {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+    padding: 5px 14px; border-radius: 100px;
+    border: 1px solid var(--border-dim);
+    color: rgba(255,255,255,0.3);
+  }
+
+  /* ── QUIZ CONTAINER ── */
+  #quiz { display: none; }
+  #quiz.active { display: block; }
+
+  .quiz-shell {
+    min-height: 100vh; display: flex; flex-direction: column;
+    padding-top: 72px;
+  }
+
+  /* Progress bar */
+  .quiz-progress {
+    position: fixed; top: 72px; left: 0; right: 0; z-index: 150;
+    height: 3px; background: rgba(255,255,255,0.06);
+  }
+  .quiz-progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--teal), var(--gold));
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+    border-radius: 0 2px 2px 0;
+  }
+  .quiz-progress-label {
+    position: fixed; top: 80px; right: 48px; z-index: 150;
+    font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: rgba(255,255,255,0.25);
+  }
+
+  /* Question screen */
+  .question-screen {
+    display: none; flex-direction: column; align-items: center;
+    justify-content: center; min-height: calc(100vh - 72px);
+    padding: 60px 48px; text-align: center;
+    animation: questionIn 0.4s ease both;
+  }
+  .question-screen.active { display: flex; }
+  @keyframes questionIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes questionOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-16px); }
+  }
+  .question-screen.leaving {
+    animation: questionOut 0.25s ease both;
+  }
+
+  .q-dimension {
+    font-size: 10px; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 8px;
+    justify-content: center;
+  }
+  .q-dimension-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .q-number {
+    font-family: var(--font-display); font-size: 11px;
+    font-weight: 700; letter-spacing: 2px;
+    color: rgba(255,255,255,0.2); margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .q-text {
+    font-family: var(--font-display);
+    font-size: clamp(22px, 3.5vw, 38px); font-weight: 700;
+    letter-spacing: -0.8px; line-height: 1.2;
+    max-width: 680px; margin-bottom: 12px; color: var(--white);
+  }
+  .q-subtext {
+    font-size: 14px; color: rgba(255,255,255,0.35);
+    max-width: 500px; line-height: 1.6; margin-bottom: 44px;
+    font-style: italic;
+  }
+  .q-options {
+    display: flex; flex-direction: column; gap: 10px;
+    width: 100%; max-width: 560px;
+  }
+  .q-option {
+    background: var(--dim); border: 1px solid var(--border-dim);
+    border-radius: 8px; padding: 16px 24px;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; gap: 14px;
+    text-align: left;
+    font-family: var(--font-body);
+    color: var(--white);
+  }
+  .q-option:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(255,255,255,0.2);
+    transform: translateX(4px);
+  }
+  .q-option.selected {
+    background: rgba(201,151,58,0.12);
+    border-color: rgba(201,151,58,0.5);
+  }
+  .q-option-key {
+    width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+    background: rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    color: rgba(255,255,255,0.3); letter-spacing: 0;
+    transition: all 0.2s;
+  }
+  .q-option.selected .q-option-key {
+    background: var(--gold); color: var(--white);
+  }
+  .q-option-text {
+    font-size: 15px; line-height: 1.4; color: rgba(255,255,255,0.75);
+    font-weight: 400;
+  }
+  .q-option.selected .q-option-text { color: var(--white); }
+  .q-nav {
+    display: flex; align-items: center; gap: 16px; margin-top: 32px;
+  }
+  .btn-next {
+    background: var(--white); color: var(--ink);
+    padding: 12px 28px; border-radius: 4px;
+    font-size: 14px; font-weight: 700;
+    border: none; cursor: pointer; font-family: var(--font-body);
+    transition: all 0.2s; opacity: 0.3; pointer-events: none;
+  }
+  .btn-next.enabled {
+    opacity: 1; pointer-events: all;
+  }
+  .btn-next.enabled:hover { background: var(--gold); color: var(--white); transform: translateY(-1px); }
+  .btn-skip {
+    font-size: 13px; color: rgba(255,255,255,0.25);
+    background: none; border: none; cursor: pointer;
+    font-family: var(--font-body); transition: color 0.2s;
+  }
+  .btn-skip:hover { color: rgba(255,255,255,0.5); }
+
+  /* ── RESULTS ── */
+  #results { display: none; }
+  #results.active { display: block; }
+
+  .results-shell {
+    min-height: 100vh; padding: 100px 60px 80px;
+    background: var(--ink);
+    position: relative; overflow: hidden;
+  }
+  .results-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 30%, rgba(201,151,58,0.07) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .results-inner { position: relative; z-index: 2; max-width: 960px; margin: 0 auto; }
+  .results-header { margin-bottom: 56px; }
+  .results-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .results-eyebrow::after { content:''; display:block; width:32px; height:1px; background:var(--gold); }
+  .results-header h2 {
+    font-size: clamp(28px, 4vw, 52px); font-weight: 800;
+    letter-spacing: -1.5px; line-height: 1.05; color: var(--white);
+    margin-bottom: 12px;
+  }
+  .results-header h2 em { font-style: italic; color: var(--gold-light); }
+  .results-tagline {
+    font-size: 16px; color: rgba(255,255,255,0.45); line-height: 1.7;
+    max-width: 500px;
+  }
+
+  /* overall score */
+  .overall-score-row {
+    display: flex; align-items: center; gap: 32px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-dim);
+    border-radius: 12px; padding: 32px 40px;
+    margin-bottom: 40px;
+  }
+  .overall-score-num {
+    font-family: var(--font-display);
+    font-size: 72px; font-weight: 800; line-height: 1;
+    flex-shrink: 0;
+  }
+  .overall-score-divider {
+    width: 1px; height: 60px; background: var(--border-dim); flex-shrink: 0;
+  }
+  .overall-score-text h3 {
+    font-size: 20px; font-weight: 700; color: var(--white);
+    margin-bottom: 8px; letter-spacing: -0.3px;
+  }
+  .overall-score-text p {
+    font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.5);
+    max-width: 520px;
+  }
+
+  /* radar chart */
+  .results-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 32px; margin-bottom: 40px;
+  }
+  .radar-wrap {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-dim);
+    border-radius: 12px; padding: 32px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .radar-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: rgba(255,255,255,0.35);
+    margin-bottom: 24px;
+  }
+  canvas#radarChart { max-width: 280px; max-height: 280px; }
+
+  /* dimension breakdown */
+  .dimensions-wrap {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-dim);
+    border-radius: 12px; padding: 32px;
+  }
+  .dimensions-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: rgba(255,255,255,0.35);
+    margin-bottom: 24px;
+  }
+  .dim-row {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 16px 0; border-bottom: 1px solid var(--border-dim);
+  }
+  .dim-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .dim-row-top {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .dim-name {
+    font-size: 14px; font-weight: 600; color: var(--white);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dim-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dim-score-num {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 800;
+  }
+  .dim-bar-bg {
+    height: 4px; background: rgba(255,255,255,0.06);
+    border-radius: 2px; overflow: hidden;
+  }
+  .dim-bar-fill {
+    height: 100%; border-radius: 2px;
+    transition: width 1s cubic-bezier(0.4,0,0.2,1);
+    width: 0%;
+  }
+  .dim-commentary {
+    font-size: 12px; line-height: 1.6; color: rgba(255,255,255,0.4);
+    margin-top: 4px; font-style: italic;
+  }
+
+  /* insights */
+  .insights-section { margin-bottom: 40px; }
+  .insights-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: rgba(255,255,255,0.35);
+    margin-bottom: 20px;
+  }
+  .insights-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .insight-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-dim);
+    border-radius: 10px; padding: 24px;
+    transition: border-color 0.2s;
+  }
+  .insight-card:hover { border-color: rgba(201,151,58,0.25); }
+  .insight-card-type {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .insight-card h4 {
+    font-size: 15px; font-weight: 700; color: var(--white);
+    margin-bottom: 8px; letter-spacing: -0.2px;
+  }
+  .insight-card p {
+    font-size: 13px; line-height: 1.65; color: rgba(255,255,255,0.45);
+  }
+
+  /* CTA */
+  .results-cta {
+    background: rgba(201,151,58,0.08);
+    border: 1px solid rgba(201,151,58,0.2);
+    border-radius: 12px; padding: 36px 40px;
+    display: flex; align-items: center; justify-content: space-between; gap: 32px;
+  }
+  .results-cta-text h3 {
+    font-size: 20px; font-weight: 700; color: var(--white);
+    margin-bottom: 8px; letter-spacing: -0.3px;
+  }
+  .results-cta-text p {
+    font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.5);
+    max-width: 440px;
+  }
+  .results-cta-btns { display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+  .btn-book {
+    background: var(--gold); color: var(--white);
+    padding: 13px 28px; border-radius: 4px;
+    font-size: 14px; font-weight: 600;
+    text-decoration: none; text-align: center;
+    white-space: nowrap; transition: background 0.2s;
+    font-family: var(--font-body); border: none; cursor: pointer;
+  }
+  .btn-book:hover { background: var(--gold-light); }
+  .btn-restart {
+    font-size: 12px; color: rgba(255,255,255,0.3);
+    background: none; border: none; cursor: pointer;
+    font-family: var(--font-body); text-align: center;
+    transition: color 0.2s;
+  }
+  .btn-restart:hover { color: rgba(255,255,255,0.6); }
+
+  /* ── DIMENSION COLOR MAP ── */
+  .d0 { color: #12A090; } .d0-bg { background:#12A090; }
+  .d1 { color: #E8420A; } .d1-bg { background:#E8420A; }
+  .d2 { color: #C9973A; } .d2-bg { background:#C9973A; }
+  .d3 { color: #7B5EA7; } .d3-bg { background:#7B5EA7; }
+  .d4 { color: #2980B9; } .d4-bg { background:#2980B9; }
+
+  @media (max-width: 900px) {
+    .results-grid, .insights-grid { grid-template-columns: 1fr; }
+    .overall-score-row { flex-wrap: wrap; gap: 20px; }
+    .results-cta { flex-direction: column; }
+    nav { padding: 16px 24px; }
+    .question-screen, #landing { padding: 80px 24px 40px; }
+    .results-shell { padding: 80px 24px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="nav-logo">VIKU<span>NA</span></a>
+  <a href="index.html" class="nav-back">← Back to Vikuna</a>
+</nav>
+
+<!-- LANDING -->
+<div id="landing">
+  <div class="landing-bg"></div>
+  <div class="landing-grid-bg"></div>
+  <div class="landing-content">
+    <div class="landing-eyebrow">
+      <div class="landing-eyebrow-dot"></div>
+      AI Readiness Assessment · 5 Dimensions · ~8 Minutes
+    </div>
+    <h1>How ready is your<br>organisation for <em>AI?</em></h1>
+    <p>
+      Not a generic quiz. A genuine diagnostic across five dimensions —
+      <strong>with honest commentary on what your answers actually mean.</strong>
+    </p>
+    <p class="landing-meta">
+      <span>12 questions</span>·<span>No email required</span>·<span>Results on screen</span>
+    </p>
+    <button class="btn-start" onclick="startAssessment()">Start Assessment →</button>
+    <div class="landing-dimensions">
+      <div class="landing-dim">Leadership & Governance</div>
+      <div class="landing-dim">Data Readiness</div>
+      <div class="landing-dim">Process Maturity</div>
+      <div class="landing-dim">People & Culture</div>
+      <div class="landing-dim">Technology Landscape</div>
+    </div>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz">
+  <div class="quiz-shell">
+    <div class="quiz-progress">
+      <div class="quiz-progress-fill" id="progressFill"></div>
+    </div>
+    <div class="quiz-progress-label" id="progressLabel">Question 1 of 12</div>
+    <div id="questionContainer"></div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="results">
+  <div class="results-shell">
+    <div class="results-bg"></div>
+    <div class="results-inner">
+      <div class="results-header">
+        <div class="results-eyebrow">Your AI Readiness Report</div>
+        <h2>Here's where your<br>organisation <em>actually</em> stands.</h2>
+        <p class="results-tagline">Not what you hoped. Not what your vendor told you. What your answers say.</p>
+      </div>
+      <div class="overall-score-row" id="overallScoreRow"></div>
+      <div class="results-grid">
+        <div class="radar-wrap">
+          <div class="radar-title">Readiness Profile</div>
+          <canvas id="radarChart" width="300" height="300"></canvas>
+        </div>
+        <div class="dimensions-wrap">
+          <div class="dimensions-title">Dimension Breakdown</div>
+          <div id="dimBreakdown"></div>
+        </div>
+      </div>
+      <div class="insights-section">
+        <div class="insights-title">What This Means For You</div>
+        <div class="insights-grid" id="insightsGrid"></div>
+      </div>
+      <div class="results-cta">
+        <div class="results-cta-text">
+          <h3>Want to go deeper?</h3>
+          <p>A 30-minute Transformation Assessment with a Vikuna senior expert will map these findings to your actual business — with a clear, honest view of where to start.</p>
+        </div>
+        <div class="results-cta-btns">
+          <a href="index.html#contact" class="btn-book">Book Free Strategy Call</a>
+          <button class="btn-restart" onclick="restartAssessment()">Retake assessment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────
+const DIMENSIONS = [
+  { id:'leadership', label:'Leadership & Governance', color:'#12A090', dotClass:'d0-bg' },
+  { id:'data',       label:'Data Readiness',          color:'#E8420A', dotClass:'d1-bg' },
+  { id:'process',    label:'Process Maturity',        color:'#C9973A', dotClass:'d2-bg' },
+  { id:'people',     label:'People & Culture',        color:'#7B5EA7', dotClass:'d3-bg' },
+  { id:'technology', label:'Technology Landscape',    color:'#2980B9', dotClass:'d4-bg' },
+];
+
+const QUESTIONS = [
+  // LEADERSHIP & GOVERNANCE (0,1,2)
+  {
+    dim: 0, text: "When was the last time AI was on the board or leadership agenda?",
+    sub: "Not as a buzzword — as a strategic item with ownership and accountability.",
+    options:[
+      { text:"It's on every agenda — we have an owner and a roadmap.", score:4 },
+      { text:"It came up in the last quarter, but no clear owner.", score:2 },
+      { text:"It's been discussed, but no real follow-through.", score:1 },
+      { text:"Honestly? Not meaningfully. It's background noise.", score:0 },
+    ]
+  },
+  {
+    dim: 0, text: "If your most senior AI or Digital leader left tomorrow — what survives?",
+    sub: "Strategy, momentum, institutional knowledge.",
+    options:[
+      { text:"The strategy is documented, owned by multiple people, and would continue.", score:4 },
+      { text:"Some things would slow down but the direction is clear.", score:2 },
+      { text:"It would set us back significantly.", score:1 },
+      { text:"There is no such leader. That's part of the problem.", score:0 },
+    ]
+  },
+  {
+    dim: 0, text: "Does your organisation have a clear AI governance framework?",
+    sub: "Who decides what AI gets built, bought, or banned. Who's accountable when something goes wrong.",
+    options:[
+      { text:"Yes — documented, communicated, actively used.", score:4 },
+      { text:"We have something informal but not formalised.", score:2 },
+      { text:"We've talked about needing one.", score:1 },
+      { text:"No — it's the wild west.", score:0 },
+    ]
+  },
+  // DATA READINESS (3,4)
+  {
+    dim: 1, text: "Your team gets a monthly performance report. Who actually reads it — and changes something because of it?",
+    sub: "Not 'who opens it'. Who acts on it.",
+    options:[
+      { text:"Multiple people across the business use it to make decisions routinely.", score:4 },
+      { text:"A few people do, but it's not systemic.", score:2 },
+      { text:"It gets read, but rarely changes anything.", score:1 },
+      { text:"Most people skim it or ignore it entirely.", score:0 },
+    ]
+  },
+  {
+    dim: 1, text: "If an AI agent needed to access your operational data today — how ready is it?",
+    sub: "Think: accessibility, quality, consistency, governance.",
+    options:[
+      { text:"Clean, accessible, well-governed. Ready to use.", score:4 },
+      { text:"Mostly good but siloed across systems.", score:2 },
+      { text:"Inconsistent. You'd need significant cleanup first.", score:1 },
+      { text:"It's scattered, manual, or in people's heads.", score:0 },
+    ]
+  },
+  // PROCESS MATURITY (5,6)
+  {
+    dim: 2, text: "Name one workflow AI has meaningfully changed in your organisation in the last 6 months.",
+    sub: "Not a pilot. Not a demo. An actual workflow that runs differently now.",
+    options:[
+      { text:"I can name several — with measurable before/after results.", score:4 },
+      { text:"One or two, though the impact is still being measured.", score:2 },
+      { text:"We tried some things but nothing stuck at scale.", score:1 },
+      { text:"I can't name one. That's an honest answer.", score:0 },
+    ]
+  },
+  {
+    dim: 2, text: "Before your organisation automates a process — how is it assessed?",
+    sub: "Do you map ROI first, or build first and hope?",
+    options:[
+      { text:"We map the ROI and feasibility before any build starts.", score:4 },
+      { text:"Informally — it depends on who's driving it.", score:2 },
+      { text:"We mostly build based on gut feel and vendor pitches.", score:1 },
+      { text:"We don't have a process for evaluating this.", score:0 },
+    ]
+  },
+  // PEOPLE & CULTURE (7,8)
+  {
+    dim: 3, text: "Your employees have access to AI tools. What do they actually use them for?",
+    sub: "Think about the majority, not the enthusiasts.",
+    options:[
+      { text:"Role-specific tasks — drafting, analysis, automation in their daily workflow.", score:4 },
+      { text:"Some useful things, but mostly writing assistance.", score:2 },
+      { text:"Spell check, summaries, occasional help. Mostly novelty.", score:1 },
+      { text:"Most don't really use them, or use them once and stopped.", score:0 },
+    ]
+  },
+  {
+    dim: 3, text: "When a new AI tool or process is introduced — how does the organisation respond?",
+    sub: "Be honest about the typical reaction, not the aspiration.",
+    options:[
+      { text:"Adoption is relatively smooth — people are curious and engaged.", score:4 },
+      { text:"Mixed. Some embrace it, many wait and see.", score:2 },
+      { text:"Significant resistance. Change management is a constant battle.", score:1 },
+      { text:"Initiatives tend to die in adoption. The tools get shelfed.", score:0 },
+    ]
+  },
+  // TECHNOLOGY LANDSCAPE (9,10,11)
+  {
+    dim: 4, text: "How would you describe your current technology architecture?",
+    sub: "Integrated and connected vs. siloed and fragmented.",
+    options:[
+      { text:"Modern, well-integrated — systems talk to each other.", score:4 },
+      { text:"Mix of old and new — some integration, some silos.", score:2 },
+      { text:"Mostly legacy. Integration is painful.", score:1 },
+      { text:"Fragmented. Every team does their own thing.", score:0 },
+    ]
+  },
+  {
+    dim: 4, text: "How many AI tools or platforms is your organisation currently paying for?",
+    sub: "Including subscriptions your teams bought independently.",
+    options:[
+      { text:"A few, well-governed, with clear ownership and ROI.", score:4 },
+      { text:"Several — some have clear value, others are hard to track.", score:2 },
+      { text:"Many — it's become unmanageable. Shadow IT is real.", score:1 },
+      { text:"Very few or none — we haven't started.", score:0 },
+    ]
+  },
+  {
+    dim: 4, text: "Does your organisation have a Unified Namespace or single source of truth for operational data?",
+    sub: "One place where systems, devices, and data sources connect — rather than point-to-point integrations.",
+    options:[
+      { text:"Yes — a single data layer that everything connects to.", score:4 },
+      { text:"Partially — we have a data warehouse or lake, but it's incomplete.", score:2 },
+      { text:"Not really — data lives in separate systems.", score:1 },
+      { text:"No — and honestly we hadn't thought about this.", score:0 },
+    ]
+  },
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────
+let current = 0;
+let answers = new Array(QUESTIONS.length).fill(null);
+
+// ── NAVIGATION ──────────────────────────────────────────────────────────
+function startAssessment() {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('quiz').classList.add('active');
+  renderQuestion(0);
+}
+
+function restartAssessment() {
+  current = 0;
+  answers = new Array(QUESTIONS.length).fill(null);
+  document.getElementById('results').classList.remove('active');
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('landing').style.display = 'flex';
+}
+
+// ── RENDER QUESTION ──────────────────────────────────────────────────────
+function renderQuestion(idx) {
+  const q = QUESTIONS[idx];
+  const dim = DIMENSIONS[q.dim];
+  const total = QUESTIONS.length;
+
+  // Progress
+  document.getElementById('progressFill').style.width = ((idx / total) * 100) + '%';
+  document.getElementById('progressLabel').textContent = `Question ${idx + 1} of ${total}`;
+
+  const container = document.getElementById('questionContainer');
+
+  const screen = document.createElement('div');
+  screen.className = 'question-screen active';
+  screen.id = 'qscreen-' + idx;
+
+  const selectedAnswer = answers[idx];
+
+  screen.innerHTML = `
+    <div class="q-number">Question ${idx + 1} of ${total}</div>
+    <div class="q-dimension">
+      <div class="q-dimension-dot ${dim.dotClass}"></div>
+      <span style="color:${dim.color}">${dim.label}</span>
+    </div>
+    <div class="q-text">${q.text}</div>
+    ${q.sub ? `<div class="q-subtext">${q.sub}</div>` : ''}
+    <div class="q-options" id="options-${idx}">
+      ${q.options.map((opt, i) => `
+        <button class="q-option${selectedAnswer === i ? ' selected' : ''}" 
+          onclick="selectOption(${idx}, ${i})" 
+          data-optidx="${i}">
+          <span class="q-option-key">${String.fromCharCode(65+i)}</span>
+          <span class="q-option-text">${opt.text}</span>
+        </button>
+      `).join('')}
+    </div>
+    <div class="q-nav">
+      <button class="btn-next${selectedAnswer !== null ? ' enabled' : ''}" 
+        id="nextBtn-${idx}"
+        onclick="nextQuestion(${idx})">
+        ${idx < total - 1 ? 'Next →' : 'See My Results →'}
+      </button>
+      ${idx > 0 ? `<button class="btn-skip" onclick="prevQuestion(${idx})">← Back</button>` : ''}
+    </div>
+  `;
+
+  container.innerHTML = '';
+  container.appendChild(screen);
+}
+
+function selectOption(qIdx, optIdx) {
+  answers[qIdx] = optIdx;
+  // Update UI
+  document.querySelectorAll(`#options-${qIdx} .q-option`).forEach((el, i) => {
+    el.classList.toggle('selected', i === optIdx);
+  });
+  const nextBtn = document.getElementById(`nextBtn-${qIdx}`);
+  if (nextBtn) nextBtn.classList.add('enabled');
+}
+
+function nextQuestion(idx) {
+  if (answers[idx] === null) return;
+  if (idx < QUESTIONS.length - 1) {
+    const screen = document.getElementById('qscreen-' + idx);
+    screen.classList.add('leaving');
+    setTimeout(() => {
+      current = idx + 1;
+      renderQuestion(current);
+    }, 250);
+  } else {
+    showResults();
+  }
+}
+
+function prevQuestion(idx) {
+  if (idx > 0) {
+    const screen = document.getElementById('qscreen-' + idx);
+    screen.classList.add('leaving');
+    setTimeout(() => {
+      current = idx - 1;
+      renderQuestion(current);
+    }, 250);
+  }
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+  const q = QUESTIONS[current];
+  if (!q) return;
+  const key = e.key.toUpperCase();
+  const idx = key.charCodeAt(0) - 65;
+  if (idx >= 0 && idx < q.options.length && document.getElementById('quiz').classList.contains('active')) {
+    selectOption(current, idx);
+  }
+  if (e.key === 'Enter' && answers[current] !== null && document.getElementById('quiz').classList.contains('active')) {
+    nextQuestion(current);
+  }
+});
+
+// ── SCORING ──────────────────────────────────────────────────────────────
+function computeScores() {
+  const dimScores = DIMENSIONS.map((dim, dIdx) => {
+    const qs = QUESTIONS.filter((q, qIdx) => {
+      if (q.dim !== dIdx) return false;
+      return answers[qIdx] !== null;
+    });
+    if (qs.length === 0) return 0;
+    const total = qs.reduce((sum, q, i) => {
+      const qIdx = QUESTIONS.indexOf(q);
+      const ansIdx = answers[qIdx];
+      return sum + (ansIdx !== null ? q.options[ansIdx].score : 0);
+    }, 0);
+    const maxPossible = qs.length * 4;
+    return Math.round((total / maxPossible) * 100);
+  });
+  return dimScores;
+}
+
+// ── COMMENTARY ──────────────────────────────────────────────────────────────
+function getDimCommentary(dIdx, score) {
+  const comments = [
+    // Leadership
+    [ "Strong leadership foundation. AI has ownership at the top and governance is in place.",
+      "Leadership awareness is there but accountability is still forming. The strategy needs an owner.",
+      "AI is on the radar but not embedded in how leadership thinks and decides.",
+      "Leadership alignment is the critical gap. Without it, everything else stalls." ],
+    // Data
+    [ "Data is ready to work with. Clean, accessible, and governed — AI can be built on this.",
+      "Data foundations exist but fragmentation will slow you down. Unification is the next step.",
+      "Data quality and accessibility need investment before AI can deliver consistent results.",
+      "Data is the foundational gap. AI built on poor data produces confident wrong answers." ],
+    // Process
+    [ "Processes are mature enough for AI to slot in cleanly. You know what to automate.",
+      "Some process clarity exists but ROI-first thinking needs to become standard practice.",
+      "Processes need mapping before automation. Building on unclear processes scales the mess.",
+      "Process definition comes before AI. Automating confusion creates expensive confusion." ],
+    // People
+    [ "Culture is genuinely AI-ready. People are curious, adaptive, and using tools meaningfully.",
+      "Pockets of adoption exist but it's not systemic. Culture investment will unlock the tools.",
+      "Adoption is the active challenge. Training and change management need prioritisation.",
+      "People and culture are the primary barrier. Tools without adoption are shelf-ware." ],
+    // Technology
+    [ "Technology landscape is modern and connected. Ready for AI integration.",
+      "Hybrid architecture needs rationalisation. Some integration work before AI scales cleanly.",
+      "Legacy systems will create friction. A technology roadmap should accompany any AI initiative.",
+      "Technology fragmentation is a significant constraint. Architecture work comes first." ],
+  ];
+  const tier = score >= 75 ? 0 : score >= 50 ? 1 : score >= 25 ? 2 : 3;
+  return comments[dIdx][tier];
+}
+
+function getOverallLabel(avg) {
+  if (avg >= 75) return { label:"Strong Foundation", color:"#12A090", text:"Your organisation has the foundations in place. The question isn't whether you're ready — it's what to prioritise first." };
+  if (avg >= 55) return { label:"Developing Readiness", color:"#C9973A", text:"You're further along than most. A few targeted investments across your weaker dimensions will unlock significant progress." };
+  if (avg >= 35) return { label:"Early Stage", color:"#E8420A", text:"Real work ahead — but the gaps are identifiable and addressable. The right starting point matters more than speed." };
+  return { label:"Foundation Gaps", color:"#E8420A", text:"The honest picture: foundational work comes before AI deployment. The good news — organisations that do this properly move faster later." };
+}
+
+function getInsights(dimScores) {
+  const sorted = dimScores.map((s,i) => ({i,s})).sort((a,b) => a.s - b.s);
+  const weakest = sorted[0];
+  const strongest = sorted[sorted.length-1];
+  const avg = Math.round(dimScores.reduce((a,b)=>a+b,0)/dimScores.length);
+
+  return [
+    {
+      type:"Biggest Opportunity", typeColor:"#C9973A",
+      title: DIMENSIONS[weakest.i].label,
+      text: `At ${weakest.s}%, this is where focused attention will create the most impact. It's also likely where transformation initiatives have stalled before.`
+    },
+    {
+      type:"Build From Strength", typeColor:"#12A090",
+      title: DIMENSIONS[strongest.i].label,
+      text: `Your strongest dimension at ${strongest.s}%. Start AI initiatives here — the foundations are in place and early wins will build momentum across the organisation.`
+    },
+    {
+      type:"The Honest Assessment", typeColor:"#7B5EA7",
+      title: avg >= 60 ? "You're ready to move" : avg >= 40 ? "Targeted investment needed" : "Foundations before AI",
+      text: avg >= 60
+        ? "Your readiness profile is solid. The right next step is a focused use case discovery — not more assessment."
+        : avg >= 40
+        ? "You have real strengths to build from. A structured 60-day plan targeting your weakest dimensions would change your readiness profile significantly."
+        : "The most valuable thing right now isn't an AI tool — it's a clear transformation roadmap that addresses your foundational gaps in sequence."
+    }
+  ];
+}
+
+// ── RENDER RESULTS ──────────────────────────────────────────────────────────────
+function showResults() {
+  document.getElementById('quiz').classList.remove('active');
+  const resultsEl = document.getElementById('results');
+  resultsEl.style.display = 'block';
+  resultsEl.classList.add('active');
+
+  const dimScores = computeScores();
+  const avg = Math.round(dimScores.reduce((a,b)=>a+b,0)/dimScores.length);
+  const overall = getOverallLabel(avg);
+
+  // Overall score
+  document.getElementById('overallScoreRow').innerHTML = `
+    <div class="overall-score-num" style="color:${overall.color}">${avg}<span style="font-size:32px;color:rgba(255,255,255,0.2)">/100</span></div>
+    <div class="overall-score-divider"></div>
+    <div class="overall-score-text">
+      <h3 style="color:${overall.color}">${overall.label}</h3>
+      <p>${overall.text}</p>
+    </div>
+  `;
+
+  // Dimension breakdown
+  const dimHtml = DIMENSIONS.map((dim, i) => `
+    <div class="dim-row">
+      <div class="dim-row-top">
+        <div class="dim-name">
+          <div class="dim-dot ${dim.dotClass}"></div>
+          ${dim.label}
+        </div>
+        <div class="dim-score-num" style="color:${dim.color}">${dimScores[i]}</div>
+      </div>
+      <div class="dim-bar-bg">
+        <div class="dim-bar-fill" id="dimbar-${i}" style="background:${dim.color}"></div>
+      </div>
+      <div class="dim-commentary">${getDimCommentary(i, dimScores[i])}</div>
+    </div>
+  `).join('');
+  document.getElementById('dimBreakdown').innerHTML = dimHtml;
+
+  // Animate bars after render
+  setTimeout(() => {
+    DIMENSIONS.forEach((_, i) => {
+      const bar = document.getElementById(`dimbar-${i}`);
+      if (bar) bar.style.width = dimScores[i] + '%';
+    });
+  }, 200);
+
+  // Insights
+  const insights = getInsights(dimScores);
+  document.getElementById('insightsGrid').innerHTML = insights.map(ins => `
+    <div class="insight-card">
+      <div class="insight-card-type" style="color:${ins.typeColor}">${ins.type}</div>
+      <h4>${ins.title}</h4>
+      <p>${ins.text}</p>
+    </div>
+  `).join('');
+
+  // Draw radar chart
+  setTimeout(() => drawRadar(dimScores), 300);
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── RADAR CHART ──────────────────────────────────────────────────────────────
+function drawRadar(scores) {
+  const canvas = document.getElementById('radarChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const R = Math.min(cx, cy) - 28;
+  const n = scores.length;
+  const angles = scores.map((_, i) => (i * 2 * Math.PI / n) - Math.PI / 2);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Grid rings
+  [0.25, 0.5, 0.75, 1].forEach(r => {
+    ctx.beginPath();
+    angles.forEach((a, i) => {
+      const x = cx + R * r * Math.cos(a);
+      const y = cy + R * r * Math.sin(a);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // Spokes
+  angles.forEach(a => {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + R * Math.cos(a), cy + R * Math.sin(a));
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // Filled polygon
+  ctx.beginPath();
+  angles.forEach((a, i) => {
+    const r = (scores[i] / 100);
+    const x = cx + R * r * Math.cos(a);
+    const y = cy + R * r * Math.sin(a);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(201,151,58,0.15)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(201,151,58,0.7)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Dots + labels
+  DIMENSIONS.forEach((dim, i) => {
+    const a = angles[i];
+    const r = scores[i] / 100;
+    const x = cx + R * r * Math.cos(a);
+    const y = cy + R * r * Math.sin(a);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = dim.color;
+    ctx.fill();
+
+    // Labels
+    const lx = cx + (R + 18) * Math.cos(a);
+    const ly = cy + (R + 18) * Math.sin(a);
+    ctx.font = '700 9px DM Sans, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.textAlign = Math.abs(lx - cx) < 5 ? 'center' : lx < cx ? 'right' : 'left';
+    ctx.textBaseline = ly < cy ? 'bottom' : ly > cy + 5 ? 'top' : 'middle';
+    const shortLabels = ['Leadership', 'Data', 'Process', 'People', 'Technology'];
+    ctx.fillText(shortLabels[i], lx, ly);
+  });
+}
+</script>
+</body>
+</html>

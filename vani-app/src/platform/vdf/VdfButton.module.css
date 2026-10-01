@@ -1,0 +1,112 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Sizes ── */
+.xs { padding: 5px 12px; font-size: var(--fs-md); border-radius: 5px; }
+.sm { padding: 8px 20px; font-size: var(--fs-ui); border-radius: 6px; }
+.md { padding: 14px 36px; font-size: var(--fs-lg); border-radius: 6px; }
+.lg { padding: 16px 44px; font-size: 1rem; border-radius: 8px; }
+
+.fullWidth { width: 100%; justify-content: center; }
+
+/* ── Icon-only mode (square, centered icon) ── */
+.iconOnly { padding: 0; justify-content: center; }
+.iconOnly.xs { width: 26px; height: 26px; }
+.iconOnly.sm { width: 32px; height: 32px; }
+.iconOnly.md { width: 40px; height: 40px; }
+.iconOnly.lg { width: 48px; height: 48px; }
+
+/* ── Primary ── */
+.primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: var(--color-primary-fg);
+}
+
+.primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.primary:hover::before { transform: translateX(100%); }
+.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px var(--color-primary-glow);
+}
+
+/* ── Ghost ── */
+.ghost {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+}
+
+.ghost:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+/* ── Outline ── */
+.outline {
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  font-size: var(--fs-ui);
+}
+
+.outline:hover {
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+/* ── Danger ── */
+.danger {
+  background: transparent;
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+}
+
+.danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+/* ── Success ── */
+.success {
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+  color: var(--color-success);
+}
+
+.success:hover {
+  background: color-mix(in srgb, var(--color-success) 18%, transparent);
+  border-color: var(--color-success);
+}

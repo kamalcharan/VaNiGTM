@@ -1,0 +1,90 @@
+'use client';
+/**
+ * Runs parked on a failover decision — the console for what only the CLI
+ * could answer before.
+ *
+ * With HAIKU_DEFAULT=false, a platform-model failure parks the run at
+ * `awaiting` with the REAL server error instead of spending Vikuna's Anthropic
+ * key on its own (VaNiGTM rule 12's one approved exception, made opt-in on
+ * 2026-09-18). Approving RE-EMITS the original event on the failover model —
+ * a new run, a real cost. Declining fails the run with its cause and spends
+ * nothing. Both are one click here, with the server's own error in front of
+ * the person deciding, because "cannot reach" and "context size exceeded"
+ * call for different fixes and the second is not solved by paying for it.
+ *
+ * Rendered only when something is waiting: an empty queue on the Knowledge
+ * page is the normal state, not a state to announce.
+ *
+ * A run the server marks SUPERSEDED — its source was read successfully after
+ * it parked — says so, and Decline is the offered answer: approving would pay
+ * to redo work the page above already shows as done. (2026-09-26: run 124
+ * sat under "vikuna.io · read · 103 entries" asking whether to spend money.)
+ */
+import { useEffect } from 'react';
+import { formatDateTime } from '@/lib/format';
+import u from '@/platform/shell/ui.module.css';
+import s from '../smart-profile.module.css';
+import { useFailovers, useResolveFailover, type PendingFailover } from '../useKnowledge';
+
+const hint = (e: string | null) => {
+  if (!e) return null;
+  if (/context size/i.test(e)) return 'The platform model ran out of window on this prompt. Approving retries it on a bigger model and costs money; the lasting fix is LLM_CONTEXT_TOKENS set to the server’s real window (the deploy after 2026-09-25 sizes ingestion chunks from it).';
+  if (/cannot reach|timeout|ECONNREFUSED|unreachable/i.test(e)) return 'The platform model did not answer at all. If it is down, approving is the only way this run finishes today; declining keeps it for a re-run once the model is back.';
+  return null;
+};
+
+/** `signal` changes whenever a source flips state; the queue re-reads then, so a run parked a moment ago shows without a reload. */
+export function FailoverQueue({ signal }: { signal: string }) {
+  const q = useFailovers();
+  const refetch = q.refetch;
+  useEffect(() => { void refetch(); }, [signal, refetch]);
+  const { resolve, busy } = useResolveFailover();
+  const runs: PendingFailover[] = q.data?.data?.runs ?? [];
+  if (!runs.length) return null;
+  return (
+    <section className={s.section}>
+      <header className={s.sectionHead}>
+        <div className={s.sectionTitles}>
+          <h2 className={s.sectionTitle}>Waiting on your decision</h2>
+          <p className={s.sectionWhat}>{q.data?.data?.detail} The platform model failed; each run can be retried on a paid failover model, or let go. Nothing is spent until you say so.</p>
+        </div>
+      </header>
+      <div className={s.sectionBody}>
+        <ul className={s.rows}>
+          {runs.map((r) => {
+            const h = r.superseded ? null : hint(r.vps_error);
+            const btn = { cursor: 'pointer', font: 'inherit', fontSize: 'var(--fs-md)', padding: '6px 12px' } as const;
+            return (
+              <li key={r.run_id} className={s.srcRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8, opacity: r.superseded ? 0.75 : 1 }}>
+                <div className={s.row}>
+                  <span className={s.rowName}>
+                    {r.source ? r.source.name : `run ${r.run_id}`}
+                    <span className={s.rowTagMuted}>{r.source ? `run ${r.run_id} · ${r.agent}` : r.agent}</span>
+                    {r.superseded && <span className={`${u.tag} ${u.tagOk}`} style={{ marginLeft: 8 }}>already read</span>}
+                  </span>
+                  <span className={s.rowDetail}>asked {formatDateTime(r.asked_at)}{r.failover_model ? ` · failover to ${r.failover_model}` : ''}</span>
+                </div>
+                {r.superseded && r.superseded_detail && <div style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.55, color: 'var(--tx2)' }}>{r.superseded_detail}</div>}
+                {r.vps_error && <div className={s.srcBad} style={{ fontSize: 'var(--fs-ui)', fontFamily: 'var(--mono)', wordBreak: 'break-word' }}>{r.vps_error}</div>}
+                {h && <div style={{ fontSize: 'var(--fs-ui)', lineHeight: 1.55, color: 'var(--tx2)' }}>{h}</div>}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {r.superseded ? (
+                    <>
+                      <button type="button" className={`${u.tag} ${u.tagOk}`} style={btn} disabled={busy} onClick={() => void resolve(r.run_id, false)}>Decline — already done, spend nothing</button>
+                      <button type="button" className={`${u.tag} ${u.tagDim}`} style={btn} disabled={busy} onClick={() => void resolve(r.run_id, true)}>Approve anyway — read it again on {r.failover_model ?? 'the failover model'}</button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className={`${u.tag} ${u.tagOk}`} style={btn} disabled={busy} onClick={() => void resolve(r.run_id, true)}>Approve — retry on {r.failover_model ?? 'the failover model'}</button>
+                      <button type="button" className={`${u.tag} ${u.tagDim}`} style={btn} disabled={busy} onClick={() => void resolve(r.run_id, false)}>Decline — fail it, spend nothing</button>
+                    </>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  );
+}

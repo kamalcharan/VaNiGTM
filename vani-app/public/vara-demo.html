@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vara — the chosen one · Talent agent by VaNi</title>
+<style>
+/* ============ TOKENS (swap for Vikuna theme) ============ */
+:root{
+  color-scheme:dark;
+  --page:#0b0b10; --surface:#14141b; --surface-2:#1a1a23; --surface-3:#22222d;
+  --glass:rgba(26,26,35,.72);
+  --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.16);
+  --ink:#f5f5f8; --ink-2:#b9b9c6; --muted:#80808f;
+  --accent:#3987e5; --violet:#9085e9; --aqua:#199e70; --magenta:#d55181;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --grad:linear-gradient(120deg,#3987e5 0%,#9085e9 55%,#d55181 110%);
+  --grad-soft:linear-gradient(120deg,rgba(57,135,229,.18),rgba(144,133,233,.14),rgba(213,81,129,.10));
+  --r-lg:20px; --r-md:14px; --r-sm:9px;
+  --shadow:0 18px 50px -18px rgba(0,0,0,.65);
+  --font:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font); background:var(--page); color:var(--ink);
+  -webkit-font-smoothing:antialiased; overflow:hidden; font-size:14px; line-height:1.5;
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input{font-family:inherit;color:inherit}
+
+/* ambient aurora */
+.aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.aurora::before,.aurora::after{content:'';position:absolute;width:60vw;height:60vw;border-radius:50%;filter:blur(120px);opacity:.14;animation:drift 26s ease-in-out infinite alternate}
+.aurora::before{background:#3987e5;top:-28vw;right:-14vw}
+.aurora::after{background:#9085e9;bottom:-30vw;left:-16vw;animation-delay:-13s}
+@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(6vw,4vh) scale(1.15)}}
+
+/* ============ SHELL ============ */
+.shell{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:22px;padding:14px 26px;border-bottom:1px solid var(--border);backdrop-filter:blur(14px);background:rgba(11,11,16,.7);flex-shrink:0}
+.wordmark{display:flex;align-items:baseline;gap:10px;user-select:none}
+.wordmark .v{font-size:21px;font-weight:800;letter-spacing:.5px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.wordmark .tag{font-size:10.5px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+.persona-switch{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px;margin-left:auto}
+.persona-switch button{padding:7px 18px;border-radius:99px;font-size:12.5px;font-weight:600;color:var(--ink-2);transition:.25s;display:flex;gap:7px;align-items:center}
+.persona-switch button .dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:.25s}
+.persona-switch button.on{background:var(--surface-3);color:var(--ink);box-shadow:0 4px 16px -6px rgba(0,0,0,.6)}
+.persona-switch button.on .dot{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.jd-context{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-2);background:var(--surface);border:1px solid var(--border);padding:7px 14px;border-radius:99px}
+.jd-context b{color:var(--ink);font-weight:600}
+.live-th{color:var(--violet);font-weight:700;font-variant-numeric:tabular-nums}
+
+.subnav{display:flex;gap:6px;padding:12px 26px 0;flex-shrink:0}
+.subnav button{padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;color:var(--muted);transition:.22s;position:relative}
+.subnav button:hover{color:var(--ink-2)}
+.subnav button.on{color:var(--ink);background:var(--surface)}
+.subnav button.on::after{content:'';position:absolute;left:16px;right:16px;bottom:-1px;height:2px;border-radius:2px;background:var(--grad)}
+.subnav .cnt{font-size:10px;background:var(--surface-3);border-radius:99px;padding:1px 7px;margin-left:6px;color:var(--violet);font-weight:700}
+
+.stage{flex:1;overflow:hidden;position:relative}
+.view{position:absolute;inset:0;overflow-y:auto;padding:24px 26px 60px;opacity:0;transform:translateY(14px);pointer-events:none;transition:opacity .35s ease,transform .35s ease}
+.view.on{opacity:1;transform:none;pointer-events:auto}
+
+/* ============ SHARED PIECES ============ */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+.panel-h{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.panel-h h3{font-size:13px;font-weight:700;letter-spacing:.02em}
+.panel-h .sub{font-size:11.5px;color:var(--muted);font-weight:400}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--border-strong);color:var(--ink-2)}
+.chip.good{color:#4ed44e;border-color:rgba(12,163,12,.4);background:rgba(12,163,12,.08)}
+.chip.warn{color:var(--warn);border-color:rgba(250,178,25,.4);background:rgba(250,178,25,.07)}
+.chip.crit{color:#ef7070;border-color:rgba(208,59,59,.45);background:rgba(208,59,59,.08)}
+.chip.acc{color:#7ab2f2;border-color:rgba(57,135,229,.45);background:rgba(57,135,229,.09)}
+.chip.vio{color:#b3aaf5;border-color:rgba(144,133,233,.45);background:rgba(144,133,233,.09)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:11px;font-size:12.5px;font-weight:700;transition:.2s;border:1px solid var(--border-strong);color:var(--ink);background:var(--surface-3)}
+.btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.3)}
+.btn.primary{background:var(--grad);border:none;color:#fff;box-shadow:0 8px 24px -8px rgba(96,111,233,.6)}
+.btn.ghost{background:transparent}
+.btn.danger{color:#ef7070;border-color:rgba(208,59,59,.5)}
+.btn.sm{padding:6px 13px;font-size:11.5px;border-radius:9px}
+.num{font-variant-numeric:tabular-nums}
+
+/* typing narration */
+.hero-narr{padding:30px 34px;border-radius:var(--r-lg);background:var(--grad-soft);border:1px solid var(--border);position:relative;overflow:hidden}
+.hero-narr::before{content:'';position:absolute;inset:0;background:radial-gradient(600px 200px at 20% 0%,rgba(57,135,229,.12),transparent)}
+.narr-label{display:flex;align-items:center;gap:9px;margin-bottom:14px;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--violet);font-weight:700}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--violet);animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(144,133,233,.5)}50%{box-shadow:0 0 0 7px rgba(144,133,233,0)}}
+.narr-text{font-size:19px;line-height:1.65;font-weight:500;max-width:860px;min-height:96px}
+.narr-text .hl{color:#8fb9f0;font-weight:700}
+.narr-text .hl.v{color:#b3aaf5}.narr-text .hl.w{color:var(--warn)}
+.caret{display:inline-block;width:2px;height:1.1em;background:var(--violet);vertical-align:text-bottom;animation:blink 1s steps(1) infinite;margin-left:2px}
+@keyframes blink{50%{opacity:0}}
+
+/* stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:18px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:18px 20px;position:relative;overflow:hidden;transition:.25s;cursor:pointer}
+.tile:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+.tile .t-val{font-size:32px;font-weight:800;line-height:1.1}
+.tile .t-lbl{font-size:11.5px;color:var(--muted);margin-top:5px;font-weight:600}
+.tile .t-delta{font-size:11px;margin-top:8px;font-weight:600}
+.tile::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tile-c,var(--accent));opacity:.85}
+
+/* funnel */
+.funnel-row{display:flex;align-items:center;gap:12px;padding:10px 0}
+.funnel-row .f-lbl{width:150px;font-size:12px;color:var(--ink-2);font-weight:600}
+.funnel-row .f-bar-wrap{flex:1;height:26px;background:var(--surface-2);border-radius:7px;overflow:hidden;position:relative}
+.funnel-row .f-bar{height:100%;border-radius:7px 4px 4px 7px;background:var(--f-c,var(--accent));width:0;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.funnel-row .f-num{width:44px;text-align:right;font-weight:700;font-size:13px}
+
+/* feed */
+.feed-item{display:flex;gap:14px;padding:13px 20px;border-bottom:1px solid var(--border);font-size:12.5px;align-items:flex-start}
+.feed-item:last-child{border-bottom:none}
+.feed-ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:var(--surface-3)}
+.feed-item .f-t{color:var(--muted);font-size:11px;margin-top:2px}
+
+/* ============ JD STUDIO ============ */
+.jd-grid{display:grid;grid-template-columns:minmax(340px,4.4fr) 6fr;gap:18px;align-items:start}
+.chat-box{display:flex;flex-direction:column;height:calc(100vh - 210px);min-height:480px}
+.chat-scroll{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:88%;padding:11px 15px;border-radius:15px;font-size:13px;line-height:1.55;animation:popin .3s ease}
+@keyframes popin{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+.msg.vara{background:var(--surface-3);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:5px}
+.msg.user{background:linear-gradient(120deg,#2a5fae,#4a3f9e);align-self:flex-end;border-bottom-right-radius:5px;color:#fff}
+.msg .m-who{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--violet);margin-bottom:4px}
+.quick-row{display:flex;flex-wrap:wrap;gap:8px;padding:12px 18px;border-top:1px solid var(--border)}
+.quick{font-size:12px;font-weight:600;padding:8px 14px;border-radius:99px;border:1px dashed var(--border-strong);color:var(--ink-2);transition:.2s}
+.quick:hover{border-style:solid;color:var(--ink);background:var(--surface-3);transform:translateY(-1px)}
+.quick:disabled{opacity:.35;cursor:default;transform:none}
+
+.jd-tabs{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:11px}
+.jd-tabs button{flex:1;padding:7px;border-radius:8px;font-size:12px;font-weight:700;color:var(--muted);transition:.2s}
+.jd-tabs button.on{background:var(--surface-3);color:var(--ink)}
+.jd-body{padding:20px}
+.jd-sec{margin-bottom:22px}
+.jd-sec h4{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:11px;font-weight:700}
+.mh-row{display:flex;align-items:center;gap:12px;padding:9px 0}
+.mh-row .mh-name{width:190px;font-size:13px;font-weight:600}
+.mh-row .mh-name .nice{color:var(--muted);font-weight:500;font-size:11px}
+.mh-row input[type=range]{flex:1;accent-color:var(--violet);height:4px}
+.mh-row .mh-w{width:56px;text-align:right;font-weight:800;font-size:13px;color:var(--violet)}
+.ko-wrap{display:flex;flex-wrap:wrap;gap:9px}
+.ko{font-size:12px;font-weight:600;padding:8px 14px;border-radius:10px;border:1px solid rgba(208,59,59,.45);color:#ef8f8f;background:rgba(208,59,59,.07);display:flex;gap:8px;align-items:center;transition:.2s;cursor:pointer}
+.ko .ko-x{font-size:10px;opacity:.7}
+.ko.off{border-color:var(--border);color:var(--muted);background:transparent;text-decoration:line-through}
+.th-zone{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);padding:18px 20px}
+.th-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.th-val{font-size:30px;font-weight:800;color:var(--violet)}
+.th-slider{width:100%;accent-color:var(--violet)}
+.th-preview{display:flex;gap:16px;margin-top:12px;font-size:12px}
+.th-preview b{font-size:15px}
+.jd-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.jd-meta .kv{background:var(--surface-2);border-radius:10px;padding:10px 14px}
+.jd-meta .kv .k{font-size:10.5px;color:var(--muted);font-weight:600}
+.jd-meta .kv .v{font-size:13px;font-weight:700;margin-top:2px}
+
+/* infographic */
+.info-card{margin:20px;border-radius:18px;overflow:hidden;border:1px solid var(--border-strong);background:#101018}
+.info-hero{padding:26px 28px;background:var(--grad);color:#fff;position:relative;overflow:hidden}
+.info-hero::after{content:'VARA';position:absolute;right:-10px;bottom:-26px;font-size:90px;font-weight:900;opacity:.12;letter-spacing:.05em}
+.info-hero .ih-co{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.85;font-weight:700}
+.info-hero h2{font-size:26px;font-weight:800;margin:6px 0 4px}
+.info-hero .ih-sub{font-size:13px;opacity:.9}
+.info-body{padding:22px 28px;display:grid;gap:18px}
+.info-bars .ib-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.info-bars .ib-name{width:170px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.info-bars .ib-track{flex:1;height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.info-bars .ib-fill{height:100%;border-radius:99px;background:var(--grad);width:0;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.info-bars .ib-pct{width:40px;text-align:right;font-size:12px;font-weight:700;color:var(--violet)}
+.info-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.info-facts .if{background:var(--surface-2);border-radius:12px;padding:12px 14px;text-align:center}
+.info-facts .if .v{font-weight:800;font-size:15px}
+.info-facts .if .k{font-size:10.5px;color:var(--muted);margin-top:3px}
+.info-cta{display:flex;align-items:center;gap:14px;background:var(--surface-2);border-radius:12px;padding:14px 16px}
+.qr{width:52px;height:52px;border-radius:8px;background:
+  repeating-conic-gradient(#fff 0% 25%, #101018 0% 50%) 0 0/14px 14px;flex-shrink:0;opacity:.9}
+.info-cta .c-t{font-size:12.5px;line-height:1.5}
+.info-cta .c-t b{color:#b3aaf5}
+/* ============ PROBABILITY MAP ============ */
+.map-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;gap:20px;flex-wrap:wrap}
+.map-head h2{font-size:20px;font-weight:800}
+.map-head .sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.map-counts{display:flex;gap:12px}
+.mc{padding:10px 18px;border-radius:13px;border:1px solid var(--border);background:var(--surface);text-align:center;min-width:110px;transition:.3s}
+.mc .mc-v{font-size:24px;font-weight:800;line-height:1.1;transition:.3s}
+.mc .mc-l{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
+.mc.reject .mc-v{color:#ef7070}.mc.hand .mc-v{color:#7ab2f2}.mc.resc .mc-v{color:var(--warn)}
+.mc.flash{transform:scale(1.06);border-color:var(--border-strong)}
+
+.map-panel{padding:26px 30px 18px;position:relative}
+.map-area{position:relative;height:300px;user-select:none}
+.map-zone{position:absolute;top:0;bottom:34px;transition:width .12s linear, left .12s linear;border-radius:12px}
+.map-zone.reject{left:0;background:linear-gradient(90deg,rgba(208,59,59,.10),rgba(208,59,59,.03));border:1px dashed rgba(208,59,59,.25);border-right:none}
+.map-zone.hand{right:0;background:linear-gradient(90deg,rgba(57,135,229,.03),rgba(57,135,229,.10));border:1px dashed rgba(57,135,229,.22);border-left:none}
+.zone-tag{position:absolute;top:10px;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:3px 10px;border-radius:99px}
+.zone-tag.r{left:12px;color:#ef8f8f;background:rgba(208,59,59,.12)}
+.zone-tag.h{right:12px;color:#8fb9f0;background:rgba(57,135,229,.12)}
+.map-axis{position:absolute;left:0;right:0;bottom:0;height:34px;border-top:1px solid var(--border-strong)}
+.map-axis .tick{position:absolute;top:6px;font-size:10.5px;color:var(--muted);transform:translateX(-50%);font-variant-numeric:tabular-nums}
+.dot{position:absolute;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;transition:box-shadow .2s, transform .2s, background .3s, border-color .3s;border:2px solid transparent;animation:dotin .5s cubic-bezier(.2,.8,.2,1) backwards}
+.map-area.dense .dot{width:9px;height:9px;border-width:1.5px;animation-duration:.25s}
+.map-area.dense .dot:hover{transform:translate(-50%,-50%) scale(1.8)}
+@keyframes dotin{from{opacity:0;transform:translate(-50%,-50%) scale(0)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.dot:hover{transform:translate(-50%,-50%) scale(1.45);z-index:5}
+.dot.hand{background:#3987e5;box-shadow:0 0 14px rgba(57,135,229,.55)}
+.dot.reject{background:#5a2430;box-shadow:none;border-color:rgba(208,59,59,.5)}
+.dot.rescue{background:var(--page);border-color:var(--warn);box-shadow:0 0 12px rgba(250,178,25,.45)}
+.dot.advanced{background:#0ca30c;box-shadow:0 0 14px rgba(12,163,12,.5)}
+.dot.flagged::after{content:'';position:absolute;top:-4px;right:-4px;width:7px;height:7px;border-radius:50%;background:var(--warn);border:1.5px solid var(--page)}
+.th-line{position:absolute;top:-8px;bottom:26px;width:2px;background:var(--violet);cursor:ew-resize;z-index:8;box-shadow:0 0 16px rgba(144,133,233,.7)}
+.th-line::before{content:'';position:absolute;inset:-2px -10px}
+.th-grip{position:absolute;top:-6px;left:50%;transform:translateX(-50%);background:var(--violet);color:#0b0b10;font-size:11px;font-weight:800;padding:4px 11px;border-radius:99px;white-space:nowrap;box-shadow:0 4px 14px rgba(144,133,233,.5)}
+.th-grip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--violet)}
+.map-legend{display:flex;gap:20px;padding:14px 4px 0;font-size:11.5px;color:var(--ink-2);flex-wrap:wrap}
+.lg{display:flex;align-items:center;gap:7px}
+.lg i{width:11px;height:11px;border-radius:50%;display:inline-block}
+.map-tip{position:fixed;z-index:60;background:var(--surface-3);border:1px solid var(--border-strong);border-radius:11px;padding:10px 14px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .15s;box-shadow:var(--shadow);max-width:240px}
+.map-tip b{font-size:13px}
+.map-tip .tt-fit{font-weight:800;color:#8fb9f0}
+
+/* rescue rail */
+.rescue-rail{margin-top:18px}
+.rescue-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;padding:18px 20px}
+.rc{background:var(--surface-2);border:1px solid rgba(250,178,25,.28);border-radius:var(--r-md);padding:16px;position:relative;transition:.3s}
+.rc.gone{opacity:0;transform:scale(.9)}
+.rc .rc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.rc .rc-name{font-weight:700;font-size:13.5px}
+.rc .rc-fit{font-weight:800;color:var(--warn);font-size:15px}
+.rc .rc-why{font-size:12px;color:var(--ink-2);line-height:1.55;margin-bottom:12px}
+.rc .rc-why b{color:var(--warn)}
+.rc-foot{display:flex;justify-content:space-between;align-items:center}
+.rc .cd{font-size:11px;color:var(--muted);font-weight:600}
+.rc .cd b{color:var(--serious)}
+
+/* ============ DOSSIER DRAWER ============ */
+.scrim{position:fixed;inset:0;background:rgba(5,5,10,.6);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:.3s;z-index:40}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,94vw);background:var(--surface);border-left:1px solid var(--border-strong);z-index:50;transform:translateX(102%);transition:transform .38s cubic-bezier(.3,.9,.3,1);display:flex;flex-direction:column;box-shadow:-30px 0 80px rgba(0,0,0,.5)}
+.drawer.on{transform:none}
+.dr-head{padding:24px 26px 20px;border-bottom:1px solid var(--border);display:flex;gap:18px;align-items:center}
+.ring{position:relative;width:76px;height:76px;flex-shrink:0}
+.ring svg{transform:rotate(-90deg)}
+.ring .ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .ring-txt b{font-size:19px}
+.ring .ring-txt span{font-size:8.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.dr-head h3{font-size:18px;font-weight:800}
+.dr-head .dr-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.dr-close{margin-left:auto;width:34px;height:34px;border-radius:10px;background:var(--surface-3);font-size:15px;flex-shrink:0}
+.dr-body{flex:1;overflow-y:auto;padding:22px 26px}
+.axis-block{margin-bottom:24px}
+.axis-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.axis-top .ax-name{font-size:13px;font-weight:700}
+.axis-top .ax-w{font-size:10.5px;color:var(--muted)}
+.axis-top .ax-score{font-weight:800;font-size:14px}
+.axis-bar{height:9px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:10px}
+.axis-fill{height:100%;border-radius:99px;width:0;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.ev-chips{display:flex;flex-wrap:wrap;gap:7px}
+.ev{font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:9px;border:1px solid var(--border-strong);color:var(--ink-2);transition:.2s;text-align:left}
+.ev:hover{color:var(--ink);border-color:var(--violet)}
+.ev.open{border-color:var(--violet);background:rgba(144,133,233,.1);color:#c9c2f7}
+.ev-quote{margin-top:10px;background:var(--surface-2);border-left:3px solid var(--violet);border-radius:0 10px 10px 0;padding:12px 15px;font-size:12.5px;line-height:1.6;display:none;animation:popin .25s ease}
+.ev-quote.on{display:block}
+.ev-quote .eq-src{font-size:10.5px;color:var(--muted);margin-top:6px;font-weight:600}
+.flag-box{background:rgba(250,178,25,.07);border:1px solid rgba(250,178,25,.35);border-radius:var(--r-md);padding:14px 16px;margin-bottom:22px;font-size:12.5px;line-height:1.6}
+.flag-box b{color:var(--warn)}
+.transcript{background:var(--surface-2);border-radius:var(--r-md);padding:14px 16px;margin-bottom:22px}
+.tr-line{font-size:12.5px;padding:6px 0;line-height:1.55;border-bottom:1px dashed var(--border)}
+.tr-line:last-child{border:none}
+.tr-line .who{font-weight:800;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;margin-right:8px}
+.tr-line .who.v{color:var(--violet)}.tr-line .who.c{color:#7ab2f2}
+.dr-foot{padding:16px 26px;border-top:1px solid var(--border);display:flex;gap:10px}
+.dr-foot .btn{flex:1;justify-content:center}
+.dr-note{font-size:11px;color:var(--muted);padding:0 26px 16px;text-align:center}
+
+/* ============ CALIBRATION ============ */
+.cal-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.gauge-wrap{display:flex;gap:26px;align-items:center;padding:22px}
+.gauge{position:relative;width:150px;height:84px;flex-shrink:0}
+.g-txt{position:absolute;left:0;right:0;bottom:0;text-align:center}
+.g-txt b{font-size:26px}
+.g-txt div{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.reco{border:1px solid rgba(144,133,233,.4);background:linear-gradient(140deg,rgba(144,133,233,.08),transparent);border-radius:var(--r-lg)}
+.reco-body{padding:20px}
+.reco-move{display:flex;align-items:center;gap:14px;margin:14px 0 16px}
+.reco-move .rv{font-size:34px;font-weight:800}
+.reco-move .rv.old{color:var(--muted);text-decoration:line-through;text-decoration-thickness:3px;text-decoration-color:rgba(208,59,59,.6)}
+.reco-move .rv.new{color:var(--violet)}
+.reco-move .arr{font-size:22px;color:var(--muted)}
+.reco-why{font-size:12.5px;color:var(--ink-2);line-height:1.65}
+.reco-why li{margin:6px 0 6px 18px}
+.reco-foot{display:flex;gap:10px;padding:16px 20px;border-top:1px solid var(--border);align-items:center}
+.reco-foot .gate{font-size:11px;color:var(--muted);margin-left:auto;max-width:180px;text-align:right}
+.vlog{font-size:12.5px}
+.vlog-row{display:flex;gap:14px;padding:12px 20px;border-bottom:1px solid var(--border)}
+.vlog-row:last-child{border:none}
+.vlog-row .vv{font-weight:800;color:var(--violet);width:44px;flex-shrink:0}
+.vlog-row .vd{color:var(--ink-2);line-height:1.5}
+.vlog-row .vt{color:var(--muted);font-size:11px;margin-top:2px}
+.fam-strip{display:flex;gap:14px;margin-bottom:18px}
+.fam{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px 18px;cursor:pointer;transition:.2s}
+.fam.on{border-color:var(--violet);background:rgba(144,133,233,.06)}
+.fam .fm-n{font-weight:700;font-size:13px}
+.fam .fm-s{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+/* ============ HM QUEUE ============ */
+.hm-wrap{max-width:860px;margin:0 auto}
+.hm-head{text-align:center;margin-bottom:22px}
+.hm-head h2{font-size:22px;font-weight:800}
+.hm-head p{color:var(--muted);font-size:13px;margin-top:6px}
+.hm-stack{position:relative;min-height:490px}
+.hm-card{position:absolute;inset:0;background:var(--surface-2);border:1px solid var(--border-strong);border-radius:22px;padding:26px 30px;box-shadow:var(--shadow);transition:transform .45s cubic-bezier(.3,.8,.3,1), opacity .4s;display:flex;flex-direction:column;overflow:auto;z-index:3}
+.hm-card.behind1{transform:scale(.955) translateY(16px);opacity:.5;pointer-events:none;z-index:2}
+.hm-card.behind2{transform:scale(.91) translateY(32px);opacity:.22;pointer-events:none;z-index:1}
+.hm-card.hidden{opacity:0;pointer-events:none;transform:scale(.9) translateY(40px);z-index:0}
+.hm-card.exit-l{transform:translateX(-120%) rotate(-6deg);opacity:0}
+.hm-card.exit-r{transform:translateX(120%) rotate(6deg);opacity:0}
+.hm-top{display:flex;align-items:center;gap:18px;margin-bottom:18px}
+.hm-rank{font-size:11px;font-weight:800;color:var(--violet);letter-spacing:.1em}
+.hm-top h3{font-size:21px;font-weight:800}
+.hm-fitbig{margin-left:auto;text-align:right}
+.hm-fitbig b{font-size:34px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hm-fitbig div{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.hm-axes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.hm-ax{background:var(--surface-2);border-radius:12px;padding:12px 15px}
+.hm-ax .a-k{font-size:10.5px;color:var(--muted);font-weight:700}
+.hm-ax .a-v{font-size:18px;font-weight:800;margin-top:2px}
+.hm-ev{flex:1;font-size:13px;line-height:1.7;color:var(--ink-2)}
+.hm-ev li{margin:7px 0 7px 18px}
+.hm-ev b{color:var(--ink)}
+.hm-actions{display:flex;gap:12px;margin-top:20px}
+.hm-actions .btn{flex:1;justify-content:center;padding:13px}
+.hm-note{text-align:center;font-size:11.5px;color:var(--muted);margin-top:16px}
+.hm-note b{color:var(--violet)}
+.hm-done{text-align:center;padding:70px 0;display:none}
+.hm-done .big{font-size:40px}
+.hm-done h3{font-size:19px;margin:12px 0 6px}
+.hm-done p{color:var(--muted);font-size:13px}
+
+/* ============ CANDIDATE ============ */
+.cand-grid{display:grid;grid-template-columns:auto 1fr;gap:34px;justify-content:center;max-width:1060px;margin:0 auto;align-items:start}
+.phone{width:360px;height:calc(100vh - 205px);min-height:560px;max-height:740px;background:#0a0a10;border:1px solid var(--border-strong);border-radius:38px;padding:12px;box-shadow:var(--shadow),0 0 0 6px rgba(255,255,255,.03);position:sticky;top:0}
+.phone-inner{height:100%;border-radius:28px;background:var(--surface);overflow:hidden;display:flex;flex-direction:column}
+.ph-head{padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:11px;flex-shrink:0}
+.ph-ava{width:36px;height:36px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff}
+.ph-head .ph-n{font-weight:800;font-size:14px}
+.ph-head .ph-s{font-size:10.5px;color:#4ed44e;display:flex;align-items:center;gap:5px}
+.ph-head .ph-s::before{content:'';width:6px;height:6px;border-radius:50%;background:#0ca30c}
+.strength{padding:10px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+.strength .s-lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-weight:700;margin-bottom:5px}
+.strength .s-lbl b{color:var(--violet)}
+.s-track{height:5px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.s-fill{height:100%;background:var(--grad);border-radius:99px;width:5%;transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.ph-chat{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:10px}
+.ph-chat .msg{font-size:12.5px;max-width:85%}
+.typing{display:inline-flex;gap:4px;padding:12px 15px}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:ty 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes ty{0%,60%,100%{transform:none;opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+.ph-quick{padding:10px 14px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:7px;flex-shrink:0;min-height:52px}
+.ph-quick .quick{font-size:11.5px;padding:7px 12px}
+.cand-side h2{font-size:20px;font-weight:800;margin-bottom:4px}
+.cand-side>p{color:var(--muted);font-size:13px;margin-bottom:18px}
+.timeline{padding:6px 20px 18px}
+.tl-item{display:flex;gap:16px;position:relative;padding:14px 0}
+.tl-item::before{content:'';position:absolute;left:11px;top:38px;bottom:-6px;width:2px;background:var(--border)}
+.tl-item:last-child::before{display:none}
+.tl-ic{width:24px;height:24px;border-radius:50%;background:var(--surface-3);border:2px solid var(--border-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:1}
+.tl-item.done .tl-ic{background:var(--accent);border-color:var(--accent);color:#fff}
+.tl-item.now .tl-ic{border-color:var(--violet);box-shadow:0 0 10px rgba(144,133,233,.6)}
+.tl-item .tl-t{font-weight:700;font-size:13px}
+.tl-item .tl-d{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.5}
+.comms-tabs{display:flex;gap:6px;margin:18px 0 12px}
+.email-prev{background:#f4f2ee;color:#22211f;border-radius:14px;padding:20px 22px;font-size:12.5px;line-height:1.65}
+.email-prev .e-head{border-bottom:1px solid #ddd9d0;padding-bottom:10px;margin-bottom:12px;font-size:11.5px;color:#6b6960}
+.email-prev .e-head b{color:#22211f}
+.email-prev h4{font-size:14px;margin-bottom:8px}
+.wa-prev{background:#0e1a12;border:1px solid rgba(12,163,12,.25);border-radius:14px;padding:18px}
+.wa-bubble{background:#144d28;border-radius:3px 12px 12px 12px;padding:11px 14px;font-size:12.5px;line-height:1.6;max-width:88%;position:relative;color:#e8f5e9}
+.wa-bubble .wa-t{font-size:9.5px;color:rgba(232,245,233,.55);text-align:right;margin-top:5px}
+.wa-name{font-size:11px;font-weight:700;color:#4ed44e;margin-bottom:6px}
+/* ============ CLOSING WINDOW ============ */
+.dot.hold{background:var(--page);border-color:#7ab2f2;box-shadow:0 0 10px rgba(57,135,229,.35)}
+.dot.closed{background:#2a1a20;border-color:rgba(208,59,59,.25);opacity:.35}
+.close-table{max-height:320px;overflow-y:auto}
+.ct-row{display:grid;grid-template-columns:2fr 64px 1fr 1.2fr auto;gap:14px;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border);font-size:12.5px;transition:background .2s}
+.ct-row:hover{background:var(--surface-2)}
+.ct-row .ct-n{font-weight:700;cursor:pointer}
+.ct-row .ct-n:hover{color:#8fb9f0}
+.ct-row .ct-n .src{font-weight:500;color:var(--muted);font-size:10.5px;display:block}
+.ct-row .ct-fit{font-weight:800;color:#ef8f8f}
+.ct-row .ct-cd{color:var(--muted);font-size:11.5px}
+.ct-row .ct-cd b{color:var(--serious)}
+.ct-row .ct-cd.frozen b{color:#7ab2f2}
+.ct-row .ct-why{color:var(--ink-2);font-size:11.5px;line-height:1.45}
+.ct-acts{display:flex;gap:6px}
+.ct-acts .btn.sm{padding:5px 10px;font-size:10.5px}
+.ct-head{display:grid;grid-template-columns:2fr 64px 1fr 1.2fr auto;gap:14px;padding:9px 20px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)}
+
+/* ============ PROFILE PAGE ============ */
+.pf-top{display:flex;align-items:center;gap:20px;margin-bottom:18px}
+.pf-back{width:38px;height:38px;border-radius:11px;background:var(--surface);border:1px solid var(--border-strong);font-size:16px;flex-shrink:0}
+.pf-top h2{font-size:21px;font-weight:800}
+.pf-top .pf-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.pf-top .pf-fit{margin-left:auto;text-align:right}
+.pf-top .pf-fit b{font-size:32px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pf-top .pf-fit div{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.pf-actions{display:flex;gap:8px}
+.pf-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px}
+.pf-tabs button{padding:10px 18px;font-size:12.5px;font-weight:700;color:var(--muted);position:relative;transition:.2s}
+.pf-tabs button:hover{color:var(--ink-2)}
+.pf-tabs button.on{color:var(--ink)}
+.pf-tabs button.on::after{content:'';position:absolute;left:14px;right:14px;bottom:-1px;height:2px;border-radius:2px;background:var(--grad)}
+.pf-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.paper{background:#f4f2ee;color:#26241f;border-radius:14px;padding:26px 28px;font-size:12.5px;line-height:1.65;box-shadow:var(--shadow)}
+.paper h3{font-size:17px;margin-bottom:2px}
+.paper .p-sub{color:#6b6960;font-size:11.5px;margin-bottom:14px}
+.paper h5{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#8a877d;margin:14px 0 6px}
+.paper .p-job{margin-bottom:10px}
+.paper .p-job b{display:block}
+.paper .p-job span{color:#6b6960;font-size:11px}
+.stint{display:flex;gap:12px;padding:11px 0;border-bottom:1px dashed var(--border);align-items:baseline}
+.stint:last-child{border:none}
+.stint .st-dur{width:64px;font-weight:800;font-size:12px;color:#8fb9f0;flex-shrink:0}
+.stint .st-co{font-weight:700;font-size:13px}
+.stint .st-role{font-size:11.5px;color:var(--muted)}
+.stint.gap .st-dur{color:var(--warn)}
+.stint.gap .st-co{color:var(--warn)}
+.provenance{font-size:10.5px;color:var(--muted);padding:10px 2px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sig-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.sig{padding:18px 20px}
+.sig .sg-h{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-weight:800;font-size:13.5px}
+.sig .sg-ic{width:32px;height:32px;border-radius:9px;background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-size:15px}
+.sig .sg-body{font-size:12.5px;color:var(--ink-2);line-height:1.65}
+.sig .lang-bar{display:flex;height:9px;border-radius:99px;overflow:hidden;margin:10px 0 6px}
+.sig .tells{margin-top:12px;padding:10px 13px;background:rgba(144,133,233,.07);border-left:3px solid var(--violet);border-radius:0 9px 9px 0;font-size:12px;line-height:1.55}
+.sig .tells b{color:#b3aaf5}
+.audit-row{display:flex;gap:14px;padding:11px 20px;border-bottom:1px solid var(--border);font-size:12.5px;align-items:baseline}
+.audit-row:last-child{border:none}
+.audit-row .au-t{width:118px;color:var(--muted);font-size:11px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.audit-row .au-w{width:74px;flex-shrink:0}
+.hist-app{background:var(--surface-2);border-radius:var(--r-md);padding:16px 18px;margin-bottom:12px}
+.hist-app .ha-t{display:flex;justify-content:space-between;font-weight:700;font-size:13px;margin-bottom:5px}
+.hist-app .ha-d{font-size:12px;color:var(--ink-2);line-height:1.6}
+.hide{display:none!important}
+@media (max-width:1100px){.tiles{grid-template-columns:repeat(2,1fr)}.jd-grid,.cal-grid,.cand-grid{grid-template-columns:1fr}.phone{position:relative;margin:0 auto}}
+</style>
+</head>
+<body>
+<div class="aurora"></div>
+<div class="shell" id="shell">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="wordmark"><span class="v">VARA</span><span class="tag">the chosen one · VaNi Talent</span></div>
+    <div class="jd-context">Pilot JD&nbsp;·&nbsp;<b>Senior Backend Engineer</b>&nbsp;·&nbsp;threshold <span class="live-th" id="ctxTh">30%</span></div>
+    <div class="persona-switch" id="personaSwitch">
+      <button class="on" data-persona="rec"><span class="dot"></span>Recruiter</button>
+      <button data-persona="hm"><span class="dot"></span>Hiring Manager</button>
+      <button data-persona="cand"><span class="dot"></span>Candidate</button>
+    </div>
+  </div>
+
+  <!-- SUBNAV (recruiter only) -->
+  <div class="subnav" id="recNav">
+    <button class="on" data-view="pulse">Pulse</button>
+    <button data-view="jd">JD Studio</button>
+    <button data-view="map">Probability Map <span class="cnt" id="navHandCnt">9</span></button>
+    <button data-view="cal">Calibration</button>
+  </div>
+
+  <div class="stage">
+
+    <!-- ================= PULSE ================= -->
+    <div class="view on" id="view-pulse">
+      <div class="hero-narr">
+        <div class="narr-label"><span class="pulse-dot"></span> Vara · overnight briefing · Sun 16 Aug</div>
+        <div class="narr-text" id="narrText"></div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div style="display:grid;grid-template-columns:7fr 5fr;gap:18px;margin-top:18px" class="pulse-lower">
+        <div class="panel">
+          <div class="panel-h"><h3>Screening funnel</h3><span class="sub">Senior Backend Engineer · since 9 Aug</span></div>
+          <div style="padding:18px 22px" id="funnel"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h3>Vara's activity</h3><span class="sub">last 12 hours</span></div>
+          <div id="feed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= JD STUDIO ================= -->
+    <div class="view" id="view-jd">
+      <div class="jd-grid">
+        <div class="panel chat-box">
+          <div class="panel-h"><h3>Compose with Vara</h3><span class="sub">say it, Vara structures it</span></div>
+          <div class="chat-scroll" id="jdChat"></div>
+          <div class="quick-row" id="jdQuick"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h" style="gap:14px">
+            <h3 style="flex-shrink:0">Senior Backend Engineer</h3>
+            <div class="jd-tabs" style="margin-left:auto;width:280px">
+              <button class="on" data-jdtab="struct">Structured</button>
+              <button data-jdtab="info">Infographic</button>
+            </div>
+          </div>
+          <div id="jdStruct">
+            <div class="jd-body">
+              <div class="jd-sec">
+                <h4>Role facts</h4>
+                <div class="jd-meta">
+                  <div class="kv"><div class="k">Comp band</div><div class="v">₹32–45 L</div></div>
+                  <div class="kv"><div class="k">Location</div><div class="v">Chennai · Remote (IST)</div></div>
+                  <div class="kv"><div class="k">Experience</div><div class="v">5+ years</div></div>
+                  <div class="kv"><div class="k">Team</div><div class="v">VaNi Platform · reports to CTO</div></div>
+                </div>
+              </div>
+              <div class="jd-sec">
+                <h4>Must-haves &amp; weights <span style="color:var(--violet)">— these drive the score</span></h4>
+                <div id="mhRows"></div>
+              </div>
+              <div class="jd-sec">
+                <h4>Knockout rules <span style="color:#ef8f8f">— deterministic auto-reject, never the model</span></h4>
+                <div class="ko-wrap" id="koWrap"></div>
+              </div>
+              <div class="jd-sec" style="margin-bottom:0">
+                <h4>Handover threshold — this JD</h4>
+                <div class="th-zone">
+                  <div class="th-top">
+                    <div style="font-size:12px;color:var(--ink-2)">Below the line auto-closes (3-day rescue hold).<br>Above the line goes to humans. <b>You decide. Vara ranks.</b></div>
+                    <div class="th-val"><span id="thVal">30</span>%</div>
+                  </div>
+                  <input type="range" min="10" max="70" value="30" class="th-slider" id="thSlider">
+                  <div class="th-preview">
+                    <span>Closing window: <b class="num" style="color:#ef7070" id="thPrevR">19</b></span>
+                    <span>To handover: <b class="num" style="color:#7ab2f2" id="thPrevH">9</b></span>
+                    <span style="margin-left:auto;color:var(--muted)">live from 28 applicants</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="jdInfo" class="hide">
+            <div class="info-card">
+              <div class="info-hero">
+                <div class="ih-co">Vikuna · VaNi Platform</div>
+                <h2>Senior Backend Engineer</h2>
+                <div class="ih-sub">Build the agent runtime behind an Org OS · Chennai / Remote (IST)</div>
+              </div>
+              <div class="info-body">
+                <div class="info-bars" id="infoBars"></div>
+                <div class="info-facts">
+                  <div class="if"><div class="v">₹32–45 L</div><div class="k">COMP BAND</div></div>
+                  <div class="if"><div class="v">5+ yrs</div><div class="k">EXPERIENCE</div></div>
+                  <div class="if"><div class="v">≤ 60 days</div><div class="k">NOTICE</div></div>
+                </div>
+                <div class="info-cta">
+                  <div class="qr"></div>
+                  <div class="c-t">No forms. <b>Chat with Vara to apply</b> — 4 minutes, and you'll know exactly where you stand. <span style="color:var(--muted)">vikuna.ai/careers/vara</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= PROBABILITY MAP ================= -->
+    <div class="view" id="view-map">
+      <div class="map-head">
+        <div>
+          <h2>Probability map</h2>
+          <div class="sub">Every applicant, placed by fitment. Drag the line — policy is yours, not the model's. <button class="btn sm ghost" id="simBtn" style="border-style:dashed;margin-left:10px">⚡ Stress test · 250 applicants</button></div>
+        </div>
+        <div class="map-counts">
+          <div class="mc reject"><div class="mc-v num" id="mcR">19</div><div class="mc-l">Closing · timer live</div></div>
+          <div class="mc resc"><div class="mc-v num" id="mcHold">0</div><div class="mc-l">Held by you</div></div>
+          <div class="mc hand"><div class="mc-v num" id="mcH">9</div><div class="mc-l">To handover</div></div>
+        </div>
+      </div>
+      <div class="panel map-panel">
+        <div class="map-area" id="mapArea">
+          <div class="map-zone reject" id="zoneR"><span class="zone-tag r">closing window · 3-day timer</span></div>
+          <div class="map-zone hand" id="zoneH"><span class="zone-tag h">human handover</span></div>
+          <div class="th-line" id="thLine"><div class="th-grip" id="thGrip">30%</div></div>
+          <div class="map-axis" id="mapAxis"></div>
+        </div>
+        <div class="map-legend">
+          <span class="lg"><i style="background:#3987e5"></i>handover</span>
+          <span class="lg"><i style="background:#0ca30c"></i>advanced to HM</span>
+          <span class="lg"><i style="background:#5a2430;border:1.5px solid rgba(208,59,59,.6)"></i>closing window</span>
+          <span class="lg"><i style="background:var(--page);border:1.5px solid #7ab2f2"></i>held by you</span>
+          <span class="lg"><i style="background:var(--page);border:1.5px solid var(--warn)"></i>rescued</span>
+          <span class="lg"><i style="background:var(--warn);width:7px;height:7px"></i>consistency flag</span>
+          <span style="margin-left:auto;color:var(--muted)">click any dot → full profile</span>
+        </div>
+      </div>
+      <div class="panel rescue-rail">
+        <div class="panel-h"><h3>Closing window</h3><span class="sub">no score rejects anyone — Vara schedules a decision, you can pre-empt it. Timer expires → the message fires, reason logged.</span><span class="chip warn" style="margin-left:auto" id="rqChip">2 rescue picks</span></div>
+        <div class="rescue-cards" id="rescueCards"></div>
+        <div class="ct-head"><span>Everyone in the window</span><span>Fit</span><span>Timer</span><span>Why below the line</span><span style="text-align:right">Your move</span></div>
+        <div class="close-table" id="closeTable"></div>
+      </div>
+    </div>
+
+    <!-- ================= PROFILE ================= -->
+    <div class="view" id="view-profile"></div>
+
+    <!-- ================= CALIBRATION ================= -->
+    <div class="view" id="view-cal">
+      <div class="map-head" style="margin-bottom:14px">
+        <div>
+          <h2>Calibration</h2>
+          <div class="sub">Vara learns at role-family level. It proposes; a human approves. Nothing moves silently.</div>
+        </div>
+      </div>
+      <div class="fam-strip">
+        <div class="fam on"><div class="fm-n">Backend Engineering</div><div class="fm-s">3 JDs · 214 screened · 6 hired</div></div>
+        <div class="fam"><div class="fm-n">Field Sales</div><div class="fm-s">2 JDs · 96 screened · 3 hired</div></div>
+        <div class="fam"><div class="fm-n">Delivery / Consulting</div><div class="fm-s">1 JD · 41 screened · 1 hired</div></div>
+      </div>
+      <div class="cal-grid">
+        <div style="display:grid;gap:18px">
+          <div class="panel">
+            <div class="panel-h"><h3>Loop health — Backend Engineering</h3></div>
+            <div class="gauge-wrap">
+              <div class="gauge">
+                <svg width="150" height="84" viewBox="0 0 150 84">
+                  <path d="M10 78 A65 65 0 0 1 140 78" fill="none" stroke="var(--surface-3)" stroke-width="11" stroke-linecap="round"/>
+                  <path d="M10 78 A65 65 0 0 1 140 78" fill="none" stroke="#0ca30c" stroke-width="11" stroke-linecap="round" stroke-dasharray="204" stroke-dashoffset="195" id="gaugeArc" style="transition:stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)"/>
+                </svg>
+                <div class="g-txt"><b>4.2%</b><div>rescue rate</div></div>
+              </div>
+              <div style="font-size:12.5px;color:var(--ink-2);line-height:1.65">
+                <b style="color:#4ed44e">Healthy.</b> HR rescued 9 of 214 auto-closed candidates this quarter. Above <b>10%</b> Vara declares its own scoring broken for this family and stops proposing.<br>
+                <span style="color:var(--muted)">Audit sample: 5% of auto-closes get a human glance · selection-bias guard.</span>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Threshold history</h3><span class="sub">every change human-approved</span></div>
+            <div class="vlog" id="vlog"></div>
+          </div>
+        </div>
+        <div class="panel reco">
+          <div class="panel-h"><h3 style="color:#c9c2f7">Vara proposes</h3><span class="chip vio" style="margin-left:auto">needs your approval</span></div>
+          <div class="reco-body">
+            <div style="font-size:13px;font-weight:700">Lower the Backend Engineering default threshold</div>
+            <div class="reco-move">
+              <span class="rv old num">30%</span><span class="arr">→</span><span class="rv new num" id="recoNew">27%</span>
+            </div>
+            <div class="reco-why">
+              Because the evidence says the line is too high:
+              <li><b>3 of 9 rescues</b> in the 27–30 band went on to interview; 1 was hired.</li>
+              <li>Candidates scored 27–30 converted to interview at <b>0.8×</b> the 30–35 band — closer than the threshold assumes.</li>
+              <li>No hire has ever come from below 24. The floor is real; the line is just 3 points high.</li>
+              <div style="margin-top:10px;color:var(--muted);font-size:11.5px">Confidence: medium · n=214 · scoring config v1.3 → would become v1.4. A threshold can never <b>rise</b> without explicit approval.</div>
+            </div>
+          </div>
+          <div class="reco-foot">
+            <button class="btn primary" id="recoApprove">Approve → 27%</button>
+            <button class="btn ghost" id="recoDecline">Decline</button>
+            <div class="gate">human gate · applies to new JDs, current JDs keep their own line</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= HM QUEUE ================= -->
+    <div class="view" id="view-hm">
+      <div class="hm-wrap">
+        <div class="hm-head">
+          <h2>Your shortlist, ranked</h2>
+          <p>Vara ranks with evidence. <b style="color:var(--ink-2)">The decision is yours</b> — and every verdict you give trains next month's calibration.</p>
+        </div>
+        <div class="hm-stack" id="hmStack"></div>
+        <div class="hm-done" id="hmDone">
+          <div class="big">✦</div>
+          <h3>Queue clear</h3>
+          <p id="hmDoneTxt">Verdicts recorded. Vara has queued interview invites and passed your feedback to Calibration.</p>
+        </div>
+        <div class="hm-note" id="hmNote">↑ evidence, not adjectives · <b>Interview</b> books the slot, <b>Pass</b> returns them to the recruiter with your reason</div>
+      </div>
+    </div>
+
+    <!-- ================= CANDIDATE ================= -->
+    <div class="view" id="view-cand">
+      <div class="cand-grid">
+        <div class="phone">
+          <div class="phone-inner">
+            <div class="ph-head">
+              <div class="ph-ava">V</div>
+              <div><div class="ph-n">Vara · Vikuna Careers</div><div class="ph-s">online — replies in seconds</div></div>
+            </div>
+            <div class="strength">
+              <div class="s-lbl"><span>PROFILE STRENGTH</span><b id="strengthPct">0%</b></div>
+              <div class="s-track"><div class="s-fill" id="strengthFill"></div></div>
+            </div>
+            <div class="ph-chat" id="phChat"></div>
+            <div class="ph-quick" id="phQuick"></div>
+          </div>
+        </div>
+        <div class="cand-side">
+          <h2>What the candidate feels</h2>
+          <p>No portal, no form, no black hole. A conversation, then honest status — on their channel.</p>
+          <div class="panel">
+            <div class="panel-h"><h3>Application status</h3><span class="sub">live for every candidate — even rejected ones</span></div>
+            <div class="timeline" id="candTimeline"></div>
+          </div>
+          <div class="comms-tabs">
+            <button class="btn sm" id="tabEmail">✉ Email on application</button>
+            <button class="btn sm ghost" id="tabWa">✆ WhatsApp on decision</button>
+          </div>
+          <div id="commEmail">
+            <div class="email-prev">
+              <div class="e-head"><b>Vikuna Careers</b> &lt;careers@vikuna.ai&gt;<br>to: you · Application received — Senior Backend Engineer</div>
+              <h4>We have your application, Arjun 🙏</h4>
+              Thanks for talking to Vara. Your profile is with our screening now — you'll hear from us <b>within 3 working days, whatever the outcome</b>. No black holes, promised.<br><br>
+              Track anytime: <span style="color:#2a5fae;text-decoration:underline">vikuna.ai/status/AR-2214</span><br><br>
+              — Team Vikuna · <span style="font-size:11px;color:#8a877d">consent &amp; data policy · DPDP notice · reply STOP to opt out</span>
+            </div>
+          </div>
+          <div id="commWa" class="hide">
+            <div class="wa-prev">
+              <div class="wa-name">Vikuna Careers ✓</div>
+              <div class="wa-bubble">
+                Hi Arjun — update on <b>Senior Backend Engineer</b>: our team would love to meet you. 🎉 Pick an interview slot here → vikuna.ai/slot/AR-2214<div class="wa-t">10:42 ✓✓</div>
+              </div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:10px">Meta-approved template · sent only after a <b>human</b> decision · rejection template is equally direct, with feedback themes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="map-tip" id="mapTip"></div>
+</div>
+<script>
+/* ================= DATA ================= */
+const AX_W = {skill:55, avail:25, exp:20};
+const C = [
+ {id:'meera', n:'Meera Krishnan', fit:84, ax:{skill:88,avail:82,exp:76}, src:'LinkedIn', state:'adv',
+  ev:{skill:[{l:'Node/TS · 7 yrs',q:'“Led the migration of a monolith to TypeScript services handling 40k rpm at Freshworks.”',s:'Chat · Q1 follow-up'},{l:'RLS in production',q:'“We isolated 300+ tenants with Postgres RLS; I wrote the policy test-harness myself.”',s:'Chat · Q2'},{l:'Distributed systems',q:'Resume: designed idempotent event pipeline on Kafka + outbox pattern.',s:'Resume · p2'}],
+      avail:[{l:'Notice 30 days',q:'“Serving notice already — I can join in 30 days.”',s:'Chat · Q3'}],
+      exp:[{l:'CTC ₹40 L — in band',q:'“Expecting around 40, flexible for the right problem.”',s:'Chat · Q4'},{l:'Chennai ✓',q:'Based in Chennai, prefers hybrid.',s:'Chat · Q5'}]}},
+ {id:'arjun', n:'Arjun Nair', fit:78, ax:{skill:80,avail:75,exp:74}, src:'Vara chat', state:'adv',
+  ev:{skill:[{l:'Node/TS · 5–8 yrs',q:'“5–8 yrs” — verified against GitHub: 6 yrs of consistent TS repos, incl. a pg-rls helper lib.',s:'Chat · Q1 + GitHub'},{l:'RLS in production',q:'“Yes, in production” — described policy-per-tenant pattern unprompted.',s:'Chat · Q2'}],
+      avail:[{l:'Notice 30 days',q:'“30 days.”',s:'Chat · Q3'}],
+      exp:[{l:'CTC ₹34–40 L — in band',q:'Selected ₹34–40 L band.',s:'Chat · Q4'},{l:'Remote (IST) ✓',q:'“Remote, IST hours.”',s:'Chat · Q5'}]}},
+ {id:'divya', n:'Divya Subramanian', fit:71, ax:{skill:74,avail:68,exp:66}, src:'Naukri', state:'adv'},
+ {id:'rahul', n:'Rahul Menon', fit:66, ax:{skill:76,avail:44,exp:62}, src:'Referral', state:'hand', flag:true,
+  ev:{skill:[{l:'Node/TS · claims 8 yrs',q:'Resume says 8 yrs Node. Chat answers on event-loop internals were shallow for that seniority.',s:'Consistency check'},{l:'Postgres — solid',q:'Good depth on indexing and query plans.',s:'Chat · Q2'}],
+      avail:[{l:'⚠ Notice mismatch',q:'Resume: “immediate joiner”. Chat: “60 days, maybe negotiable”. Flagged, not judged — ask him.',s:'Consistency check'}],
+      exp:[{l:'CTC ₹42 L — in band',q:'Selected ₹40–46 L, said 42.',s:'Chat · Q4'}]}},
+ {id:'karthik', n:'Karthik Iyer', fit:61, ax:{skill:64,avail:60,exp:54}, src:'LinkedIn', state:'hand'},
+ {id:'sneha', n:'Sneha Reddy', fit:55, ax:{skill:58,avail:52,exp:50}, src:'Vara chat', state:'hand'},
+ {id:'vikram', n:'Vikram Shah', fit:48, ax:{skill:50,avail:46,exp:44}, src:'Naukri', state:'hand'},
+ {id:'ananya', n:'Ananya Das', fit:41, ax:{skill:44,avail:38,exp:36}, src:'LinkedIn', state:'hand'},
+ {id:'priya', n:'Priya Venkat', fit:36, ax:{skill:38,avail:34,exp:32}, src:'Vara chat', state:'hand'},
+ {id:'sanjay', n:'Sanjay Kumar', fit:29, ax:{skill:72,avail:20,exp:58}, src:'Vara chat', state:'auto', rq:true,
+  rqWhy:'<b>1 point below your line.</b> Skill axis is strong (72) — RLS in production at a fintech. Score dragged down by availability: 90-day notice.',
+  ev:{skill:[{l:'RLS at fintech · strong',q:'“Built row-level tenant isolation for a lending platform — 120 tenants.”',s:'Chat · Q2'}],
+      avail:[{l:'Notice 90 days',q:'“90 days — my employer enforces it.” This alone cost 14 fitment points.',s:'Chat · Q3'}],
+      exp:[{l:'CTC ₹45 L — top of band',q:'Selected ₹40–46 L.',s:'Chat · Q4'}]}},
+ {id:'lakshmi', n:'Lakshmi Raman', fit:27, ax:{skill:68,avail:24,exp:44}, src:'Referral', state:'auto', rq:true,
+  rqWhy:'<b>Kafka + distributed systems depth</b> rare in this pool. Availability tripped her: 75-day notice — but chat says “negotiable to 45”.',
+  ev:{skill:[{l:'Kafka · deep',q:'“Ran a 40-partition Kafka setup with exactly-once semantics for payments.”',s:'Chat · Q1 follow-up'}],
+      avail:[{l:'Notice 75d → says 45 possible',q:'“Officially 75 days, but I can negotiate to 45 with buyout.” Model scored the official number; the human context is here.',s:'Chat · Q3'}],
+      exp:[{l:'CTC ₹38 L — in band',q:'Selected ₹34–40 L.',s:'Chat · Q4'}]}},
+ {id:'c12', n:'Aditya Rao', fit:26, ax:{skill:30,avail:24,exp:20}, src:'Naukri', state:'auto'},
+ {id:'c13', n:'Farah Khan', fit:24, ax:{skill:26,avail:22,exp:20}, src:'LinkedIn', state:'auto'},
+ {id:'c14', n:'Ganesh Pillai', fit:23, ax:{skill:24,avail:24,exp:18}, src:'Naukri', state:'auto'},
+ {id:'c15', n:'Ritu Sharma', fit:21, ax:{skill:22,avail:20,exp:18}, src:'Naukri', state:'auto'},
+ {id:'c16', n:'Mohan Babu', fit:19, ax:{skill:20,avail:18,exp:16}, src:'Walk-in', state:'auto'},
+ {id:'c17', n:'Sara Thomas', fit:18, ax:{skill:20,avail:16,exp:14}, src:'LinkedIn', state:'auto'},
+ {id:'c18', n:'Nikhil Jain', fit:17, ax:{skill:18,avail:16,exp:14}, src:'Naukri', state:'auto'},
+ {id:'c19', n:'Pooja Hegde', fit:16, ax:{skill:17,avail:15,exp:13}, src:'Naukri', state:'auto'},
+ {id:'c20', n:'Imran Ali', fit:15, ax:{skill:16,avail:14,exp:12}, src:'Vara chat', state:'auto'},
+ {id:'c21', n:'Deepa Nair', fit:14, ax:{skill:15,avail:13,exp:11}, src:'Naukri', state:'auto'},
+ {id:'c22', n:'Suresh Kannan', fit:13, ax:{skill:14,avail:12,exp:10}, src:'Walk-in', state:'auto'},
+ {id:'c23', n:'Anita George', fit:12, ax:{skill:13,avail:11,exp:9}, src:'Naukri', state:'auto'},
+ {id:'c24', n:'Ravi Teja', fit:11, ax:{skill:12,avail:10,exp:8}, src:'Naukri', state:'auto'},
+ {id:'c25', n:'Kavya Murthy', fit:10, ax:{skill:11,avail:9,exp:7}, src:'LinkedIn', state:'auto'},
+ {id:'c26', n:'Joseph Mathew', fit:9, ax:{skill:10,avail:8,exp:6}, src:'Naukri', state:'auto'},
+ {id:'c27', n:'Harsha Vardhan', fit:8, ax:{skill:9,avail:7,exp:5}, src:'Walk-in', state:'auto'},
+ {id:'c28', n:'Bhavana Iyer', fit:25, ax:{skill:28,avail:22,exp:20}, src:'LinkedIn', state:'auto'}
+];
+const $ = id => document.getElementById(id);
+let TH = 30;
+const genericEv = c => ({
+  skill:[{l:'Node/TS · self-reported',q:'Answers consistent with resume; no production RLS exposure described.',s:'Chat · Q1–Q2'}],
+  avail:[{l:'Notice within limit',q:'Within the 60-day knockout, scored on joining speed.',s:'Chat · Q3'}],
+  exp:[{l:'CTC in band',q:'Selected a band inside ₹32–45 L.',s:'Chat · Q4'}]
+});
+C.forEach(c => { if(!c.ev) c.ev = genericEv(c); });
+
+/* ================= SHELL ================= */
+let recView = 'pulse';
+document.querySelectorAll('#personaSwitch button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#personaSwitch button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  const p = b.dataset.persona;
+  $('recNav').style.visibility = p==='rec' ? 'visible' : 'hidden';
+  showView(p==='rec' ? recView : p==='hm' ? 'hm' : 'cand');
+  if(p==='cand') startCandChat();
+});
+document.querySelectorAll('#recNav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#recNav button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); recView = b.dataset.view; showView(recView);
+});
+function showView(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  $('view-'+v).classList.add('on');
+  if(v==='pulse') animatePulse();
+  if(v==='jd') animateInfoBars();
+}
+
+/* ================= PULSE ================= */
+const NARR = [
+ {t:'While you slept, '},{t:'42 people',c:'hl'},{t:' applied. '},
+ {t:'14',c:'hl'},{t:' tripped knockout rules — closed politely, reasons logged. I scored the remaining '},{t:'28',c:'hl'},{t:'. '},
+ {t:'9 crossed your 30% line',c:'hl'},{t:' and are ranked for handover. '},
+ {t:'Two sit just below it',c:'hl w'},{t:' — Sanjay and Lakshmi — strong signals the score couldn’t fully use. '},
+ {t:'Nobody is rejected: their timers run for 3 days, and every one of them is yours to hold or rescue.',c:'hl v'}
+];
+let narrDone = false;
+function typeNarr(){
+  if(narrDone) return; narrDone = true;
+  const el = $('narrText'); el.innerHTML='';
+  const caret = document.createElement('span'); caret.className='caret';
+  el.appendChild(caret);
+  let seg=0, ch=0, span=null;
+  (function tick(){
+    if(seg>=NARR.length){ caret.remove(); return; }
+    if(!span){ span=document.createElement('span'); if(NARR[seg].c) span.className=NARR[seg].c; el.insertBefore(span,caret); }
+    span.textContent += NARR[seg].t[ch++];
+    if(ch>=NARR[seg].t.length){ seg++; ch=0; span=null; }
+    setTimeout(tick, 14);
+  })();
+}
+const TILES = [
+ {v:42,l:'Applied',d:'+18 this week',c:'#3987e5'},
+ {v:14,l:'Knockouts (rule-based)',d:'0 model decisions',c:'#d03b3b'},
+ {v:28,l:'Scored by Vara',d:'evidence attached to every point',c:'#9085e9'},
+ {v:9,l:'Above your line',d:'ranked & ready',c:'#199e70'},
+ {v:19,l:'In closing window',d:'3-day timer · 2 rescue picks',c:'#fab219'}
+];
+$('tiles').innerHTML = TILES.map(t=>`<div class="tile" style="--tile-c:${t.c}"><div class="t-val num">${t.v}</div><div class="t-lbl">${t.l}</div><div class="t-delta" style="color:${t.c}">${t.d}</div></div>`).join('');
+const FUNNEL = [
+ {l:'Applied',v:42,c:'#3987e5'},{l:'Cleared knockouts',v:28,c:'#5598e7'},
+ {l:'Scored',v:28,c:'#9085e9'},{l:'Above line (30%)',v:9,c:'#199e70'},{l:'Advanced to HM',v:3,c:'#0ca30c'}
+];
+$('funnel').innerHTML = FUNNEL.map(f=>`<div class="funnel-row"><div class="f-lbl">${f.l}</div><div class="f-bar-wrap"><div class="f-bar" data-w="${f.v/42*100}" style="--f-c:${f.c}"></div></div><div class="f-num num">${f.v}</div></div>`).join('');
+function animatePulse(){
+  typeNarr();
+  setTimeout(()=>document.querySelectorAll('.f-bar').forEach(b=>b.style.width=b.dataset.w+'%'),150);
+}
+const FEED = [
+ {i:'🧲',t:'Screened <b>Sanjay Kumar</b> — 29%, one point below the line → held in rescue, not rejected.',d:'02:14'},
+ {i:'⚑',t:'Flagged <b>Rahul Menon</b> — notice period differs between resume and chat. Flagged, not judged.',d:'01:52'},
+ {i:'✉',t:'Sent <b>14 acknowledgements</b> (email + WhatsApp) — every applicant knows where they stand.',d:'23:40'},
+ {i:'📊',t:'Re-ranked handover queue after <b>Meera Krishnan</b>’s GitHub verification (+4 skill).',d:'23:05'},
+ {i:'🎨',t:'Drafted the <b>infographic JD</b> variant for LinkedIn — waiting in JD Studio.',d:'22:31'}
+];
+$('feed').innerHTML = FEED.map(f=>`<div class="feed-item"><div class="feed-ic">${f.i}</div><div><div>${f.t}</div><div class="f-t">${f.d}</div></div></div>`).join('');
+
+/* ================= JD STUDIO ================= */
+const MH = [
+ {n:'Node.js + TypeScript', w:40},
+ {n:'PostgreSQL + RLS', w:25},
+ {n:'Distributed systems', w:20},
+ {n:'Cloud deploy (AWS)', w:15}
+];
+function renderMH(){
+  $('mhRows').innerHTML = MH.map((m,i)=>`<div class="mh-row"><div class="mh-name">${m.n}${m.nice?' <span class="nice">nice-to-have</span>':''}</div><input type="range" min="0" max="50" value="${m.w}" data-i="${i}"><div class="mh-w num">${m.w} wt</div></div>`).join('');
+  document.querySelectorAll('#mhRows input').forEach(r => r.oninput = e => {
+    MH[e.target.dataset.i].w = +e.target.value;
+    e.target.parentElement.querySelector('.mh-w').textContent = e.target.value+' wt';
+    renderInfoBars();
+  });
+  renderInfoBars();
+}
+const KO = [
+ {t:'Notice ≤ 60 days', on:true},{t:'CTC ask ≤ ₹45 L', on:true},
+ {t:'Experience ≥ 5 yrs', on:true},{t:'Work authorization · India', on:true}
+];
+function renderKO(){
+  $('koWrap').innerHTML = KO.map((k,i)=>`<div class="ko ${k.on?'':'off'}" data-i="${i}">✕ <span>${k.t}</span><span class="ko-x">${k.on?'active':'off'}</span></div>`).join('');
+  document.querySelectorAll('.ko').forEach(el=>el.onclick=()=>{KO[el.dataset.i].on=!KO[el.dataset.i].on; renderKO();});
+}
+function renderInfoBars(){
+  const mx = Math.max(...MH.map(m=>m.w),1);
+  $('infoBars').innerHTML = '<h4 style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;font-weight:700">What we score you on</h4>'+
+    MH.map(m=>`<div class="ib-row"><div class="ib-name">${m.n}</div><div class="ib-track"><div class="ib-fill" data-w="${m.w/mx*100}"></div></div><div class="ib-pct num">${m.w}</div></div>`).join('');
+}
+function animateInfoBars(){ setTimeout(()=>document.querySelectorAll('.ib-fill').forEach(b=>b.style.width=b.dataset.w+'%'),200); }
+renderMH(); renderKO();
+
+document.querySelectorAll('[data-jdtab]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-jdtab]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  $('jdStruct').classList.toggle('hide', b.dataset.jdtab!=='struct');
+  $('jdInfo').classList.toggle('hide', b.dataset.jdtab!=='info');
+  if(b.dataset.jdtab==='info') animateInfoBars();
+});
+
+function jdMsg(who, html){
+  const m=document.createElement('div'); m.className='msg '+who;
+  m.innerHTML=(who==='vara'?'<div class="m-who">Vara</div>':'')+html;
+  $('jdChat').appendChild(m); $('jdChat').scrollTop=1e9;
+}
+jdMsg('user','Need a senior backend engineer for the VaNi platform — TypeScript, Postgres with RLS, someone who has run real distributed systems. Budget tops out at 45.');
+jdMsg('vara','Structured it → on the right. I set <b>Node/TS at weight 40</b> since it’s the daily language, and made notice ≤ 60 days a <b>knockout</b> (rule, not model — it can auto-close, and every close is logged with the rule that fired). Threshold starts at your Backend family default: <b>30%</b>. Tune anything.');
+const JD_QUICK = [
+ {t:'Add Kafka as nice-to-have', f(){ MH.push({n:'Kafka', w:8, nice:true}); renderMH();
+   jdMsg('vara','Added <b>Kafka (nice-to-have, wt 8)</b>. It can lift a score, never sink one below a must-have. Lakshmi Raman in your rescue queue would gain ~4 points — want me to re-score the pool?'); }},
+ {t:'Tighten notice knockout to 45 days', f(){ KO[0].t='Notice ≤ 45 days'; renderKO();
+   jdMsg('vara','Done — <b>notice ≤ 45 days</b>. Fair warning: 3 current handover candidates sit at 60 days. Knockouts only apply to <b>new</b> applicants unless you say otherwise. They stay.'); }},
+ {t:'Why is PostgreSQL weighted 25?', f(){
+   jdMsg('vara','Because your last two backend hires spent their first quarter inside RLS policies — and the two offers you lost cited it as the hard part of the interview. Evidence over instinct; drag the slider if you disagree.'); }},
+ {t:'Show the infographic', f(){ document.querySelector('[data-jdtab="info"]').click();
+   jdMsg('vara','That’s the LinkedIn/WhatsApp variant — same JD schema, different render. Candidates apply by chatting with me, no forms.'); }}
+];
+$('jdQuick').innerHTML = JD_QUICK.map((q,i)=>`<button class="quick" data-i="${i}">${q.t}</button>`).join('');
+document.querySelectorAll('#jdQuick .quick').forEach(b=>b.onclick=()=>{
+  jdMsg('user', JD_QUICK[b.dataset.i].t); b.disabled=true;
+  setTimeout(()=>JD_QUICK[b.dataset.i].f(), 500);
+});
+
+/* ================= PROBABILITY MAP ================= */
+for(let i=0;i<=100;i+=10) $('mapAxis').insertAdjacentHTML('beforeend',`<span class="tick" style="left:${i}%">${i}</span>`);
+let ACTIVE = C;
+function renderDots(){
+  document.querySelectorAll('#mapArea .dot').forEach(d=>d.remove());
+  const A=ACTIVE, dense=A.length>60;
+  $('mapArea').classList.toggle('dense', dense);
+  const gap = dense?1.15:3.1;
+  const lanes=[]; const sorted=[...A].sort((a,b)=>a.fit-b.fit);
+  sorted.forEach(c=>{
+    let li = lanes.findIndex(last => c.fit-last >= gap);
+    if(li<0){ li=lanes.length; lanes.push(c.fit); } else lanes[li]=c.fit;
+    c.lane=li;
+  });
+  const nl = lanes.length;
+  const laneH = Math.min(dense?16:38, 244/Math.max(nl,1));
+  A.forEach((c,i)=>{
+    const d=document.createElement('div');
+    d.className='dot'; d.id='dot-'+c.id;
+    d.style.left=c.fit+'%';
+    d.style.top=(133 - (nl-1)*laneH/2 + c.lane*laneH)+'px';
+    d.style.animationDelay=(i*(dense?4:30))+'ms';
+    d.onclick=()=>openProfile(c);
+    d.onmouseenter=e=>showTip(e,c); d.onmousemove=e=>moveTip(e); d.onmouseleave=hideTip;
+    $('mapArea').appendChild(d);
+  });
+}
+renderDots();
+/* --- stress-test mode: 250 applicants --- */
+let SIM=null;
+function buildSim(){
+  const fn=['Aarav','Vivaan','Aditya','Ishaan','Kabir','Ananya','Diya','Saanvi','Meher','Advika','Rohan','Kiara','Dev','Tara','Neel','Zoya','Arnav','Myra','Vihaan','Anika'];
+  const ln=['Sharma','Iyer','Menon','Reddy','Patel','Nair','Das','Khan','Singh','Rao','Pillai','Ghosh','Joshi','Kulkarni','Bose'];
+  const srcs=['Naukri','LinkedIn','Vara chat','Referral','Walk-in'];
+  const arr=[];
+  for(let i=0;i<250;i++){
+    const fit=Math.max(3,Math.min(96,Math.round(Math.pow(Math.random(),3.4)*93+3)));
+    const c={id:'sim'+i, n:fn[i%20]+' '+ln[(i*7)%15], fit,
+      ax:{skill:Math.min(99,fit+8+((i*13)%14)-7, 99), avail:Math.max(3,fit-4+((i*11)%12)-6), exp:Math.max(3,fit-1+((i*17)%10)-5)},
+      src:srcs[i%5], state:'x', flag:(i%29===0)};
+    c.ax.skill=Math.max(3,c.ax.skill); c.ev=genericEv(c);
+    arr.push(c);
+  }
+  arr.filter(c=>c.fit>=TH-4&&c.fit<TH).slice(0,4).forEach(c=>{ c.rq=true;
+    c.rqWhy=`<b>${TH-c.fit} point${TH-c.fit>1?'s':''} below the line.</b> Strongest axis ${AXN[Object.keys(c.ax).reduce((a,k)=>c.ax[k]>c.ax[a]?k:a,'skill')].toLowerCase()} ${Math.max(c.ax.skill,c.ax.avail,c.ax.exp)} — the composite hides it.`; });
+  return arr;
+}
+$('simBtn').onclick=()=>{
+  if(ACTIVE===C){ SIM=SIM||buildSim(); ACTIVE=SIM; $('simBtn').textContent='← Back to pilot · 28 applicants'; }
+  else { ACTIVE=C; $('simBtn').textContent='⚡ Stress test · 250 applicants'; }
+  renderDots(); recompute();
+};
+function dotClass(c){
+  if(c.state==='adv') return 'advanced';
+  if(c.state==='resc') return 'rescue';
+  if(c.state==='hold') return 'hold';
+  if(c.state==='closed') return 'closed';
+  return c.fit>=TH ? 'hand' : 'reject';
+}
+function recompute(){
+  ACTIVE.forEach(c=>{
+    if(c.state==='hold' && c.fit>=TH) c.state='hand';
+    if(!['adv','resc','hold','closed'].includes(c.state)) c.state = c.fit>=TH?'hand':'auto';
+  });
+  ACTIVE.forEach(c=>{
+    const d=$('dot-'+c.id); if(!d) return;
+    d.className='dot '+dotClass(c)+(c.flag?' flagged':'');
+  });
+  const autos=ACTIVE.filter(c=>c.state==='auto');
+  const held=ACTIVE.filter(c=>c.state==='hold');
+  const hand=ACTIVE.filter(c=>['hand','adv','resc'].includes(c.state));
+  flashNum('mcR', autos.length); flashNum('mcHold', held.length); flashNum('mcH', hand.length);
+  $('thPrevR').textContent=autos.length; $('thPrevH').textContent=hand.length;
+  $('navHandCnt').textContent=hand.length;
+  renderClosing(autos, held);
+}
+function flashNum(id,v){
+  const el=$(id); if(el.textContent!=String(v)){ el.textContent=v;
+    const mc=el.closest('.mc'); if(mc){ mc.classList.add('flash'); setTimeout(()=>mc.classList.remove('flash'),300); } }
+}
+const cdTxt = c => `${1+(c.fit%2)}d ${(c.fit*3)%24}h`;
+function whyShort(c){
+  const worst = Object.keys(c.ax).reduce((a,k)=>c.ax[k]<c.ax[a]?k:a,'skill');
+  return `weakest: ${AXN[worst].toLowerCase()} ${c.ax[worst]} — ${worst==='avail'?'joining speed':worst==='skill'?'must-have coverage':'band / location fit'}`;
+}
+function renderClosing(autos, held){
+  const rq=autos.filter(c=>c.rq);
+  $('rqChip').textContent = rq.length ? rq.length+' rescue pick'+(rq.length>1?'s':'') : 'no picks — but the list is yours';
+  $('rescueCards').innerHTML = rq.length ? rq.map(c=>`
+    <div class="rc" id="rc-${c.id}">
+      <div class="rc-top"><div><div class="rc-name">${c.n}</div><div style="font-size:10.5px;color:var(--muted)">${c.src} · Vara’s pick — worth a glance</div></div><div class="rc-fit num">${c.fit}%</div></div>
+      <div class="rc-why">${c.rqWhy||''}</div>
+      <div class="rc-foot"><div class="cd">message fires in <b>${cdTxt(c)}</b></div>
+        <div style="display:flex;gap:8px"><button class="btn sm ghost" onclick="profileById('${c.id}')">Profile</button>
+        <button class="btn sm" onclick="holdC('${c.id}')">Hold ⏸</button>
+        <button class="btn sm primary" onclick="rescueC('${c.id}')">Rescue ↑</button></div></div>
+    </div>`).join('')
+  : '<div style="padding:4px 2px 10px;color:var(--muted);font-size:12.5px">No picks right now — your line and Vara’s scoring agree. Every rescue or hold you make becomes a calibration signal.</div>';
+  const all=[...held,...autos].sort((a,b)=>b.fit-a.fit);
+  const rows=all.slice(0,30);
+  $('closeTable').innerHTML = (rows.length ? rows.map(c=>`
+    <div class="ct-row">
+      <div class="ct-n" onclick="profileById('${c.id}')">${c.n}${c.rq?' <span class="chip warn" style="font-size:9px;padding:1px 7px">pick</span>':''}<span class="src">${c.src}</span></div>
+      <div class="ct-fit num">${c.fit}%</div>
+      <div class="ct-cd ${c.state==='hold'?'frozen':''}">${c.state==='hold'?'<b>frozen</b> — held by you':'fires in <b>'+cdTxt(c)+'</b>'}</div>
+      <div class="ct-why">${whyShort(c)}</div>
+      <div class="ct-acts">
+        <button class="btn sm primary" onclick="rescueC('${c.id}')">Rescue ↑</button>
+        ${c.state==='hold'
+          ? `<button class="btn sm" onclick="resumeC('${c.id}')">Resume ▸</button>`
+          : `<button class="btn sm" onclick="holdC('${c.id}')">Hold ⏸</button>`}
+        <button class="btn sm danger" onclick="closeNowC('${c.id}')">Close now</button>
+      </div>
+    </div>`).join('')
+  : '<div style="padding:14px 20px;color:var(--muted);font-size:12.5px">Window is empty — everyone is above your line or already decided.</div>')
+  + (all.length>30 ? `<div style="padding:12px 20px;color:var(--muted);font-size:12px;border-top:1px solid var(--border)">…and <b style="color:var(--ink-2)">${all.length-30} more</b> in the window, ranked below. At volume you never read this list top-to-bottom — you act on <b style="color:var(--warn)">Vara’s picks</b>, search by name, or bulk-extend the timer. The message never fires without the window elapsing.</div>` : '');
+}
+const findA = id => ACTIVE.find(x=>x.id===id) || C.find(x=>x.id===id);
+window.rescueC = id=>{ const c=findA(id); c.state='resc';
+  const card=$('rc-'+id); if(card){ card.classList.add('gone'); setTimeout(recompute,320); } else recompute(); };
+window.holdC = id=>{ findA(id).state='hold'; recompute(); };
+window.resumeC = id=>{ findA(id).state='auto'; recompute(); };
+window.closeNowC = id=>{ const c=findA(id); c.state='closed'; c.rq=false; recompute(); };
+window.advanceC = id=>{ findA(id).state='adv'; recompute(); renderHM(); };
+function setTH(t, fromSlider){
+  TH=Math.round(Math.min(70,Math.max(10,t)));
+  if(!fromSlider) $('thSlider').value=TH;
+  $('thVal').textContent=TH; $('ctxTh').textContent=TH+'%'; $('thGrip').textContent=TH+'%';
+  $('thLine').style.left=TH+'%';
+  $('zoneR').style.width=TH+'%';
+  $('zoneH').style.left=TH+'%'; $('zoneH').style.width=(100-TH)+'%';
+  recompute();
+}
+$('thSlider').oninput=e=>setTH(+e.target.value,true);
+(function drag(){
+  const line=$('thLine'); let on=false;
+  line.addEventListener('pointerdown',e=>{ on=true; line.setPointerCapture(e.pointerId); e.preventDefault(); });
+  line.addEventListener('pointermove',e=>{ if(!on) return;
+    const r=$('mapArea').getBoundingClientRect();
+    setTH((e.clientX-r.left)/r.width*100);
+  });
+  line.addEventListener('pointerup',()=>on=false);
+})();
+const tip=$('mapTip');
+function showTip(e,c){ const st={auto:c.rq?'closing · Vara’s pick':'closing window','hold':'held by you',resc:'rescued by you',adv:'advanced to HM',closed:'closed by you',hand:'handover'}[c.state];
+  tip.innerHTML=`<b>${c.n}</b><div><span class="tt-fit num">${c.fit}% fit</span> · ${c.src}</div><div style="color:var(--muted);margin-top:3px">${st} ${c.flag?'· ⚑ consistency flag':''}</div>`; tip.style.opacity=1; moveTip(e); }
+function moveTip(e){ tip.style.left=Math.min(e.clientX+16,innerWidth-260)+'px'; tip.style.top=(e.clientY+14)+'px'; }
+function hideTip(){ tip.style.opacity=0; }
+
+/* ================= PROFILE PAGE ================= */
+const AXN={skill:'Skill fit',avail:'Availability',exp:'Expectations'};
+const AXC={skill:'#3987e5',avail:'#199e70',exp:'#d55181'};
+const PF={
+ meera:{file:'meera_krishnan_cv.docx',
+  stints:[{dur:'4y 2m',co:'Freshworks',role:'Senior Engineer · Node/TS, 40k rpm services'},{dur:'2y 11m',co:'Zoho',role:'Engineer · Postgres, internal platform'},{dur:'1y 0m',co:'TCS',role:'Graduate engineer'}],
+  gh:{langs:[['TypeScript',58,'#3987e5'],['SQL',22,'#199e70'],['Other',20,'#52514e']],body:'Active 6+ yrs · notable: <b>rls-testkit</b> ★86 — a Postgres RLS policy test harness.',tells:'The RLS claim isn’t just interview talk — <b>she maintains tooling for it.</b> Strongest skill corroboration in this pool.'},
+  blog:{body:'4 posts on multi-tenant isolation patterns; clear, structured writing.',tells:'Communicates architecture well — useful for a platform role that documents as it builds.'},
+  hist:[{t:'First contact',d:'No previous applications to any Vikuna role. Entered talent pool 14 Aug 2026 with consent (12-month retention).'}]},
+ arjun:{file:'arjun_nair_cv.pdf',
+  stints:[{dur:'3y 4m',co:'Chargebee',role:'Backend Engineer · Node/TS, billing infra'},{dur:'2y 8m',co:'Startup (acquired)',role:'Founding engineer · Postgres, AWS'}],
+  gh:{langs:[['TypeScript',62,'#3987e5'],['Go',18,'#199e70'],['Other',20,'#52514e']],body:'Active 6 yrs · notable: <b>pg-rls-helper</b> ★214 · steady commit cadence, real issues answered.',tells:'Self-reported “5–8 yrs” <b>verified against public work</b> — the score’s skill axis leaned on this, not the resume adjectives.'},
+  blog:{body:'3 posts on distributed transactions and outbox patterns.',tells:'Thinks in failure modes — matches the distributed-systems must-have (wt 20).'},
+  hist:[{t:'First contact',d:'No previous applications. Entered talent pool 14 Aug 2026 with consent (12-month retention).'}]},
+ rahul:{file:'rahul_menon_cv.docx',
+  stints:[{dur:'2y 0m',co:'Infosys',role:'Senior Systems Engineer'},{dur:'7 mo',co:'— gap —',role:'Unexplained gap · Jan–Jul 2024 · worth one question, not a judgement',gap:true},{dur:'3y 2m',co:'Cognizant',role:'Developer · Java → Node'},{dur:'1y 6m',co:'Local agency',role:'Web developer'}],
+  gh:{langs:[['JavaScript',70,'#eda100'],['Other',30,'#52514e']],body:'2 public repos, last activity 14 months ago.',tells:'Public work <b>doesn’t corroborate the 8-yr Node claim</b> — consistent with the shallow event-loop answers. Ask, don’t assume: plenty of strong engineers have empty GitHubs.'},
+  hist:[{t:'First contact',d:'No previous applications. Referral source: employee referral (Nikhil).'}]},
+ sanjay:{file:'sanjay_kumar_cv.docx',
+  stints:[{dur:'3y 6m',co:'Lending fintech',role:'Backend Engineer · RLS tenant isolation, 120 tenants'},{dur:'2y 4m',co:'Wipro',role:'Developer'}],
+  gh:{langs:[['TypeScript',44,'#3987e5'],['Python',36,'#9085e9'],['Other',20,'#52514e']],body:'Moderate activity; fintech work is private (expected).',tells:'Skill 72 is real; the 29% composite is <b>pure availability drag</b> (90-day notice). If the timeline can wait, he can’t be ignored.'},
+  hist:[{t:'First contact',d:'Entered talent pool 14 Aug 2026. If closed: strong future-fit tag → resurfaces automatically on the next backend JD.'}]},
+ lakshmi:{file:'lakshmi_raman_linkedin.pdf',
+  stints:[{dur:'4y 0m',co:'PayU',role:'Engineer · Kafka payments pipeline, exactly-once'},{dur:'2y 2m',co:'Accenture',role:'Analyst → developer'}],
+  gh:{langs:[['Java',52,'#eb6834'],['TypeScript',28,'#3987e5'],['Other',20,'#52514e']],body:'Kafka-adjacent repos; JVM-heavy history, TS is recent.',tells:'Rare <b>Kafka depth</b> for this pool. Score can’t see “negotiable to 45 days” — that context lives here, for a human.'},
+  hist:[{t:'Platform Engineer · applied Mar 2026',d:'Scored 31% under config v1.1 · interviewed · not selected (notice period, same story). <b>Silver medalist</b> — Vara resurfaced her automatically for this JD.'},{t:'Talent pool',d:'Consent renewed May 2026 · retention to May 2027.'}]}
+};
+const pfGeneric = c => ({file:c.n.toLowerCase().split(' ')[0]+'_cv.docx',
+  stints:[{dur:'2y 3m',co:'Current employer',role:'Backend developer'},{dur:'1y 9m',co:'Previous company',role:'Engineer'}],
+  hist:[{t:'First contact',d:'No previous applications. Entered talent pool 14 Aug 2026 with consent (12-month retention).'}]});
+let lastView='map';
+window.profileById=id=>openProfile(findA(id));
+window.pfAct=(act,id)=>{ if(act==='adv') advanceC(id); if(act==='hold') holdC(id); if(act==='close') closeNowC(id); backFromProfile(); };
+window.backFromProfile=()=>showView(lastView);
+window.pfTab=(k)=>{
+  document.querySelectorAll('.pf-tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===k));
+  document.querySelectorAll('.pf-c').forEach(d=>d.classList.toggle('hide',d.dataset.t!==k));
+  if(k==='ov') setTimeout(()=>document.querySelectorAll('.axis-fill').forEach(b=>b.style.width=b.dataset.w+'%'),60);
+};
+window.openProfile = c=>{
+  const p = Object.assign(pfGeneric(c), PF[c.id]||{});
+  lastView = recView;
+  const first=c.n.split(' ')[0];
+  const q = s => (s.match(/“([^”]+)”/)||[,'Answered in chat — within the JD’s limits.'])[1];
+  $('view-profile').innerHTML=`
+  <div class="pf-top">
+    <button class="pf-back" onclick="backFromProfile()">←</button>
+    <div><h2>${c.n} ${c.flag?'<span class="chip warn" style="vertical-align:middle;margin-left:8px">⚑ consistency flag</span>':''}</h2>
+      <div class="pf-meta">${c.src} · applied 14 Aug · ${p.file} · scored by config v1.3 · ${ {auto:'closing window — timer live',hold:'held by you — timer frozen',resc:'rescued by you',adv:'advanced to HM',hand:'handover queue',closed:'closed'}[c.state] }</div></div>
+    <div class="pf-fit"><b class="num">${c.fit}%</b><div>fitment</div></div>
+    <div class="pf-actions">
+      <button class="btn primary" onclick="pfAct('adv','${c.id}')">Advance →</button>
+      <button class="btn" onclick="pfAct('hold','${c.id}')">Hold ⏸</button>
+      <button class="btn danger" onclick="pfAct('close','${c.id}')">Close politely</button>
+    </div>
+  </div>
+  <div class="pf-tabs">
+    <button class="on" data-t="ov" onclick="pfTab('ov')">Overview</button>
+    <button data-t="cv" onclick="pfTab('cv')">Resume</button>
+    <button data-t="sig" onclick="pfTab('sig')">Signals</button>
+    <button data-t="chat" onclick="pfTab('chat')">Conversation</button>
+    <button data-t="hist" onclick="pfTab('hist')">History</button>
+  </div>
+
+  <div class="pf-c" data-t="ov">
+    ${c.flag?`<div class="flag-box"><b>⚑ Consistency flag — for your eyes, not the score.</b> Resume says "immediate joiner"; chat says "60 days, maybe negotiable". Vara flags contradictions, it doesn’t punish them. Ask him.</div>`:''}
+    <div class="pf-grid2">
+      <div class="panel" style="padding:20px 22px">
+      ${Object.keys(AXN).map(k=>`
+        <div class="axis-block">
+          <div class="axis-top"><span class="ax-name">${AXN[k]} <span class="ax-w">· weight ${AX_W[k]}</span></span><span class="ax-score num" style="color:${AXC[k]}">${c.ax[k]}</span></div>
+          <div class="axis-bar"><div class="axis-fill" data-w="${c.ax[k]}" style="background:${AXC[k]}"></div></div>
+          <div class="ev-chips">${c.ev[k].map((e,i)=>`<button class="ev" data-k="${k}" data-i="${i}">${e.l}</button>`).join('')}</div>
+          <div class="ev-quote" id="eq-${k}"></div>
+        </div>`).join('')}
+      <div style="font-size:11px;color:var(--muted)">Every component cites its source — nothing here is an adjective. Vara ranks; <b>you</b> decide.</div>
+      </div>
+      <div style="display:grid;gap:16px;align-content:start">
+        <div class="panel" style="padding:18px 20px">
+          <h4 style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:700">Knockouts — passed 4 / 4</h4>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span class="chip good">✓ Notice ≤ 60d</span><span class="chip good">✓ CTC ≤ ₹45 L</span>
+            <span class="chip good">✓ 5+ yrs</span><span class="chip good">✓ Work auth India</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:10px">Rules ran before any scoring. Had one failed, this profile would show exactly which rule and the answer that tripped it.</div>
+        </div>
+        <div class="panel" style="padding:18px 20px">
+          <h4 style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:700">Vara’s one-liner</h4>
+          <div style="font-size:13px;line-height:1.65">${c.rqWhy||('Ranked by evidence across three axes — strongest: '+AXN[Object.keys(c.ax).reduce((a,k)=>c.ax[k]>c.ax[a]?k:a,'skill')].toLowerCase()+'. Open Signals for corroboration.')}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pf-c hide" data-t="cv">
+    <div class="pf-grid2">
+      <div class="paper">
+        <h3>${c.n}</h3>
+        <div class="p-sub">${p.stints[0].role} · Chennai · ${first.toLowerCase()}@mail.com</div>
+        <h5>Experience</h5>
+        ${p.stints.filter(s=>!s.gap).map(s=>`<div class="p-job"><b>${s.co} — ${s.dur}</b><span>${s.role}</span></div>`).join('')}
+        <h5>Education</h5>
+        <div class="p-job"><b>B.E. Computer Science</b><span>Anna University</span></div>
+        <div style="margin-top:14px;font-size:10px;color:#8a877d">— rendered from the original ${p.file} · original stored, untouched —</div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>Parsed &amp; normalized by Vara</h3><span class="sub">stint lengths &amp; gaps made visible</span></div>
+        <div style="padding:8px 20px">
+          ${p.stints.map(s=>`<div class="stint ${s.gap?'gap':''}"><div class="st-dur">${s.dur}</div><div><div class="st-co">${s.co}</div><div class="st-role">${s.role}</div></div></div>`).join('')}
+        </div>
+        <div class="provenance" style="padding:12px 20px;border-top:1px solid var(--border)">
+          <span class="chip acc">${p.file.endsWith('.pdf')?'pdf':'docx'} adapter</span>
+          <span class="chip vio">extract v2.1</span>
+          <span class="chip good">staging → validated → committed</span>
+          <span>field confidence 96% · same pipeline spine as CSV import — new adapter, one extraction stage</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pf-c hide" data-t="sig">
+    <div class="sig-grid">
+      ${p.gh?`<div class="panel sig">
+        <div class="sg-h"><span class="sg-ic">⌥</span>GitHub <span style="margin-left:auto" class="chip acc">public API · deterministic</span></div>
+        <div class="lang-bar">${p.gh.langs.map(l=>`<span style="width:${l[1]}%;background:${l[2]}" title="${l[0]}"></span>`).join('')}</div>
+        <div style="display:flex;gap:12px;font-size:10.5px;color:var(--muted);margin-bottom:8px">${p.gh.langs.map(l=>`<span>${l[0]} ${l[1]}%</span>`).join('')}</div>
+        <div class="sg-body">${p.gh.body}</div>
+        <div class="tells"><b>What this tells us:</b> ${p.gh.tells}</div>
+      </div>`:''}
+      ${p.blog?`<div class="panel sig">
+        <div class="sg-h"><span class="sg-ic">✎</span>Blog / writing <span style="margin-left:auto" class="chip vio">fetched &amp; summarized</span></div>
+        <div class="sg-body">${p.blog.body}</div>
+        <div class="tells"><b>What this tells us:</b> ${p.blog.tells}</div>
+      </div>`:''}
+      <div class="panel sig">
+        <div class="sg-h"><span class="sg-ic">in</span>LinkedIn <span style="margin-left:auto" class="chip">candidate-provided export</span></div>
+        <div class="sg-body">${p.file.includes('linkedin')?'Profile arrived as a LinkedIn PDF export — parsed through the same doc adapter.':'Candidate shared a URL; Vara asked for the PDF export in chat (no scraping — candidate-consented data only). '+(c.id==='rahul'?'Not yet provided.':'Received &amp; parsed.')}</div>
+        <div class="tells"><b>Why no scraping:</b> consent-clean data survives audits; scraped data doesn’t.</div>
+      </div>
+      ${!p.gh?`<div class="panel sig"><div class="sg-h"><span class="sg-ic">∅</span>No public signals</div><div class="sg-body">Resume-only candidate — common outside tech roles. The score simply uses fewer corroboration sources; it does not penalize absence.</div></div>`:''}
+    </div>
+  </div>
+
+  <div class="pf-c hide" data-t="chat">
+    <div class="panel" style="max-width:760px">
+      <div class="panel-h"><h3>Apply conversation — full transcript</h3><span class="sub">every answer maps to a score component</span></div>
+      <div style="padding:14px 20px">
+        <div class="tr-line"><span class="who v">Vara</span>Hi ${first} — Senior Backend Engineer, ~4 minutes, no forms. Ready?</div>
+        <div class="tr-line"><span class="who c">${first}</span>Ready.</div>
+        <div class="tr-line"><span class="who v">Vara</span>Years with Node.js + TypeScript in production?</div>
+        <div class="tr-line"><span class="who c">${first}</span>${q(c.ev.skill[0].q)}</div>
+        <div class="tr-line"><span class="who v">Vara</span>PostgreSQL row-level security — lived it in production?</div>
+        <div class="tr-line"><span class="who c">${first}</span>${q((c.ev.skill[1]||c.ev.skill[0]).q)}</div>
+        <div class="tr-line"><span class="who v">Vara</span>Notice period?</div>
+        <div class="tr-line"><span class="who c">${first}</span>${q(c.ev.avail[0].q)}</div>
+        <div class="tr-line"><span class="who v">Vara</span>Expected CTC? Band is ₹32–45 L — you see it, no games.</div>
+        <div class="tr-line"><span class="who c">${first}</span>${q(c.ev.exp[0].q)}</div>
+        <div class="tr-line"><span class="who v">Vara</span>Thanks — resume or a link that shows your work?</div>
+        <div class="tr-line"><span class="who c">${first}</span>📎 ${p.file}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pf-c hide" data-t="hist">
+    <div class="pf-grid2">
+      <div>
+        <h4 style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:700">Applications &amp; talent pool</h4>
+        ${p.hist.map(h=>`<div class="hist-app"><div class="ha-t"><span>${h.t}</span></div><div class="ha-d">${h.d}</div></div>`).join('')}
+        <div class="hist-app" style="border:1px dashed var(--border-strong);background:transparent">
+          <div class="ha-t"><span>Data rights</span></div>
+          <div class="ha-d">Consent captured in chat · retention 12 months → automated re-consent (“may we keep you in our pool?”) · “delete my data” honoured from chat · audit trail survives purge, PII-redacted.</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>Audit trail</h3><span class="sub">every state change, who &amp; when — this is the profile</span></div>
+        <div>
+          <div class="audit-row"><span class="au-t">14 Aug 21:32</span><span class="au-w chip acc">chat</span><span>Applied via Vara chat · consent recorded</span></div>
+          <div class="audit-row"><span class="au-t">14 Aug 21:33</span><span class="au-w chip">rules</span><span>Knockouts evaluated: 4/4 passed (deterministic)</span></div>
+          <div class="audit-row"><span class="au-t">14 Aug 21:36</span><span class="au-w chip vio">score</span><span>Scored ${c.fit}% under config v1.3 · snapshot stored with evidence</span></div>
+          ${c.flag?'<div class="audit-row"><span class="au-t">15 Aug 01:52</span><span class="au-w chip warn">flag</span><span>Consistency flag raised: notice period, resume vs chat</span></div>':''}
+          <div class="audit-row"><span class="au-t">14 Aug 21:36</span><span class="au-w chip">state</span><span>${c.fit>=30?'Ranked for handover':'Entered closing window · 3-day timer started'}</span></div>
+          <div class="audit-row"><span class="au-t">14 Aug 21:37</span><span class="au-w chip good">comms</span><span>Acknowledgement sent · email + WhatsApp (template ACK-01)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  showView('profile');
+  setTimeout(()=>document.querySelectorAll('.axis-fill').forEach(b=>b.style.width=b.dataset.w+'%'),80);
+  document.querySelectorAll('#view-profile .ev').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k, e=c.ev[k][b.dataset.i], qd=$('eq-'+k);
+    const was=b.classList.contains('open');
+    b.parentElement.querySelectorAll('.ev').forEach(x=>x.classList.remove('open'));
+    if(was){ qd.classList.remove('on'); return; }
+    b.classList.add('open');
+    qd.innerHTML=`${e.q}<div class="eq-src">— ${e.s}</div>`; qd.classList.add('on');
+  });
+};
+
+/* ================= CALIBRATION ================= */
+$('vlog').innerHTML=[
+ {v:'v1.3',d:'Threshold 32 → 30 · Backend Engineering',t:'approved by Charan · 12 Jul 2026'},
+ {v:'v1.2',d:'Availability weight 20 → 25 — three offers lost to notice periods',t:'approved by Charan · 28 Jun 2026'},
+ {v:'v1.1',d:'Initial scoring config · axes 55/25/20 · threshold 32',t:'seeded from JD Studio · 9 Jun 2026'}
+].map(r=>`<div class="vlog-row"><div class="vv">${r.v}</div><div><div class="vd">${r.d}</div><div class="vt">${r.t}</div></div></div>`).join('');
+$('recoApprove').onclick=()=>{
+  setTH(27);
+  $('recoApprove').textContent='Approved · config v1.4'; $('recoApprove').disabled=true; $('recoApprove').style.opacity=.55;
+  $('recoDecline').style.display='none';
+  $('vlog').insertAdjacentHTML('afterbegin',`<div class="vlog-row" style="background:rgba(144,133,233,.06)"><div class="vv">v1.4</div><div><div class="vd">Threshold 30 → 27 · Backend Engineering — approved just now</div><div class="vt">approved by you · 16 Aug 2026 · watch the Probability Map: Sanjay &amp; Lakshmi just crossed the line</div></div></div>`);
+};
+$('recoDecline').onclick=()=>{
+  $('recoDecline').textContent='Declined — logged'; $('recoDecline').disabled=true;
+  $('recoApprove').style.opacity=.4;
+};
+
+/* ================= HM QUEUE ================= */
+const hmCands=()=>C.filter(c=>c.state==='adv').sort((a,b)=>b.fit-a.fit);
+let hmIdx=0, hmVerdicts=[];
+function renderHM(){
+  const list=hmCands();
+  $('hmStack').innerHTML=list.map((c,i)=>`
+   <div class="hm-card ${i<hmIdx?'hidden':i===hmIdx?'':i===hmIdx+1?'behind1':'behind2'}" id="hmc-${i}">
+     <div class="hm-top">
+       <div><div class="hm-rank">RANK ${i+1} OF ${list.length}</div><h3>${c.n}</h3><div style="font-size:12px;color:var(--muted)">${c.src} · applied 14 Aug</div></div>
+       <div class="hm-fitbig"><b class="num">${c.fit}%</b><div>fitment</div></div>
+     </div>
+     <div class="hm-axes">${Object.keys(AXN).map(k=>`<div class="hm-ax"><div class="a-k">${AXN[k].toUpperCase()}</div><div class="a-v num" style="color:${AXC[k]}">${c.ax[k]}</div></div>`).join('')}</div>
+     <div class="hm-ev">Why ${c.n.split(' ')[0]} is here — Vara’s evidence, not adjectives:
+       ${c.ev.skill.slice(0,2).map(e=>`<li><b>${e.l}.</b> ${e.q}</li>`).join('')}
+       <li><b>${c.ev.avail[0].l}.</b> ${c.ev.avail[0].q}</li>
+       <li><b>${c.ev.exp[0].l}.</b> ${c.ev.exp[0].q}</li>
+     </div>
+     <div class="hm-actions">
+       <button class="btn danger" onclick="hmVerdict(${i},'pass')">Pass — send back with reason</button>
+       <button class="btn primary" onclick="hmVerdict(${i},'int')">Interview →</button>
+     </div>
+   </div>`).join('');
+  if(hmIdx>=list.length){ $('hmDone').style.display='block'; $('hmNote').style.display='none';
+    $('hmDoneTxt').textContent=`${hmVerdicts.filter(v=>v==='int').length} interview invite(s) queued · ${hmVerdicts.filter(v=>v==='pass').length} returned to recruiter. Your verdicts just became calibration data.`; }
+  else { $('hmDone').style.display='none'; $('hmNote').style.display='block'; }
+}
+window.hmVerdict=(i,v)=>{
+  hmVerdicts.push(v);
+  const el=$('hmc-'+i); el.classList.add(v==='int'?'exit-r':'exit-l');
+  setTimeout(()=>{ hmIdx++; renderHM(); },420);
+};
+renderHM();
+
+/* ================= CANDIDATE CHAT ================= */
+const TL=[
+ {t:'Applied via Vara chat',d:'14 Aug, 21:32 · acknowledgement sent on email + WhatsApp'},
+ {t:'Screened by Vara',d:'Scored against the JD you saw — every question you answered maps to a score component'},
+ {t:'Human review',d:'A recruiter — not a bot — makes the call. Vara only ranks.'},
+ {t:'Decision · within 3 working days',d:'Either way, you’ll hear. Rejections include feedback themes, not silence.'}
+];
+function renderTL(stage){
+  $('candTimeline').innerHTML=TL.map((s,i)=>`<div class="tl-item ${i<stage?'done':i===stage?'now':''}"><div class="tl-ic">${i<stage?'✓':''}</div><div><div class="tl-t">${s.t}</div><div class="tl-d">${s.d}</div></div></div>`).join('');
+}
+renderTL(0);
+$('tabEmail').onclick=()=>{ $('commEmail').classList.remove('hide'); $('commWa').classList.add('hide'); $('tabEmail').classList.remove('ghost'); $('tabWa').classList.add('ghost'); };
+$('tabWa').onclick=()=>{ $('commWa').classList.remove('hide'); $('commEmail').classList.add('hide'); $('tabWa').classList.remove('ghost'); $('tabEmail').classList.add('ghost'); };
+
+const SCRIPT=[
+ {v:'Hi, I’m Vara 👋 — Vikuna’s talent agent for the <b>Senior Backend Engineer</b> role. No forms, just this chat — about 4 minutes. I’ll be straight with you about fit, and you’ll never get silence from us. Ready?',
+  r:[{t:'Let’s do it',s:5}]},
+ {v:'How many years have you spent with <b>Node.js + TypeScript</b> in production?',
+  r:[{t:'< 3 yrs',s:10},{t:'3–5 yrs',s:15},{t:'5–8 yrs',s:20},{t:'8+ yrs',s:20}]},
+ {v:'<b>PostgreSQL row-level security</b> — have you lived it in production? (It’s the heart of this role — weighted 25 in the JD.)',
+  r:[{t:'Yes, in production',s:20},{t:'Played with it',s:12},{t:'Not yet',s:6}]},
+ {v:'What’s your notice period?',
+  r:[{t:'Immediate',s:15},{t:'30 days',s:15},{t:'60 days',s:12},
+     {t:'90 days',s:5,react:'Being straight with you: this role needs joining within <b>60 days</b> — it’s a hard rule, not a score. If your notice is negotiable, tell me and I’ll record the negotiable number instead. 🤝'}]},
+ {v:'Expected annual CTC? The band for this role is <b>₹32–45 L</b> — no games, you know it up front.',
+  r:[{t:'₹28–34 L',s:15},{t:'₹34–40 L',s:15},{t:'₹40–46 L',s:12},
+     {t:'Above ₹46 L',s:5,react:'That’s above this role’s band — recorded honestly. If shortlisted, a human can still discuss it; I don’t hide anything from either side.'}]},
+ {v:'Last one — drop your <b>resume</b>, or a GitHub/LinkedIn if that shows you better.',
+  r:[{t:'📎 arjun_nair_cv.pdf',s:20},{t:'🔗 github.com/arjunnair',s:20}]},
+ {v:'Done, Arjun 🙏 Your application ID is <b>AR-2214</b>.<br><br>What happens now: I score you against the JD you just saw — every answer maps to a score component you could ask me about. A <b>human</b> makes every decision. You⇒ hear within <b>3 working days, whatever the outcome</b> — on email and WhatsApp.<br><br><span style="color:var(--muted);font-size:11px">By continuing you consented to processing under our DPDP notice · data kept 12 months · say "delete my data" anytime.</span>',
+  r:[], end:true}
+];
+let candStep=-1, strength=0, chatStarted=false;
+function phMsg(who,html){ const m=document.createElement('div'); m.className='msg '+who; m.innerHTML=html; $('phChat').appendChild(m); $('phChat').scrollTop=1e9; return m; }
+function phTyping(cb){
+  const t=phMsg('vara','<span class="typing"><i></i><i></i><i></i></span>'); t.classList.add('typing-wrap');
+  setTimeout(()=>{ t.remove(); cb(); }, 750);
+}
+function candNext(){
+  candStep++;
+  const s=SCRIPT[candStep]; if(!s) return;
+  phTyping(()=>{
+    phMsg('vara',s.v.replace('⇒','’ll'));
+    if(s.end){ $('phQuick').innerHTML='<div style="font-size:11px;color:var(--muted);padding:6px 2px">Application submitted · status is live on the right →</div>'; renderTL(1);
+      setTimeout(()=>renderTL(2), 1600); return; }
+    $('phQuick').innerHTML=s.r.map((r,i)=>`<button class="quick" data-i="${i}">${r.t}</button>`).join('');
+    document.querySelectorAll('#phQuick .quick').forEach(b=>b.onclick=()=>{
+      const r=s.r[b.dataset.i];
+      phMsg('user',r.t); $('phQuick').innerHTML='';
+      strength=Math.min(100,strength+r.s);
+      $('strengthFill').style.width=strength+'%'; $('strengthPct').textContent=strength+'%';
+      if(r.react){ phTyping(()=>{ phMsg('vara',r.react); setTimeout(candNext,900); }); }
+      else setTimeout(candNext,450);
+    });
+  });
+}
+function startCandChat(){ if(chatStarted) return; chatStarted=true; setTimeout(candNext,500); }
+
+/* ================= INIT ================= */
+setTH(30);
+animatePulse();
+</script>
+<script>
+/* ── Autoplay (?autoplay=1) — the landing page's living demo ───────────────
+   Charan's sketch, 2026-08-17: the stage is TWO HALVES with a line between.
+   Left — the candidate's chatbot experience, playing itself. Right — what
+   the TALENT TEAM sees for the same candidate: first the JD the questions
+   come from, then the probability map the score lands on, then the pulse
+   briefing. All panels are the prototype's own views, moved — not copies.
+
+   The chat clicks the same quick-reply buttons a person would, deliberately
+   picking the 90-day notice so Vara's honest hard-rule push-back is in every
+   loop. At the end it waits, then reloads: it plays for as long as the page
+   is open. */
+(function(){
+  if (new URLSearchParams(location.search).get('autoplay') !== '1') return;
+
+  var css = document.createElement('style');
+  css.textContent = [
+    '.topbar,#recNav{display:none!important}',
+    '.ap-stage{display:grid;grid-template-columns:390px 1px 1fr;gap:26px;padding:22px 26px;align-items:start;min-height:100vh;box-sizing:border-box}',
+    '.ap-col{min-width:0}',
+    '.ap-divider{background:var(--border-strong);align-self:stretch}',
+    '.ap-h{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}',
+    '.ap-sub{font-size:13px;color:var(--ink-2);margin:0 0 14px;min-height:34px}',
+    '.ap-right{position:relative}.ap-right .view{display:none}.ap-right .view.on{display:block;position:static!important;inset:auto!important;width:auto!important;padding:0!important;animation:none!important}',
+    '.ap-right .view{padding:0!important}',
+  ].join('');
+  document.head.appendChild(css);
+
+  var stage = document.createElement('div');
+  stage.className = 'ap-stage';
+  stage.innerHTML =
+    '<div class="ap-col"><p class="ap-h">The candidate</p>' +
+    '<p class="ap-sub">On your website. A conversation, not a form — rules stated up front.</p>' +
+    '<div id="apPhone"></div></div>' +
+    '<div class="ap-divider"></div>' +
+    '<div class="ap-col ap-right"><p class="ap-h">Your talent team</p>' +
+    '<p class="ap-sub" id="apPhase"></p><div id="apViews"></div></div>';
+  document.body.appendChild(stage);
+
+  /* Move the real elements — no copies, no drift. */
+  document.getElementById('apPhone').appendChild(document.querySelector('.phone'));
+  var right = document.getElementById('apViews');
+  ['view-jd', 'view-map', 'view-pulse'].forEach(function(id){
+    right.appendChild(document.getElementById(id));
+  });
+  /* Everything needed has been moved into the stage — hide the rest of the
+     original shell wholesale, whatever wraps it. */
+  Array.prototype.forEach.call(document.body.children, function(el){
+    if (el !== stage && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE') el.style.display = 'none';
+  });
+
+  function phase(id, label){
+    ['view-jd','view-map','view-pulse'].forEach(function(v){
+      document.getElementById(v).classList.toggle('on', v === id);
+    });
+    document.getElementById('apPhase').textContent = label;
+    if (id === 'view-jd') animateInfoBars();
+    if (id === 'view-pulse') animatePulse();
+  }
+
+  /* Phase 1 — while the chat runs: the JD the questions come from. */
+  phase('view-jd', 'The JD this conversation is built from — every question maps to a must-have or a knockout rule.');
+  startCandChat();
+
+  var PICKS = [0, 1, 0, 3, 1, 0];
+  var pickIdx = 0;
+  var busy = false;
+  var done = false;
+
+  setInterval(function(){
+    if (busy || done) return;
+    var quick = document.getElementById('phQuick');
+    if (!quick) return;
+    var buttons = quick.querySelectorAll('.quick');
+    if (buttons.length) {
+      busy = true;
+      var b = buttons[Math.min(PICKS[pickIdx] !== undefined ? PICKS[pickIdx] : 0, buttons.length - 1)];
+      pickIdx++;
+      setTimeout(function(){ b.click(); busy = false; }, 1100);
+    } else if (quick.textContent.indexOf('submitted') !== -1) {
+      done = true;
+      /* Phase 2 — the application lands on the team's probability map. */
+      setTimeout(function(){
+        phase('view-map', 'Scored with evidence, placed on the map. The threshold line is your policy — drag it, and nothing below it is auto-rejected.');
+      }, 2500);
+      /* Phase 3 — the next-morning pulse briefing. */
+      setTimeout(function(){
+        phase('view-pulse', 'Next morning: Vara reports what it did — who applied, who cleared rules, who is ranked. Every decision left to a human.');
+      }, 11000);
+      setTimeout(function(){ location.reload(); }, 20000);
+    }
+  }, 600);
+})();
+</script>
+</body>
+</html>

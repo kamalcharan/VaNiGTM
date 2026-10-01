@@ -1,0 +1,182 @@
+/* Step CONTENT only. The page frame — stepper, artefact rail, findings rail —
+ * belongs to platform/pathway/PathwayShell. Keeping that boundary is what stops
+ * this file quietly becoming a second wizard.
+ */
+
+.signOut {
+  background: none;
+  border: 1px solid var(--line2);
+  color: var(--tx3);
+  border-radius: 6px;
+  padding: 5px 11px;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase; font-weight: var(--fw-label); }
+
+.signOut:hover { color: var(--tx); border-color: var(--line2); }
+
+/* ── The rail ── */
+
+/* ── The card ── */
+
+.card {
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 28px 28px 24px;
+}
+
+.eyebrow {
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--ac);
+  margin-bottom: 10px; font-weight: var(--fw-label); }
+
+.h {
+  font-family: var(--display);
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  margin-bottom: 8px;
+}
+
+.sub { font-size: var(--fs-lg); line-height: 1.7; color: var(--tx2); margin-bottom: 24px; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+@media (max-width: 560px) {
+  .grid2 { grid-template-columns: 1fr; gap: 0; }
+  .card { padding: 22px 18px 20px; }
+}
+
+.field { margin-bottom: 14px; }
+
+.label {
+  display: block;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--tx2);
+  margin-bottom: 6px; font-weight: var(--fw-label); }
+
+.optional { color: var(--tx3); text-transform: none; letter-spacing: 0; font-size: var(--fs-xs); }
+
+.input, .select {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 7px;
+  padding: 10px 12px;
+  font-family: var(--sans);
+  font-size: var(--fs-lg);
+  color: var(--tx);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.select { font-family: var(--mono); font-size: var(--fs-ui); }
+
+.input:focus, .select:focus {
+  border-color: var(--ac);
+  box-shadow: 0 0 0 3px rgba(232, 66, 10, 0.12);
+}
+
+.input::placeholder { color: var(--tx3); }
+
+.err {
+  display: flex;
+  gap: 8px;
+  border: 1px solid rgba(224, 82, 82, 0.4);
+  background: rgba(224, 82, 82, 0.1);
+  border-radius: 7px;
+  padding: 9px 11px;
+  margin-bottom: 14px;
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--bad);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.primary {
+  background: var(--ac);
+  color: var(--color-primary-fg);
+  border: none;
+  border-radius: 7px;
+  padding: 11px 20px;
+  font-family: var(--mono);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+}
+
+.primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 0 26px rgba(232, 66, 10, 0.28); }
+.primary:disabled { opacity: 0.55; cursor: default; }
+
+.note {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--tx3);
+  line-height: 1.6;
+}
+
+/* ── Done ── */
+
+.done { text-align: center; padding: 42px 20px 34px; }
+
+.doneMark {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  background: rgba(18, 160, 144, 0.14);
+  border: 1px solid rgba(18, 160, 144, 0.4);
+  color: var(--teal-light);
+  font-size: 19px;
+}
+
+/* ── Header actions passed into PathwayShell ── */
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.headOrg {
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--tx3);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap; font-weight: var(--fw-label); }
+
+.railConfirmed {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  color: var(--tx3);
+}

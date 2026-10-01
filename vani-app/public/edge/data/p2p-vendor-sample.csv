@@ -1,0 +1,621 @@
+Vendor Code,Vendor Name,State,MSME Category,Payment Terms (days),Written Agreement
+V0001,Neel Life Sciences Pvt Ltd,Gujarat,Micro,45,Y
+V0002,Nirmal Medicare & Co,Telangana,Micro,45,Y
+V0003,Ojas Wellness Enterprises,Karnataka,Micro,45,Y
+V0004,Kalpa Life Sciences Traders,Telangana,Micro,45,Y
+V0005,Prana Formulations Traders,Karnataka,Micro,45,Y
+V0006,Medha Generics Agencies,Karnataka,Micro,45,Y
+V0007,Kaveri Biotech LLP,Gujarat,Micro,45,Y
+V0008,Sai Surgicals Distributors,Karnataka,Micro,45,Y
+V0009,Krishna Pharma LLP,Karnataka,Micro,45,Y
+V0010,Chandra Remedies Agencies,Maharashtra,Micro,45,Y
+V0011,Varsha Biotech Distributors,Andhra Pradesh,Micro,45,Y
+V0012,Aditya Surgicals Enterprises,Himachal Pradesh,Micro,45,Y
+V0013,Samyak Pharma Pvt Ltd,Tamil Nadu,Micro,45,Y
+V0014,Medha Remedies Agencies,Andhra Pradesh,Micro,45,Y
+V0015,Vasudha Surgicals Enterprises,Andhra Pradesh,Micro,45,Y
+V0016,Trishul Pharma Agencies,Telangana,Micro,45,Y
+V0017,Nirmal Pharma Pvt Ltd,Telangana,Micro,45,Y
+V0018,Golconda Labs Traders,Karnataka,Micro,45,Y
+V0019,Sahyadri Biotech Pvt Ltd,Andhra Pradesh,Micro,45,Y
+V0020,Arka Biotech Enterprises,Maharashtra,Micro,45,Y
+V0021,Udaya Biotech & Co,Telangana,Micro,45,Y
+V0022,Deccan Life Sciences Traders,Telangana,Micro,45,Y
+V0023,Surya Wellness Enterprises,Andhra Pradesh,Micro,45,Y
+V0024,Sahyadri Wellness Distributors,Andhra Pradesh,Micro,45,Y
+V0025,Neel Labs Pvt Ltd,Karnataka,Micro,45,Y
+V0026,Vyom Labs Distributors,Andhra Pradesh,Micro,45,Y
+V0027,Godavari Wellness Enterprises,Karnataka,Micro,45,Y
+V0028,Vyom Formulations LLP,Telangana,Micro,45,Y
+V0029,Golconda Healthcare Enterprises,Himachal Pradesh,Micro,45,Y
+V0030,Tunga Labs LLP,Karnataka,Micro,45,Y
+V0031,Hampi Medicare Distributors,Andhra Pradesh,Micro,45,Y
+V0032,Aditya Life Sciences & Co,Andhra Pradesh,Micro,45,Y
+V0033,Annapurna Pharma Enterprises,Karnataka,Micro,45,Y
+V0034,Medha Healthcare Distributors,Karnataka,Micro,45,Y
+V0035,Swastik Wellness & Co,Tamil Nadu,Micro,45,Y
+V0036,Swastik Surgicals Traders,Maharashtra,Micro,45,Y
+V0037,Shreya Pharma Pvt Ltd,Telangana,Micro,45,Y
+V0038,Neel Remedies Pvt Ltd,Himachal Pradesh,Micro,45,Y
+V0039,Surya Remedies Agencies,Himachal Pradesh,Micro,45,Y
+V0040,Kaveri Surgicals LLP,Maharashtra,Micro,45,Y
+V0041,Srinidhi Labs LLP,Himachal Pradesh,Micro,45,Y
+V0042,Kaveri Labs Enterprises,Telangana,Micro,45,Y
+V0043,Nandi Biotech Agencies,Telangana,Micro,45,Y
+V0044,Tirumala Wellness Enterprises,Tamil Nadu,Micro,45,Y
+V0045,Aditya Formulations & Co,Telangana,Micro,45,Y
+V0046,Kakatiya Drugs Agencies,Karnataka,Micro,45,Y
+V0047,Vishwa Life Sciences Pvt Ltd,Telangana,Micro,45,Y
+V0048,Nandi Medicare Traders,Andhra Pradesh,Micro,45,Y
+V0049,Krishna Generics LLP,Telangana,Micro,45,Y
+V0050,Banjara Generics Distributors,Karnataka,Micro,45,Y
+V0051,Kalpa Biotech Pvt Ltd,Karnataka,Small,45,Y
+V0052,Sahyadri Formulations Enterprises,Andhra Pradesh,Small,45,Y
+V0053,Chandra Drugs Pvt Ltd,Andhra Pradesh,Small,45,Y
+V0054,Sri Lakshmi Remedies Agencies,Telangana,Small,45,Y
+V0055,Amrit Wellness & Co,Andhra Pradesh,Small,45,Y
+V0056,Kaveri Medicare Agencies,Gujarat,Small,45,Y
+V0057,Vyom Medicare Agencies,Telangana,Small,45,Y
+V0058,Venkata Pharma Pvt Ltd,Karnataka,Small,45,Y
+V0059,Hampi Biotech Enterprises,Andhra Pradesh,Small,45,Y
+V0060,Venkata Formulations & Co,Telangana,Small,45,Y
+V0061,Tirumala Medicare Pvt Ltd,Telangana,Small,45,Y
+V0062,Chandra Labs Agencies,Karnataka,Small,45,Y
+V0063,Vishwa Pharma Pvt Ltd,Andhra Pradesh,Small,45,Y
+V0064,Sneha Healthcare & Co,Telangana,Small,45,Y
+V0065,Udaya Life Sciences Distributors,Karnataka,Small,45,Y
+V0066,Sai Drugs LLP,Maharashtra,Small,45,Y
+V0067,Shreya Remedies LLP,Karnataka,Small,45,Y
+V0068,Udaya Biotech Enterprises,Andhra Pradesh,Small,45,Y
+V0069,Annapurna Labs Agencies,Andhra Pradesh,Small,45,Y
+V0070,Amrit Drugs Enterprises,Himachal Pradesh,Small,45,Y
+V0071,Aditya Life Sciences Pvt Ltd,Telangana,Small,45,Y
+V0072,Kaveri Surgicals Agencies,Karnataka,Small,45,Y
+V0073,Tirumala Remedies Distributors,Maharashtra,Small,45,Y
+V0074,Udaya Life Sciences Agencies,Telangana,Small,45,Y
+V0075,Golconda Remedies & Co,Telangana,Small,45,Y
+V0076,Tunga Wellness LLP,Andhra Pradesh,Small,45,Y
+V0077,Kalpa Wellness & Co,Karnataka,Small,45,Y
+V0078,Vishwa Labs LLP,Telangana,Small,45,Y
+V0079,Deccan Pharma Traders,Andhra Pradesh,Small,45,Y
+V0080,Prana Wellness Agencies,Telangana,Small,45,Y
+V0081,Vishwa Generics & Co,Karnataka,Small,45,Y
+V0082,Tunga Biotech Traders,Telangana,Small,45,Y
+V0083,Samyak Healthcare LLP,Telangana,Small,45,Y
+V0084,Chandra Biotech Enterprises,Karnataka,Small,45,Y
+V0085,Godavari Biotech Pvt Ltd,Telangana,Small,45,Y
+V0086,Vishwa Life Sciences Agencies,Telangana,Small,45,Y
+V0087,Swastik Surgicals & Co,Karnataka,Small,45,Y
+V0088,Venkata Medicare Traders,Karnataka,Small,45,Y
+V0089,Hampi Generics Traders,Telangana,Small,45,Y
+V0090,Godavari Life Sciences Pvt Ltd,Karnataka,Small,45,Y
+V0091,Hampi Pharma LLP,Andhra Pradesh,Small,45,Y
+V0092,Deccan Medicare Agencies,Karnataka,Medium,45,Y
+V0093,Hampi Drugs Distributors,Himachal Pradesh,Medium,45,Y
+V0094,Surya Drugs Traders,Telangana,Medium,45,Y
+V0095,Sneha Life Sciences LLP,Karnataka,Medium,45,Y
+V0096,Vishwa Wellness Agencies,Andhra Pradesh,Medium,45,Y
+V0097,Amrit Drugs Agencies,Telangana,Medium,45,Y
+V0098,Trishul Drugs Enterprises,Telangana,Medium,45,Y
+V0099,Nirmal Pharma Agencies,Karnataka,Medium,45,Y
+V0100,Varsha Wellness Traders,Gujarat,Medium,45,Y
+V0101,Prana Remedies Agencies,Telangana,Medium,45,Y
+V0102,Golconda Surgicals LLP,Telangana,Medium,45,Y
+V0103,Sneha Wellness Agencies,Andhra Pradesh,Medium,45,Y
+V0104,Kalpa Pharma LLP,Karnataka,Medium,45,Y
+V0105,Tunga Drugs Traders,Andhra Pradesh,Medium,45,Y
+V0106,Charminar Pharma Traders,Telangana,Medium,45,Y
+V0107,Chandra Medicare Distributors,Andhra Pradesh,Medium,45,Y
+V0108,Samyak Formulations LLP,Andhra Pradesh,Medium,45,Y
+V0109,Swastik Wellness Enterprises,Andhra Pradesh,Medium,45,Y
+V0110,Chandra Remedies LLP,Telangana,Medium,45,Y
+V0111,Prana Medicare LLP,Andhra Pradesh,Medium,45,Y
+V0112,Ojas Generics Agencies,Tamil Nadu,Medium,45,Y
+V0113,Deccan Wellness Enterprises,Telangana,Medium,45,Y
+V0114,Golconda Biotech Agencies,Karnataka,Medium,45,Y
+V0115,Nandi Surgicals LLP,Karnataka,Medium,45,Y
+V0116,Trishul Healthcare & Co,Telangana,Medium,45,Y
+V0117,Trishul Formulations Agencies,Telangana,Medium,45,Y
+V0118,Tunga Biotech Agencies,Gujarat,Medium,45,Y
+V0119,Sahyadri Healthcare & Co,Andhra Pradesh,Medium,45,Y
+V0120,Surya Remedies Pvt Ltd,Andhra Pradesh,Medium,45,Y
+V0121,Krishna Medicare Traders,Telangana,Medium,45,Y
+V0122,Kaveri Generics Enterprises,Gujarat,Medium,45,Y
+V0123,Annapurna Labs & Co,Andhra Pradesh,Medium,45,Y
+V0124,Medha Surgicals Agencies,Karnataka,Medium,45,Y
+V0125,Annapurna Labs Enterprises,Karnataka,Medium,45,Y
+V0126,Surya Formulations Pvt Ltd,Telangana,Medium,45,Y
+V0127,Varsha Healthcare & Co,Andhra Pradesh,Medium,45,Y
+V0128,Golconda Generics Enterprises,Gujarat,Medium,45,Y
+V0129,Udaya Drugs Distributors,Karnataka,Medium,45,Y
+V0130,Vyom Surgicals LLP,Telangana,Medium,45,Y
+V0131,Chandra Wellness LLP,Karnataka,Medium,45,Y
+V0132,Charminar Labs & Co,Karnataka,Medium,45,Y
+V0133,Hampi Surgicals Enterprises,Telangana,Medium,45,Y
+V0134,Kaveri Labs Pvt Ltd,Karnataka,Medium,45,Y
+V0135,Annapurna Remedies & Co,Andhra Pradesh,Medium,45,Y
+V0136,Udaya Wellness Pvt Ltd,Andhra Pradesh,Medium,45,Y
+V0137,Tirumala Wellness LLP,Andhra Pradesh,,60,Y
+V0138,Shreya Life Sciences & Co,Telangana,,60,Y
+V0139,Sneha Remedies Pvt Ltd,Telangana,,60,Y
+V0140,Udaya Labs & Co,Telangana,,60,Y
+V0141,Chandra Generics Enterprises,Andhra Pradesh,,60,Y
+V0142,Surya Surgicals Traders,Karnataka,,60,Y
+V0143,Vyom Pharma Agencies,Himachal Pradesh,,60,Y
+V0144,Ojas Formulations & Co,Karnataka,,60,Y
+V0145,Arka Healthcare Enterprises,Telangana,,60,Y
+V0146,Vishwa Surgicals Enterprises,Gujarat,,60,Y
+V0147,Krishna Medicare & Co,Telangana,,60,Y
+V0148,Arka Formulations Pvt Ltd,Karnataka,,60,Y
+V0149,Deccan Medicare Enterprises,Telangana,,60,Y
+V0150,Nandi Labs Traders,Andhra Pradesh,,60,Y
+V0151,Tunga Wellness Enterprises,Himachal Pradesh,,60,Y
+V0152,Srinidhi Healthcare Traders,Andhra Pradesh,,60,Y
+V0153,Varsha Drugs Enterprises,Andhra Pradesh,,60,Y
+V0154,Pragati Remedies Distributors,Telangana,,60,Y
+V0155,Tunga Healthcare Agencies,Karnataka,,60,Y
+V0156,Medha Formulations Enterprises,Telangana,,60,Y
+V0157,Varsha Life Sciences Enterprises,Gujarat,,60,Y
+V0158,Sai Wellness Traders,Telangana,,60,Y
+V0159,Kakatiya Wellness LLP,Telangana,,60,Y
+V0160,Amrit Drugs Traders,Tamil Nadu,,60,Y
+V0161,Tirumala Generics & Co,Telangana,,60,Y
+V0162,Trishul Pharma & Co,Telangana,,60,Y
+V0163,Golconda Remedies Pvt Ltd,Karnataka,,60,Y
+V0164,Ojas Life Sciences Traders,Telangana,,60,Y
+V0165,Vyom Healthcare Pvt Ltd,Andhra Pradesh,,60,Y
+V0166,Kakatiya Medicare Pvt Ltd,Maharashtra,,60,Y
+V0167,Aditya Drugs Agencies,Andhra Pradesh,,60,Y
+V0168,Vishwa Biotech Agencies,Karnataka,,60,Y
+V0169,Srinidhi Surgicals Enterprises,Karnataka,,60,Y
+V0170,Sahyadri Life Sciences & Co,Karnataka,,60,Y
+V0171,Trishul Surgicals Enterprises,Andhra Pradesh,,60,Y
+V0172,Tirumala Medicare LLP,Gujarat,,60,Y
+V0173,Aditya Life Sciences LLP,Telangana,,60,Y
+V0174,Tirumala Pharma Traders,Andhra Pradesh,,60,Y
+V0175,Swastik Generics LLP,Andhra Pradesh,,60,Y
+V0176,Nandi Generics Traders,Andhra Pradesh,,60,Y
+V0177,Srinidhi Surgicals Traders,Telangana,,60,Y
+V0178,Kalpa Medicare Traders,Andhra Pradesh,,60,Y
+V0179,Swastik Generics Pvt Ltd,Karnataka,,60,Y
+V0180,Srinidhi Remedies Pvt Ltd,Telangana,,60,Y
+V0181,Kalpa Wellness Distributors,Andhra Pradesh,,60,Y
+V0182,Prana Life Sciences Traders,Telangana,,60,Y
+V0183,Krishna Labs LLP,Telangana,,60,Y
+V0184,Pragati Surgicals Traders,Andhra Pradesh,,60,Y
+V0185,Vishwa Drugs Agencies,Himachal Pradesh,,60,Y
+V0186,Neel Healthcare Enterprises,Andhra Pradesh,,60,Y
+V0187,Neel Pharma Agencies,Telangana,,60,Y
+V0188,Sahyadri Biotech Agencies,Karnataka,,60,Y
+V0189,Surya Biotech Enterprises,Maharashtra,,60,Y
+V0190,Medha Pharma & Co,Maharashtra,,60,Y
+V0191,Sahyadri Formulations Pvt Ltd,Telangana,,60,Y
+V0192,Amrit Drugs Distributors,Karnataka,,60,Y
+V0193,Trishul Biotech Agencies,Telangana,,60,Y
+V0194,Kalpa Drugs Distributors,Telangana,,60,Y
+V0195,Swastik Pharma Enterprises,Telangana,,60,Y
+V0196,Sahyadri Labs & Co,Andhra Pradesh,,60,Y
+V0197,Swastik Surgicals Pvt Ltd,Maharashtra,,60,Y
+V0198,Tirumala Labs Distributors,Andhra Pradesh,,60,Y
+V0199,Neel Labs Enterprises,Andhra Pradesh,,60,Y
+V0200,Sahyadri Pharma & Co,Karnataka,,60,Y
+V0201,Nandi Drugs LLP,Tamil Nadu,,60,Y
+V0202,Hampi Formulations Traders,Gujarat,,60,Y
+V0203,Trishul Life Sciences Agencies,Gujarat,,60,Y
+V0204,Swastik Medicare Agencies,Telangana,,60,Y
+V0205,Surya Biotech Distributors,Karnataka,,60,Y
+V0206,Deccan Life Sciences Distributors,Andhra Pradesh,,60,Y
+V0207,Pragati Life Sciences Enterprises,Himachal Pradesh,,60,Y
+V0208,Kakatiya Wellness Agencies,Tamil Nadu,,60,Y
+V0209,Shreya Healthcare Traders,Andhra Pradesh,,60,Y
+V0210,Neel Drugs Agencies,Telangana,,60,Y
+V0211,Tirumala Life Sciences Pvt Ltd,Telangana,,60,Y
+V0212,Amrit Labs Pvt Ltd,Tamil Nadu,,60,Y
+V0213,Deccan Life Sciences Enterprises,Tamil Nadu,,60,Y
+V0214,Aditya Labs Traders,Karnataka,,60,Y
+V0215,Trishul Healthcare Pvt Ltd,Telangana,,60,Y
+V0216,Godavari Biotech Distributors,Andhra Pradesh,,60,Y
+V0217,Charminar Remedies Enterprises,Telangana,,60,Y
+V0218,Amrit Drugs Pvt Ltd,Karnataka,,60,Y
+V0219,Neel Formulations LLP,Himachal Pradesh,,60,Y
+V0220,Udaya Formulations Distributors,Karnataka,,60,Y
+V0221,Neel Healthcare & Co,Himachal Pradesh,,60,Y
+V0222,Golconda Generics Pvt Ltd,Telangana,,60,Y
+V0223,Ojas Healthcare Agencies,Gujarat,,60,Y
+V0224,Nirmal Healthcare Pvt Ltd,Telangana,,60,Y
+V0225,Sneha Labs Distributors,Telangana,,60,Y
+V0226,Hampi Biotech Traders,Telangana,,60,Y
+V0227,Aditya Labs Distributors,Telangana,,60,Y
+V0228,Pragati Surgicals Distributors,Himachal Pradesh,,60,Y
+V0229,Swastik Surgicals Agencies,Karnataka,,60,Y
+V0230,Amrit Healthcare & Co,Himachal Pradesh,,60,Y
+V0231,Medha Formulations Pvt Ltd,Telangana,,60,Y
+V0232,Aditya Biotech Pvt Ltd,Andhra Pradesh,,60,Y
+V0233,Venkata Healthcare LLP,Karnataka,,60,Y
+V0234,Venkata Surgicals Traders,Telangana,,60,Y
+V0235,Swastik Formulations LLP,Telangana,,60,Y
+V0236,Nirmal Medicare Distributors,Telangana,,60,Y
+V0237,Sri Lakshmi Life Sciences Traders,Maharashtra,,60,Y
+V0238,Charminar Medicare Agencies,Andhra Pradesh,,60,Y
+V0239,Vishwa Labs Agencies,Andhra Pradesh,,60,Y
+V0240,Hampi Wellness Agencies,Gujarat,,60,Y
+V0241,Srinidhi Medicare Agencies,Telangana,,60,Y
+V0242,Medha Healthcare Agencies,Karnataka,,60,Y
+V0243,Godavari Life Sciences & Co,Telangana,,60,Y
+V0244,Srinidhi Surgicals Agencies,Karnataka,,60,Y
+V0245,Sahyadri Formulations Distributors,Telangana,,60,Y
+V0246,Godavari Formulations LLP,Karnataka,,60,Y
+V0247,Vasudha Medicare & Co,Andhra Pradesh,,60,Y
+V0248,Deccan Formulations LLP,Andhra Pradesh,,60,Y
+V0249,Ojas Medicare LLP,Karnataka,,60,Y
+V0250,Srinidhi Medicare Traders,Telangana,,60,Y
+V0251,Srinidhi Pharma Agencies,Andhra Pradesh,,60,Y
+V0252,Swastik Medicare Distributors,Telangana,,60,Y
+V0253,Medha Pharma Enterprises,Karnataka,,60,Y
+V0254,Sahyadri Healthcare Traders,Telangana,,60,Y
+V0255,Charminar Healthcare LLP,Andhra Pradesh,,60,Y
+V0256,Annapurna Pharma Pvt Ltd,Tamil Nadu,,60,Y
+V0257,Charminar Generics Agencies,Telangana,,60,Y
+V0258,Tunga Drugs Enterprises,Himachal Pradesh,,60,Y
+V0259,Godavari Drugs Pvt Ltd,Karnataka,,60,Y
+V0260,Nirmal Life Sciences Agencies,Karnataka,,60,Y
+V0261,Charminar Drugs Agencies,Telangana,,60,Y
+V0262,Neel Labs Agencies,Karnataka,,60,Y
+V0263,Godavari Surgicals & Co,Telangana,,60,Y
+V0264,Ojas Generics & Co,Andhra Pradesh,,60,Y
+V0265,Aditya Drugs LLP,Karnataka,,60,Y
+V0266,Tirumala Remedies Traders,Himachal Pradesh,,60,Y
+V0267,Nandi Life Sciences Pvt Ltd,Karnataka,,60,Y
+V0268,Vasudha Surgicals Agencies,Karnataka,,60,Y
+V0269,Nandi Drugs Enterprises,Andhra Pradesh,,60,Y
+V0270,Kaveri Remedies Distributors,Telangana,,60,Y
+V0271,Surya Drugs Enterprises,Telangana,,60,Y
+V0272,Sahyadri Healthcare Pvt Ltd,Telangana,,60,Y
+V0273,Vyom Formulations Pvt Ltd,Karnataka,,60,Y
+V0274,Udaya Formulations Traders,Andhra Pradesh,,60,Y
+V0275,Venkata Life Sciences Traders,Telangana,,60,Y
+V0276,Tunga Surgicals & Co,Telangana,,60,Y
+V0277,Charminar Formulations LLP,Tamil Nadu,,60,Y
+V0278,Deccan Medicare & Co,Telangana,,60,Y
+V0279,Chandra Medicare LLP,Karnataka,,60,Y
+V0280,Nandi Healthcare Enterprises,Telangana,,60,Y
+V0281,Kaveri Biotech Traders,Karnataka,,60,Y
+V0282,Ojas Generics Pvt Ltd,Maharashtra,,60,Y
+V0283,Prana Biotech Distributors,Andhra Pradesh,,60,Y
+V0284,Vyom Healthcare Agencies,Karnataka,,60,Y
+V0285,Srinidhi Drugs LLP,Andhra Pradesh,,60,Y
+V0286,Banjara Remedies Pvt Ltd,Andhra Pradesh,,60,Y
+V0287,Ojas Wellness Traders,Andhra Pradesh,,60,Y
+V0288,Varsha Wellness Agencies,Telangana,,60,Y
+V0289,Amrit Generics Agencies,Karnataka,,60,Y
+V0290,Hampi Biotech Pvt Ltd,Himachal Pradesh,,60,Y
+V0291,Neel Generics Pvt Ltd,Karnataka,,60,Y
+V0292,Banjara Life Sciences Agencies,Telangana,,60,Y
+V0293,Banjara Biotech Distributors,Telangana,,60,Y
+V0294,Tunga Healthcare & Co,Telangana,,60,Y
+V0295,Kaveri Wellness Distributors,Tamil Nadu,,60,Y
+V0296,Deccan Healthcare Pvt Ltd,Telangana,,60,Y
+V0297,Swastik Life Sciences Distributors,Andhra Pradesh,,60,Y
+V0298,Pragati Generics & Co,Telangana,,60,Y
+V0299,Samyak Surgicals Pvt Ltd,Telangana,,60,Y
+V0300,Banjara Surgicals Enterprises,Karnataka,,60,Y
+V0301,Medha Drugs Enterprises,Andhra Pradesh,,60,Y
+V0302,Nirmal Wellness Enterprises,Karnataka,,60,Y
+V0303,Surya Drugs Pvt Ltd,Telangana,,60,Y
+V0304,Kakatiya Labs & Co,Andhra Pradesh,,60,Y
+V0305,Deccan Labs & Co,Andhra Pradesh,,60,Y
+V0306,Medha Surgicals Pvt Ltd,Andhra Pradesh,,60,Y
+V0307,Nirmal Labs LLP,Andhra Pradesh,,60,Y
+V0308,Kakatiya Drugs LLP,Karnataka,,60,Y
+V0309,Charminar Surgicals LLP,Andhra Pradesh,,60,Y
+V0310,Kalpa Labs & Co,Karnataka,,60,Y
+V0311,Golconda Drugs Agencies,Andhra Pradesh,,60,Y
+V0312,Surya Formulations LLP,Karnataka,,60,Y
+V0313,Swastik Biotech Traders,Andhra Pradesh,,60,Y
+V0314,Sneha Pharma Enterprises,Andhra Pradesh,,60,Y
+V0315,Ojas Labs Enterprises,Gujarat,,60,Y
+V0316,Kakatiya Medicare & Co,Maharashtra,,60,Y
+V0317,Swastik Drugs Agencies,Maharashtra,,60,Y
+V0318,Kakatiya Biotech Distributors,Telangana,,60,Y
+V0319,Udaya Pharma Agencies,Telangana,,60,Y
+V0320,Venkata Formulations Agencies,Karnataka,,60,Y
+V0321,Hampi Surgicals Traders,Himachal Pradesh,,60,Y
+V0322,Vishwa Labs & Co,Andhra Pradesh,,60,Y
+V0323,Golconda Drugs LLP,Andhra Pradesh,,60,Y
+V0324,Vasudha Life Sciences Traders,Andhra Pradesh,,60,Y
+V0325,Kakatiya Healthcare Agencies,Tamil Nadu,,60,Y
+V0326,Udaya Life Sciences Traders,Gujarat,,60,Y
+V0327,Godavari Labs & Co,Andhra Pradesh,,60,Y
+V0328,Godavari Medicare LLP,Tamil Nadu,,60,Y
+V0329,Sai Surgicals Enterprises,Telangana,,60,Y
+V0330,Nirmal Life Sciences & Co,Tamil Nadu,,60,Y
+V0331,Pragati Surgicals LLP,Gujarat,,60,Y
+V0332,Venkata Remedies LLP,Telangana,,60,Y
+V0333,Kakatiya Medicare LLP,Andhra Pradesh,,60,Y
+V0334,Medha Labs Distributors,Karnataka,,60,Y
+V0335,Kaveri Generics LLP,Andhra Pradesh,,60,Y
+V0336,Venkata Biotech & Co,Andhra Pradesh,,60,Y
+V0337,Kaveri Remedies & Co,Gujarat,,60,Y
+V0338,Chandra Labs Distributors,Andhra Pradesh,,60,Y
+V0339,Nandi Pharma & Co,Telangana,,60,Y
+V0340,Golconda Generics Traders,Himachal Pradesh,,60,Y
+V0341,Vishwa Medicare Distributors,Andhra Pradesh,,60,Y
+V0342,Hampi Drugs Traders,Maharashtra,,60,Y
+V0343,Vishwa Healthcare LLP,Himachal Pradesh,,60,Y
+V0344,Banjara Surgicals Distributors,Maharashtra,,60,Y
+V0345,Kakatiya Formulations LLP,Himachal Pradesh,,60,Y
+V0346,Pragati Biotech Distributors,Andhra Pradesh,,60,Y
+V0347,Surya Remedies Traders,Telangana,,60,Y
+V0348,Tunga Medicare Distributors,Andhra Pradesh,,60,Y
+V0349,Swastik Pharma Traders,Andhra Pradesh,,60,Y
+V0350,Tunga Life Sciences LLP,Andhra Pradesh,,60,Y
+V0351,Krishna Surgicals & Co,Karnataka,,60,Y
+V0352,Vishwa Pharma Distributors,Telangana,,60,Y
+V0353,Trishul Remedies Traders,Karnataka,,60,Y
+V0354,Arka Wellness Traders,Maharashtra,,60,Y
+V0355,Srinidhi Drugs Pvt Ltd,Telangana,,60,Y
+V0356,Trishul Formulations Traders,Himachal Pradesh,,60,Y
+V0357,Samyak Labs Pvt Ltd,Andhra Pradesh,,60,Y
+V0358,Trishul Surgicals & Co,Andhra Pradesh,,60,Y
+V0359,Surya Life Sciences LLP,Telangana,,60,Y
+V0360,Sri Lakshmi Labs & Co,Tamil Nadu,,60,Y
+V0361,Golconda Life Sciences & Co,Telangana,,60,Y
+V0362,Srinidhi Wellness & Co,Telangana,,60,Y
+V0363,Arka Pharma LLP,Telangana,,60,Y
+V0364,Sahyadri Biotech & Co,Karnataka,,60,Y
+V0365,Kaveri Generics Traders,Telangana,,60,Y
+V0366,Kakatiya Healthcare Traders,Andhra Pradesh,,60,Y
+V0367,Trishul Wellness LLP,Telangana,,60,Y
+V0368,Shreya Life Sciences Enterprises,Karnataka,,60,Y
+V0369,Godavari Formulations Agencies,Maharashtra,,60,Y
+V0370,Varsha Medicare Agencies,Tamil Nadu,,60,Y
+V0371,Sahyadri Drugs Enterprises,Karnataka,,60,Y
+V0372,Arka Generics LLP,Andhra Pradesh,,60,Y
+V0373,Annapurna Healthcare Distributors,Telangana,,60,Y
+V0374,Shreya Pharma LLP,Himachal Pradesh,,60,Y
+V0375,Golconda Healthcare Agencies,Andhra Pradesh,,60,Y
+V0376,Sneha Formulations Traders,Karnataka,,60,Y
+V0377,Udaya Labs Pvt Ltd,Telangana,,60,Y
+V0378,Arka Life Sciences Distributors,Andhra Pradesh,,60,Y
+V0379,Banjara Generics & Co,Telangana,,60,Y
+V0380,Udaya Drugs & Co,Karnataka,,60,Y
+V0381,Hampi Drugs & Co,Karnataka,,60,Y
+V0382,Udaya Wellness Distributors,Telangana,,60,Y
+V0383,Amrit Healthcare Enterprises,Andhra Pradesh,,60,Y
+V0384,Surya Healthcare Pvt Ltd,Telangana,,60,Y
+V0385,Sneha Drugs Distributors,Karnataka,,60,Y
+V0386,Trishul Formulations Distributors,Telangana,,60,Y
+V0387,Srinidhi Biotech Enterprises,Telangana,,60,Y
+V0388,Pragati Labs Traders,Telangana,,60,Y
+V0389,Kakatiya Pharma & Co,Telangana,,60,Y
+V0390,Charminar Medicare Enterprises,Andhra Pradesh,,60,Y
+V0391,Samyak Surgicals & Co,Himachal Pradesh,,60,Y
+V0392,Kaveri Pharma Enterprises,Andhra Pradesh,,60,Y
+V0393,Hampi Surgicals & Co,Karnataka,,60,Y
+V0394,Sneha Medicare Distributors,Karnataka,,60,Y
+V0395,Godavari Healthcare LLP,Andhra Pradesh,,60,Y
+V0396,Annapurna Surgicals LLP,Karnataka,,60,Y
+V0397,Shreya Remedies Traders,Karnataka,,60,Y
+V0398,Golconda Surgicals Pvt Ltd,Karnataka,,60,Y
+V0399,Hampi Surgicals LLP,Gujarat,,60,Y
+V0400,Arka Formulations Traders,Telangana,,60,Y
+V0401,Chandra Generics Agencies,Andhra Pradesh,,60,Y
+V0402,Nandi Remedies LLP,Karnataka,,60,Y
+V0403,Krishna Surgicals Distributors,Himachal Pradesh,,60,Y
+V0404,Annapurna Medicare Enterprises,Andhra Pradesh,,60,Y
+V0405,Ojas Surgicals & Co,Andhra Pradesh,,60,Y
+V0406,Neel Surgicals Agencies,Andhra Pradesh,,60,Y
+V0407,Charminar Generics Enterprises,Tamil Nadu,,60,Y
+V0408,Hampi Biotech Agencies,Maharashtra,,60,Y
+V0409,Venkata Drugs Pvt Ltd,Andhra Pradesh,,60,Y
+V0410,Godavari Medicare Enterprises,Telangana,,60,Y
+V0411,Pragati Pharma Agencies,Andhra Pradesh,,60,Y
+V0412,Nandi Life Sciences LLP,Karnataka,,60,Y
+V0413,Chandra Wellness Traders,Telangana,,60,Y
+V0414,Tunga Medicare & Co,Karnataka,,60,Y
+V0415,Chandra Medicare & Co,Andhra Pradesh,,60,Y
+V0416,Kalpa Biotech Enterprises,Andhra Pradesh,,60,Y
+V0417,Prana Biotech Traders,Karnataka,,60,Y
+V0418,Vyom Medicare Traders,Himachal Pradesh,,60,Y
+V0419,Swastik Formulations Pvt Ltd,Andhra Pradesh,,60,Y
+V0420,Aditya Wellness Distributors,Telangana,,60,Y
+V0421,Deccan Pharma Agencies,Karnataka,,60,Y
+V0422,Ojas Pharma LLP,Andhra Pradesh,,60,Y
+V0423,Prana Surgicals Pvt Ltd,Andhra Pradesh,,60,Y
+V0424,Arka Healthcare Traders,Telangana,,60,Y
+V0425,Hampi Pharma Traders,Karnataka,,60,Y
+V0426,Venkata Generics Enterprises,Telangana,,60,Y
+V0427,Pragati Medicare Enterprises,Telangana,,60,Y
+V0428,Hampi Formulations Pvt Ltd,Gujarat,,60,Y
+V0429,Sri Lakshmi Pharma LLP,Karnataka,,60,Y
+V0430,Ojas Biotech Enterprises,Karnataka,,60,Y
+V0431,Prana Wellness Traders,Karnataka,,60,Y
+V0432,Sahyadri Remedies Traders,Andhra Pradesh,,60,Y
+V0433,Medha Remedies Enterprises,Telangana,,60,Y
+V0434,Banjara Pharma Traders,Telangana,,60,Y
+V0435,Nirmal Drugs Traders,Maharashtra,,60,Y
+V0436,Udaya Medicare Pvt Ltd,Himachal Pradesh,,60,Y
+V0437,Annapurna Life Sciences Pvt Ltd,Karnataka,,60,Y
+V0438,Golconda Pharma Traders,Karnataka,,60,Y
+V0439,Kalpa Formulations & Co,Andhra Pradesh,,60,Y
+V0440,Varsha Labs Traders,Andhra Pradesh,,60,Y
+V0441,Aditya Biotech Traders,Andhra Pradesh,,60,Y
+V0442,Kakatiya Surgicals Enterprises,Andhra Pradesh,,60,Y
+V0443,Amrit Healthcare LLP,Telangana,,60,Y
+V0444,Samyak Remedies Enterprises,Andhra Pradesh,,60,Y
+V0445,Chandra Labs & Co,Andhra Pradesh,,60,Y
+V0446,Sri Lakshmi Life Sciences Enterprises,Karnataka,,60,Y
+V0447,Trishul Surgicals Traders,Andhra Pradesh,,60,Y
+V0448,Tunga Labs & Co,Maharashtra,,60,Y
+V0449,Sneha Drugs LLP,Telangana,,60,Y
+V0450,Krishna Life Sciences LLP,Telangana,,60,Y
+V0451,Vyom Surgicals Traders,Karnataka,,60,Y
+V0452,Prana Drugs Traders,Karnataka,,60,Y
+V0453,Varsha Biotech Traders,Andhra Pradesh,,60,Y
+V0454,Kakatiya Formulations Distributors,Himachal Pradesh,,60,Y
+V0455,Samyak Pharma & Co,Telangana,,60,Y
+V0456,Kakatiya Surgicals & Co,Karnataka,,60,Y
+V0457,Trishul Remedies Agencies,Telangana,,60,Y
+V0458,Nirmal Generics & Co,Telangana,,60,Y
+V0459,Aditya Healthcare Agencies,Andhra Pradesh,,60,Y
+V0460,Samyak Biotech Agencies,Telangana,,60,Y
+V0461,Kakatiya Biotech Agencies,Telangana,,60,Y
+V0462,Charminar Medicare Pvt Ltd,Telangana,,60,Y
+V0463,Krishna Healthcare Pvt Ltd,Telangana,,60,Y
+V0464,Deccan Formulations Distributors,Telangana,,60,Y
+V0465,Udaya Pharma Distributors,Telangana,,60,Y
+V0466,Banjara Biotech Enterprises,Telangana,,60,Y
+V0467,Sai Generics & Co,Telangana,,60,Y
+V0468,Vasudha Medicare Distributors,Andhra Pradesh,,60,Y
+V0469,Medha Healthcare Pvt Ltd,Himachal Pradesh,,60,Y
+V0470,Srinidhi Drugs Distributors,Andhra Pradesh,,60,Y
+V0471,Kakatiya Pharma Pvt Ltd,Karnataka,,60,Y
+V0472,Sri Lakshmi Pharma Distributors,Gujarat,,60,Y
+V0473,Krishna Healthcare & Co,Telangana,,60,Y
+V0474,Amrit Generics & Co,Karnataka,,60,Y
+V0475,Vyom Surgicals Enterprises,Andhra Pradesh,,60,Y
+V0476,Venkata Pharma Distributors,Andhra Pradesh,,60,Y
+V0477,Srinidhi Remedies LLP,Telangana,,60,Y
+V0478,Udaya Generics Pvt Ltd,Karnataka,,60,Y
+V0479,Vishwa Remedies Agencies,Andhra Pradesh,,60,Y
+V0480,Kakatiya Wellness Distributors,Telangana,,60,Y
+V0481,Shreya Surgicals Pvt Ltd,Telangana,,60,Y
+V0482,Surya Pharma Enterprises,Telangana,,60,Y
+V0483,Swastik Biotech Agencies,Andhra Pradesh,,60,Y
+V0484,Neel Healthcare Pvt Ltd,Karnataka,,60,Y
+V0485,Annapurna Life Sciences LLP,Himachal Pradesh,,60,Y
+V0486,Godavari Life Sciences LLP,Tamil Nadu,,60,Y
+V0487,Chandra Remedies Pvt Ltd,Telangana,,60,Y
+V0488,Hampi Healthcare Distributors,Telangana,,60,Y
+V0489,Amrit Medicare Pvt Ltd,Tamil Nadu,,60,Y
+V0490,Kakatiya Labs Pvt Ltd,Telangana,,60,Y
+V0491,Banjara Formulations LLP,Andhra Pradesh,,60,Y
+V0492,Vasudha Healthcare Enterprises,Gujarat,,60,Y
+V0493,Golconda Medicare Enterprises,Telangana,,60,Y
+V0494,Vyom Remedies & Co,Telangana,,60,Y
+V0495,Vyom Generics & Co,Karnataka,,60,Y
+V0496,Samyak Surgicals Traders,Andhra Pradesh,,60,Y
+V0497,Aditya Biotech & Co,Karnataka,,60,Y
+V0498,Surya Healthcare LLP,Karnataka,,60,Y
+V0499,Annapurna Biotech Traders,Karnataka,,60,Y
+V0500,Srinidhi Remedies Agencies,Karnataka,,60,Y
+V0501,Pragati Security Services Distributors,Himachal Pradesh,Micro,45,Y
+V0502,Amrit Facility Services & Co,Karnataka,Micro,45,Y
+V0503,Sneha Transport Enterprises,Karnataka,Micro,45,Y
+V0504,Sneha Logistics Pvt Ltd,Karnataka,Micro,45,Y
+V0505,Swastik Consultants Enterprises,Tamil Nadu,Micro,45,Y
+V0506,Shreya Printers Enterprises,Tamil Nadu,Micro,45,Y
+V0507,Tunga Cold Chain Traders,Gujarat,Micro,45,Y
+V0508,Sahyadri Transport Pvt Ltd,Andhra Pradesh,Micro,45,Y
+V0509,Trishul Security Services Pvt Ltd,Andhra Pradesh,Micro,45,Y
+V0510,Tunga Printers Enterprises,Andhra Pradesh,Micro,45,Y
+V0511,Sai Courier Traders,Gujarat,Micro,45,Y
+V0512,Annapurna Maintenance & Co,Gujarat,Micro,45,Y
+V0513,Sahyadri Consultants Distributors,Karnataka,Micro,45,Y
+V0514,Udaya Logistics Pvt Ltd,Telangana,Micro,45,Y
+V0515,Sai Electricals Distributors,Andhra Pradesh,Micro,45,Y
+V0516,Nirmal Courier Traders,Andhra Pradesh,Micro,45,Y
+V0517,Neel Facility Services LLP,Andhra Pradesh,Micro,45,Y
+V0518,Vasudha Consultants LLP,Telangana,Micro,45,Y
+V0519,Ojas Courier Distributors,Telangana,Micro,45,Y
+V0520,Vasudha Transport Distributors,Karnataka,Micro,45,Y
+V0521,Trishul Facility Services Distributors,Andhra Pradesh,Micro,45,Y
+V0522,Sneha Facility Services & Co,Karnataka,Micro,45,Y
+V0523,Udaya Electricals & Co,Gujarat,Micro,45,Y
+V0524,Neel Consultants Pvt Ltd,Telangana,Micro,45,Y
+V0525,Annapurna IT Services Pvt Ltd,Andhra Pradesh,Micro,45,Y
+V0526,Kaveri Security Services LLP,Tamil Nadu,Micro,45,Y
+V0527,Nirmal Packaging & Co,Telangana,Micro,45,Y
+V0528,Hampi IT Services Distributors,Karnataka,Micro,45,Y
+V0529,Sri Lakshmi Facility Services & Co,Karnataka,Small,45,Y
+V0530,Amrit IT Services LLP,Andhra Pradesh,Small,45,Y
+V0531,Godavari Consultants & Co,Andhra Pradesh,Small,45,Y
+V0532,Prana Printers Traders,Gujarat,Small,45,Y
+V0533,Banjara Maintenance Enterprises,Andhra Pradesh,Small,45,Y
+V0534,Pragati Logistics Traders,Maharashtra,Small,45,Y
+V0535,Aditya IT Services Agencies,Himachal Pradesh,Small,45,Y
+V0536,Banjara Cold Chain Traders,Andhra Pradesh,Small,45,Y
+V0537,Venkata Consultants & Co,Andhra Pradesh,Small,45,Y
+V0538,Kaveri Facility Services Enterprises,Andhra Pradesh,Small,45,Y
+V0539,Sai Consultants & Co,Karnataka,Small,45,Y
+V0540,Nirmal Courier Distributors,Telangana,Small,45,Y
+V0541,Amrit Maintenance Pvt Ltd,Telangana,Medium,45,Y
+V0542,Deccan Maintenance LLP,Andhra Pradesh,Medium,45,Y
+V0543,Prana Printers Agencies,Karnataka,Medium,45,Y
+V0544,Annapurna Electricals Agencies,Andhra Pradesh,Medium,45,Y
+V0545,Sneha IT Services Agencies,Telangana,Medium,45,Y
+V0546,Pragati Consultants Traders,Maharashtra,Medium,45,Y
+V0547,Kaveri Packaging & Co,Karnataka,Medium,45,Y
+V0548,Hampi IT Services Traders,Andhra Pradesh,Medium,45,Y
+V0549,Medha Courier Agencies,Karnataka,,60,Y
+V0550,Surya IT Services Traders,Telangana,,60,Y
+V0551,Udaya Electricals Agencies,Karnataka,,60,Y
+V0552,Vasudha Security Services LLP,Tamil Nadu,,60,Y
+V0553,Shreya IT Services Enterprises,Telangana,,60,Y
+V0554,Pragati IT Services Distributors,Himachal Pradesh,,60,Y
+V0555,Krishna Electricals Pvt Ltd,Andhra Pradesh,,60,Y
+V0556,Sri Lakshmi IT Services Traders,Telangana,,60,Y
+V0557,Krishna Security Services Enterprises,Telangana,,60,Y
+V0558,Banjara Maintenance & Co,Andhra Pradesh,,60,Y
+V0559,Kakatiya Printers Agencies,Karnataka,,60,Y
+V0560,Vasudha Packaging Traders,Maharashtra,,60,Y
+V0561,Golconda Maintenance Pvt Ltd,Andhra Pradesh,,60,Y
+V0562,Nirmal IT Services Distributors,Tamil Nadu,,60,Y
+V0563,Sahyadri Courier Traders,Tamil Nadu,,60,Y
+V0564,Surya IT Services Pvt Ltd,Karnataka,,60,Y
+V0565,Arka Printers LLP,Karnataka,,60,Y
+V0566,Vyom Printers Pvt Ltd,Telangana,,60,Y
+V0567,Neel Transport Pvt Ltd,Himachal Pradesh,,60,Y
+V0568,Prana Consultants Pvt Ltd,Andhra Pradesh,,60,Y
+V0569,Charminar Printers Distributors,Telangana,,60,Y
+V0570,Tirumala Security Services Pvt Ltd,Telangana,,60,Y
+V0571,Arka Courier Agencies,Andhra Pradesh,,60,Y
+V0572,Ojas Security Services Traders,Andhra Pradesh,,60,Y
+V0573,Vyom Printers Agencies,Maharashtra,,60,Y
+V0574,Varsha Printers Enterprises,Andhra Pradesh,,60,Y
+V0575,Godavari Electricals & Co,Maharashtra,,60,Y
+V0576,Surya Printers LLP,Karnataka,,60,Y
+V0577,Tunga Packaging Traders,Andhra Pradesh,,60,Y
+V0578,Venkata Logistics LLP,Tamil Nadu,,60,Y
+V0579,Varsha Courier & Co,Andhra Pradesh,,60,Y
+V0580,Sri Lakshmi Transport & Co,Andhra Pradesh,,60,Y
+V0581,Surya Logistics Enterprises,Telangana,,60,Y
+V0582,Medha Consultants Distributors,Andhra Pradesh,,60,Y
+V0583,Sai Courier Pvt Ltd,Karnataka,,60,Y
+V0584,Arka Transport Distributors,Himachal Pradesh,,60,Y
+V0585,Nirmal IT Services Pvt Ltd,Karnataka,,60,Y
+V0586,Chandra Logistics Agencies,Karnataka,,60,Y
+V0587,Kakatiya Courier LLP,Karnataka,,60,Y
+V0588,Udaya Consultants LLP,Karnataka,,60,Y
+V0589,Godavari Facility Services LLP,Andhra Pradesh,,60,Y
+V0590,Trishul Cold Chain Pvt Ltd,Karnataka,,60,Y
+V0591,Amrit Electricals Traders,Karnataka,,60,Y
+V0592,Nandi Facility Services Enterprises,Karnataka,,60,Y
+V0593,Banjara Electricals & Co,Andhra Pradesh,,60,Y
+V0594,Sri Lakshmi Cold Chain Pvt Ltd,Andhra Pradesh,,60,Y
+V0595,Pragati Facility Services & Co,Andhra Pradesh,,60,Y
+V0596,Varsha Printers Agencies,Karnataka,,60,Y
+V0597,Nandi IT Services LLP,Telangana,,60,Y
+V0598,Tunga IT Services Traders,Telangana,,60,Y
+V0599,Tirumala Transport & Co,Telangana,,60,Y
+V0600,Neel Logistics Agencies,Andhra Pradesh,,60,Y
+V0601,Deccan Maintenance & Co,Andhra Pradesh,,60,Y
+V0602,Ojas Logistics & Co,Karnataka,,60,Y
+V0603,Arka Transport LLP,Karnataka,,60,Y
+V0604,Pragati Electricals Distributors,Tamil Nadu,,60,Y
+V0605,Trishul Facility Services Agencies,Andhra Pradesh,,60,Y
+V0606,Arka Printers Distributors,Andhra Pradesh,,60,Y
+V0607,Aditya Courier Agencies,Telangana,,60,Y
+V0608,Deccan Transport Pvt Ltd,Maharashtra,,60,Y
+V0609,Udaya Electricals LLP,Telangana,,60,Y
+V0610,Sneha Facility Services Distributors,Telangana,,60,Y
+V0611,Varsha Electricals Agencies,Andhra Pradesh,,60,Y
+V0612,Krishna Packaging & Co,Andhra Pradesh,,60,Y
+V0613,Ojas Security Services Agencies,Telangana,,60,Y
+V0614,Kaveri Logistics Distributors,Maharashtra,,60,Y
+V0615,Sri Lakshmi Transport Agencies,Maharashtra,,60,Y
+V0616,Hampi Logistics Pvt Ltd,Karnataka,,60,Y
+V0617,Vyom Consultants Distributors,Telangana,,60,Y
+V0618,Tirumala Consultants Pvt Ltd,Karnataka,,60,Y
+V0619,Amrit Consultants & Co,Andhra Pradesh,,60,Y
+V0620,Sri Lakshmi Courier Distributors,Karnataka,,60,Y

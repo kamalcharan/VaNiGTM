@@ -1,0 +1,233 @@
+/* ══ PathwayShell ═════════════════════════════════════════════════════════
+ * The frame only. Every class describing STEP CONTENT belongs to the step,
+ * not here — that boundary is what stops this becoming a second wizard.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 28px 56px;
+  max-width: 1240px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Header ── */
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.pathway {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.eyebrow {
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--ac);
+}
+
+.name {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+}
+
+.railWrap {
+  flex: 1;
+  min-width: 300px;
+}
+
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ── Stepper ── */
+
+.stepper {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.stepBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 5px 8px;
+  border-radius: 7px;
+  text-align: left;
+  min-width: 0;
+}
+
+.stepBtn:not(:disabled):hover { background: var(--surf); }
+.stepBtn:disabled { cursor: default; }
+
+.dot {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line2);
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--tx3);
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.stepLabel {
+  font-family: var(--font-label);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--tx3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; font-weight: var(--fw-label); }
+
+.stepDone .dot {
+  background: rgba(18, 160, 144, 0.16);
+  border-color: rgba(18, 160, 144, 0.5);
+  color: var(--teal-light);
+}
+
+.stepDone .stepLabel { color: var(--tx2); }
+
+.stepCurrent .dot {
+  border-color: var(--ac);
+  color: var(--ac-light);
+  background: var(--ac-dim);
+}
+
+.stepCurrent .stepLabel { color: var(--tx); font-weight: 600; }
+
+/* Locked steps are rendered, never hidden: a step you can see is a promise,
+   a step you cannot is a surprise later. */
+.stepLocked { opacity: 0.45; }
+
+.lockedTag {
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--tx3);
+  border: 1px solid var(--line2);
+  border-radius: 3px;
+  padding: 1px 4px;
+  white-space: nowrap; font-weight: var(--fw-label); }
+
+.connector {
+  width: 18px;
+  height: 1px;
+  background: var(--line2);
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .connector { display: none; }
+  .stepper { gap: 2px 6px; }
+}
+
+/* ── Layout ── */
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 28px;
+  padding-top: 24px;
+  flex: 1;
+  align-items: start;
+}
+
+/* No artefacts yet (first step) — the rail should not reserve empty space. */
+.layout:not(:has(.left)) {
+  grid-template-columns: 1fr;
+}
+
+.left {
+  position: sticky;
+  top: 20px;
+  min-width: 0;
+}
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ── Findings rail (optional, right) ──
+ * The grid only widens to three columns when a findings rail exists. `:has()`
+ * matches this module's own hashed class, which is why PathwayShell renders the
+ * aside itself instead of taking a pre-wrapped node. */
+
+.findings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(201, 151, 58, 0.32);
+  border-radius: 14px;
+  background: rgba(201, 151, 58, 0.05);
+  position: sticky;
+  top: 20px;
+  min-width: 0;
+}
+
+@media (min-width: 1100px) {
+  .layout:has(.findings) {
+    grid-template-columns: 240px 1fr 240px;
+  }
+  .layout:has(.findings):not(:has(.left)) {
+    grid-template-columns: 1fr 240px;
+  }
+}
+
+@media (max-width: 1099px) {
+  .findings {
+    position: static;
+    order: 3;
+    grid-column: 1 / -1;
+  }
+}
+
+/* Below this the three columns stack. Artefacts go BELOW the stage, not above:
+   the thing you are doing now outranks the record of what you already did. */
+@media (max-width: 860px) {
+  .page { padding: 18px 16px 48px; }
+  .layout { grid-template-columns: 1fr; gap: 20px; }
+  .left { position: static; order: 2; }
+  .main { order: 1; }
+}

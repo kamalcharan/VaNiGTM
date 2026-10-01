@@ -1,0 +1,56 @@
+{
+  "functions": {
+    "api/advisor.js": { "maxDuration": 60 },
+    "api/health.js": { "maxDuration": 30 }
+  },
+  "headers": [
+    {
+      "source": "/ai-advisory-playground.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/proposals/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
+        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/((?!api|assets|favicon|.*\\..*).*)", "destination": "/index.html" }
+  ],
+  "redirects": [
+    {
+      "source": "/vani",
+      "destination": "https://vani.vikuna.io",
+      "permanent": false
+    },
+    {
+      "source": "/vani/:path*",
+      "destination": "https://vani.vikuna.io/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/vani-page.html",
+      "destination": "https://vani.vikuna.io",
+      "permanent": false
+    },
+    {
+      "source": "/bcl-contractnest",
+      "destination": "https://drive.google.com/uc?export=download&id=1qYeHYkq0VP3RzEDKfgFgJnTcRyd9LKf9",
+      "permanent": false
+    },
+    {
+      "source": "/bcl-familyknows",
+      "destination": "https://drive.google.com/uc?export=download&id=1BpZ42lfo7yRlVwM-WtdJExx_pMSwH_KF",
+      "permanent": false
+    },
+    {
+      "source": "/bcl-meeting",
+      "destination": "https://calendly.com/connect-vikuna/30min",
+      "permanent": false
+    }
+  ]
+}

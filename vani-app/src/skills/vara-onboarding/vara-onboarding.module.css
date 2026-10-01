@@ -1,0 +1,759 @@
+/* Vara onboarding + JD Studio — UX-only styles. Console theme, no invented palette. */
+
+.wrap { max-width: 1100px; margin: 0 auto; }
+
+.card {
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 22px;
+  background: var(--glass);
+  margin-bottom: 18px;
+}
+
+.cardHead {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.cardTitle { font-size: 18px; font-weight: 600; margin: 0; }
+.cardMeta {
+  font-family: var(--font-mono); font-size: var(--fs-sm);
+  letter-spacing: 0.08em; color: var(--color-muted);
+}
+.cardWhat { font-size: var(--fs-ui); color: var(--color-muted); margin: 0 0 14px; line-height: 1.5; }
+
+.uxBanner {
+  border: 1px dashed var(--gold);
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: rgba(201, 162, 39, 0.06);
+  color: var(--color-muted);
+  font-size: var(--fs-md);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.uxBanner b { color: var(--gold); }
+
+/* ── Inheritance card — visual, not verbal ─────────────────────────── */
+.brand {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+.brandLogo {
+  width: 56px; height: 56px; border-radius: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 22px; color: var(--color-primary-fg);
+}
+.brandName { font-weight: 600; font-size: var(--fs-xl); }
+.brandMeta { font-size: var(--fs-md); color: var(--color-muted); margin-top: 3px; }
+.brandColors { display: flex; gap: 8px; align-items: center; }
+.brandSwatch {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid var(--glass-border);
+}
+.brandQuote {
+  margin-top: 14px; padding: 12px 14px;
+  border-left: 3px solid var(--gold);
+  background: var(--color-bg);
+  border-radius: 0 10px 10px 0;
+  font-size: var(--fs-ui); color: var(--color-fg);
+}
+.brandQuoteMeta {
+  font-size: var(--fs-sm); color: var(--color-muted);
+  margin-top: 6px; font-family: var(--font-mono); letter-spacing: 0.04em;
+}
+
+/* ── Role picker ──────────────────────────────────────────────────── */
+.textInput {
+  width: 100%; box-sizing: border-box;
+  background: var(--color-bg); border: 1px solid var(--glass-border);
+  border-radius: 8px; color: var(--color-fg);
+  padding: 10px 12px; font: inherit; font-size: var(--fs-lg);
+}
+.suggested {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 8px;
+}
+.suggChip {
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: transparent; color: var(--color-muted);
+  cursor: pointer; font-size: var(--fs-md);
+}
+.suggChip:hover { color: var(--color-fg); border-color: var(--gold); }
+
+.familyList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.familyItem {
+  border: 1px solid var(--glass-border);
+  border-radius: 12px; padding: 12px 14px;
+  background: var(--color-bg);
+  cursor: pointer; text-align: left; color: inherit; font: inherit;
+}
+.familyItem:hover { border-color: var(--gold); }
+.familyItemActive { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.familyName { font-weight: 600; margin-bottom: 3px; }
+.familyHint { font-size: var(--fs-md); color: var(--color-muted); }
+
+.actions { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+.primary {
+  height: var(--btn-height); padding: var(--btn-padding);
+  border-radius: var(--btn-radius); border: none; cursor: pointer;
+  background: var(--gold); color: var(--color-primary-fg);
+  font-size: var(--btn-font-size); font-weight: var(--btn-font-weight);
+  letter-spacing: var(--btn-letter-spacing); text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.primary:disabled { opacity: 0.55; cursor: default; }
+.ghost {
+  height: var(--btn-height); padding: var(--btn-padding);
+  border-radius: var(--btn-radius); border: 1px solid var(--glass-border);
+  background: transparent; color: var(--color-fg); cursor: pointer;
+  font-size: var(--btn-font-size); text-decoration: none;
+  display: inline-flex; align-items: center;
+}
+.note { font-size: var(--fs-md); color: var(--color-muted); }
+
+/* ── JD Studio — two columns: compose chat + emerging JD panel ───── */
+.studio {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.chatCol { display: flex; flex-direction: column; height: 640px; }
+.chatCard {
+  flex: 1; display: flex; flex-direction: column;
+  border: 1px solid var(--glass-border); border-radius: 14px;
+  background: var(--glass); overflow: hidden;
+}
+.chatHead {
+  padding: 12px 14px; border-bottom: 1px solid var(--glass-border);
+  display: flex; align-items: center; gap: 10px;
+}
+.chatAvatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--gold); color: var(--color-primary-fg);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: var(--fs-ui);
+}
+.chatName { font-weight: 600; font-size: var(--fs-ui); }
+.chatSub { font-size: var(--fs-sm); color: var(--color-muted); }
+
+.chatBody { flex: 1; overflow-y: auto; padding: 14px; }
+.msg {
+  max-width: 78%; padding: 10px 12px;
+  border-radius: 12px; margin-bottom: 8px;
+  font-size: var(--fs-ui); line-height: 1.5;
+}
+.msgV { background: var(--color-bg); border: 1px solid var(--glass-border); }
+.msgU {
+  background: var(--gold); color: var(--color-primary-fg);
+  margin-left: auto; text-align: right;
+}
+.chatFoot { padding: 10px 12px; border-top: 1px solid var(--glass-border); }
+.chipRow { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 8px 12px; border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--color-bg); color: var(--color-fg);
+  cursor: pointer; font: inherit; font-size: var(--fs-md);
+}
+.chip:hover { border-color: var(--gold); }
+
+/* ── JD panel — what emerges from the chat ─────────────────────── */
+.jdCol { display: flex; flex-direction: column; }
+.jdCard {
+  border: 1px solid var(--glass-border); border-radius: 14px;
+  background: var(--glass);
+  padding: 18px;
+}
+.jdTitle { font-size: 16px; font-weight: 600; margin: 0 0 2px; }
+.jdSub {
+  font-size: var(--fs-md); color: var(--color-muted);
+  font-family: var(--font-mono); letter-spacing: 0.04em;
+  margin: 0 0 14px;
+}
+.jdSection {
+  border-top: 1px solid var(--glass-border);
+  padding: 12px 0;
+}
+.jdSection:first-of-type { border-top: none; }
+.jdSectionH {
+  font-size: var(--fs-sm); color: var(--color-muted);
+  font-family: var(--font-label); letter-spacing: var(--ls-label);
+  text-transform: uppercase; margin-bottom: 8px; font-weight: var(--fw-label); }
+.jdEmpty {
+  font-size: var(--fs-md); color: var(--color-muted);
+  font-style: italic;
+}
+.jdLine { font-size: var(--fs-ui); padding: 3px 0; }
+
+.weightRow {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 12px; align-items: center;
+  padding: 5px 0;
+}
+.weightBar {
+  position: relative; height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px; overflow: hidden;
+  margin-top: 5px;
+}
+.weightFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-light), var(--gold));
+  border-radius: 999px;
+}
+.weightName { font-size: var(--fs-ui); }
+.weightVal {
+  font-size: var(--fs-md); color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right; min-width: 38px;
+}
+
+.knockRow {
+  display: flex; gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px; font-size: var(--fs-md);
+  margin-bottom: 5px;
+}
+.knockLabel { font-weight: 500; min-width: 90px; }
+.knockRule { color: var(--color-muted); }
+
+.publishRow {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 12px;
+}
+
+/* ── Published-JDs list on the doorway ────────────────────────────── */
+.jdList {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 10px;
+}
+.jdRow {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 12px; align-items: center;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--color-bg);
+}
+.jdRowMain { min-width: 0; }
+.jdRowTitle { font-weight: 600; font-size: var(--fs-lg); }
+.jdRowVer {
+  font-family: var(--font-mono); font-size: var(--fs-sm);
+  color: var(--gold); letter-spacing: 0.06em;
+  margin-left: 4px;
+}
+.jdRowMeta {
+  font-size: var(--fs-md); color: var(--color-muted); margin-top: 3px;
+}
+.jdRowActions {
+  display: flex; gap: 6px;
+}
+
+/* ── Family-derivation diff box (JD Studio publish outcome) ──────── */
+.derivBox {
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--color-bg);
+  margin-top: 12px;
+}
+.derivHead {
+  font-family: var(--font-label); font-size: var(--fs-sm);
+  letter-spacing: var(--ls-label); text-transform: uppercase;
+  color: var(--color-muted); margin-bottom: 8px; font-weight: var(--fw-label); }
+.derivEmpty {
+  font-size: var(--fs-ui); color: var(--color-muted);
+  font-style: italic; line-height: 1.5;
+}
+.derivList { list-style: none; padding: 0; margin: 0 0 8px; }
+.derivRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px; align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--glass-border);
+  font-size: var(--fs-ui);
+}
+.derivRow:last-child { border-bottom: none; }
+.derivBadge, .derivBadgeK {
+  font-family: var(--font-label); font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label); text-transform: uppercase;
+  padding: 2px 6px; border-radius: 4px;
+  min-width: 74px; text-align: center; font-weight: var(--fw-label); }
+.derivBadge {
+  background: rgba(201, 162, 39, 0.15);
+  color: var(--gold);
+  border: 1px solid rgba(201, 162, 39, 0.35);
+}
+.derivBadgeK {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-muted);
+  border: 1px solid var(--glass-border);
+}
+.derivName { min-width: 0; }
+.derivMeta {
+  font-size: var(--fs-sm); color: var(--color-muted);
+  font-family: var(--font-mono); letter-spacing: 0.03em;
+}
+.derivFoot {
+  font-size: var(--fs-md); color: var(--color-muted);
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--glass-border);
+}
+.derivDiff {
+  margin-top: 12px; padding: 10px 14px;
+  border: 1px dashed var(--glass-border);
+  border-radius: 10px;
+  background: transparent;
+}
+.derivDiffH {
+  font-family: var(--font-label); font-size: var(--fs-sm);
+  letter-spacing: var(--ls-label); text-transform: uppercase;
+  color: var(--color-muted); margin-bottom: 6px; font-weight: var(--fw-label); }
+.derivPerJd {
+  font-size: var(--fs-md); color: var(--color-muted);
+  padding: 3px 0; line-height: 1.5;
+}
+
+/* Full-width welcome / done card variants */
+.doneCard {
+  border: 1px solid var(--gold);
+  background: rgba(201, 162, 39, 0.06);
+  border-radius: 14px; padding: 22px;
+  text-align: center;
+}
+.doneTitle {
+  font-size: 20px; font-weight: 600;
+  margin: 0 0 6px;
+}
+.doneSub {
+  font-size: var(--fs-ui); color: var(--color-muted);
+  margin: 0 0 14px;
+}
+
+/* ── Setup gap ─────────────────────────────────────────────────────────────
+ * NO_INDUSTRY / TENANT_NOT_PROVISIONED. Dashed border rather than the solid
+ * card, matching the other "nothing here yet, here is what to do" states —
+ * this is an instruction, not a failure, and it must not read like the
+ * boundary's error card (which offers a retry that cannot help). */
+.setupGap {
+  border: 1px dashed var(--glass-border);
+  border-radius: 12px;
+  padding: 18px 20px 20px;
+  background: var(--color-bg);
+  max-width: 640px;
+}
+/* u.tag is block-level on its own; without this the badge stretches the card. */
+.setupGapBadge { display: inline-flex; align-items: center; }
+
+.setupGapTitle {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  margin: 10px 0 8px;
+}
+.setupGapWhy {
+  font-size: var(--fs-ui);
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+.setupGapSaid {
+  font-size: var(--fs-md);
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin: 0 0 14px;
+  padding-left: 10px;
+  border-left: 2px solid var(--glass-border);
+}
+.setupGapCta {
+  display: inline-flex;
+  align-items: center;
+  color: var(--gold);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  text-decoration: none;
+}
+.setupGapCta:hover { text-decoration: underline; }
+
+/* ── Employment contract controls (JD Studio panel) ───────────────────────
+ * The role's shape — type, work mode, locations. Typed, not conversed: these
+ * are declarations with exact answers, and a slider states "3 days in" better
+ * than any prose a model could infer it from. */
+
+.suggChipOn {
+  composes: suggChip;
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.locChip {
+  padding: 5px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.locChip:hover { border-color: var(--gold); color: var(--gold); }
+
+.modeLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 14px 0 6px;
+  font-size: var(--fs-md);
+  color: var(--color-muted);
+}
+.modeValue { color: var(--color-text); font-weight: 600; }
+
+.slider {
+  width: 100%;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.sliderEnds {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--color-muted);
+  opacity: 0.75;
+}
+
+.locAdd {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.locAdd .textInput { flex: 1 1 auto; }
+
+/* ── Published JD, read-only ──────────────────────────────────────────────
+ * Expanded under its row. Everything here already arrived in
+ * /vara/onboarding/context — the panel renders it, it does not fetch it. */
+.jdItem + .jdItem { margin-top: 6px; }
+
+.jdDetail {
+  margin: 2px 0 4px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--glass-border);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  background: var(--color-bg);
+}
+.jdDetailHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.jdDetailNote {
+  font-size: var(--fs-md);
+  color: var(--color-muted);
+  opacity: 0.85;
+}
+.jdDetailLede {
+  font-size: var(--fs-ui);
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.jdDetailSection + .jdDetailSection { margin-top: 14px; }
+
+.jdDetailFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.jdDetailFact {
+  padding: 4px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  font-size: var(--fs-md);
+  color: var(--color-text);
+}
+
+/* The posting. Prose, not a field — so it gets reading measure and keeps the
+   author's line breaks. */
+.descBox {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--fs-ui);
+  line-height: 1.6;
+  resize: vertical;
+}
+.descBox:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.jdDetailDesc {
+  margin: 6px 0 0;
+  font-size: var(--fs-ui);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  max-width: 68ch;
+}
+
+/* ── Research card ────────────────────────────────────────────────────────
+   Shown when Vara has no playbooks for the tenant's industry. Tokens only —
+   this screen inherits VaNiGTM's --color-* aliases from globals.css, and an
+   undefined custom property makes the browser discard the whole declaration
+   rather than fall back. */
+
+.research {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 10px;
+}
+
+.researchIdle   { border-left-color: var(--tx3); }
+.researchBusy   { border-left-color: var(--ac); }
+.researchFailed { border-left-color: var(--bad); }
+
+.researchBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 240px;
+  flex: 1 1 320px;
+  font-size: var(--fs-ui);
+  line-height: 1.55;
+}
+
+.researchBody b { color: var(--tx); font-weight: 600; }
+
+/* The server's own words, including an upstream error. Wraps rather than
+   truncates — a cause the tenant cannot read is no better than none. */
+.researchDetail { color: var(--tx2); word-break: break-word; }
+
+/* Always present: no state here blocks the tenant, and saying so stops the
+   card reading as an error when it is only a "not yet". */
+.researchNote { color: var(--tx3); font-size: var(--fs-md); }
+
+/* Provenance line inside "What Vara already knows about you". Deliberately
+   quiet — it is a fact about the data, not a warning. */
+.provenance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-ui);
+  line-height: 1.55;
+  color: var(--tx2);
+}
+
+.provenanceLabel {
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--tx3); font-weight: var(--fw-label); }
+
+/* Retry on the research card's failure state. Bordered, not filled: re-asking
+   is cheap and ordinary, and it must not compete with Publish. */
+.btnRetry {
+  font: inherit;
+  font-size: var(--fs-ui);
+  line-height: 1;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--color-fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnRetry:hover { border-color: var(--gold); }
+
+/* ── Take families ───────────────────────────────────────────────────────
+   The family list is a picker plus an in-place reader, so a tenant can see
+   what is inside a family before deciding it is theirs. */
+.familyHit {
+  all: unset;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+}
+.familyHit:disabled { cursor: default; opacity: .75; }
+.familyHit:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.familyRow { display: flex; gap: 12px; align-items: flex-start; }
+
+.prov {
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 2px;
+  white-space: nowrap;
+  border: 1px solid var(--color-border); font-weight: var(--fw-label); }
+.provRes  { color: var(--color-info); border-color: var(--color-info); }
+.provGen  { color: var(--color-text-dim); }
+.provMine { color: var(--color-success); border-color: var(--color-success); }
+
+.viewBtn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  border-radius: 3px;
+  padding: 4px 11px;
+  font-size: var(--fs-md);
+  margin-top: 10px;
+  cursor: pointer;
+}
+.viewBtn:hover,
+.viewBtn[aria-expanded='true'] {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* .peek is gone — the structure opens in a dialog now. Inline expansion put a
+   weighted must-have list, its `why` lines and the titles into a ~560px
+   column, where the bars and the reasons wrapped into a mess and a long
+   family pushed the rest of the list off screen. It is a document; it gets a
+   document's width. */
+.peekWhy {
+  color: var(--color-text-dim);
+  font-size: var(--fs-ui);
+  margin-top: 2px;
+  max-width: 56ch;
+}
+.peekTitles {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  color: var(--color-text-dim);
+  line-height: 1.6;
+}
+
+/* Said in its own block because a tenant who thinks this is their only chance
+   takes everything, and eleven half-meant families are worse than two. */
+.laterNote {
+  border-left: 2px solid var(--color-primary);
+  background: var(--color-surface);
+  padding: 12px 15px;
+  border-radius: 0 3px 3px 0;
+  margin-top: 18px;
+  font-size: var(--fs-lg);
+  color: var(--color-text-dim);
+  max-width: 68ch;
+}
+.laterNote b { color: var(--color-text); font-weight: 600; }
+
+/* ── Structure dialog ────────────────────────────────────────────────────
+   Native <dialog> + showModal(): top layer, focus trap, Esc-to-close and an
+   inert page behind, none of which a hand-rolled overlay gets right for free. */
+/* The dialog element is the click surface; the panel is the content. Anything
+   outside the panel is a click outside, which closes. */
+.dialogPanel {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+}
+.dialog {
+  width: min(860px, 92vw);
+  max-height: min(84vh, 900px);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .7);
+  overflow: hidden;
+}
+.dialog::backdrop {
+  background: rgba(0, 0, 0, .62);
+  backdrop-filter: blur(2px);
+}
+.dialogHead {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--color-border);
+  /* Sticky so the family being read stays named while the shape scrolls. */
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+}
+.dialogTitle {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -.012em;
+}
+.dialogClose {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.dialogClose:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.dialogBody {
+  padding: 4px 24px 24px;
+  overflow-y: auto;
+  max-height: calc(min(84vh, 900px) - 78px);
+}
+
+/* ── Editing a shape ─────────────────────────────────────────────────────
+   The same dialog, in its second mode. A family in the catalogue is read;
+   a family in the workspace is changed. */
+.wt { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.wt button {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  width: 24px; height: 24px;
+  border-radius: 3px;
+  line-height: 1; font-size: var(--fs-lg);
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+.wt button:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+.dropBtn {
+  background: transparent;
+  border: 0;
+  color: var(--color-text-dim);
+  font-size: 16px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+.dropBtn:hover:not(:disabled) { color: var(--color-warning); }
+.dropBtn:disabled { opacity: .3; cursor: not-allowed; }
+.thrRow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.thrRow input[type='range'] { accent-color: var(--color-primary); flex: 1; min-width: 180px; }

@@ -1,0 +1,72 @@
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sk {
+  display: block;
+  background: linear-gradient(90deg, var(--surf2) 0%, var(--surf3) 42%, var(--surf2) 84%);
+  background-size: 260% 100%;
+  animation: shimmer 1.25s linear infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 130% 0; }
+  to   { background-position: -130% 0; }
+}
+
+/* A shimmer that never stops is a distraction for anyone sensitive to motion;
+   the shape still communicates the wait, and Loading announces it. */
+@media (prefers-reduced-motion: reduce) {
+  .sk { animation: none; background: var(--surf3); }
+}
+
+.counters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.counter {
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 16px 18px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.row:last-child { border-bottom: none; }
+
+.rowBody { flex: 1; min-width: 0; padding-top: 3px; }
+
+.tableWrap { padding: 4px 0; }
+
+.trow {
+  display: grid;
+  gap: 16px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+
+.trow:last-child { border-bottom: none; }
+
+.gap7  { height: 7px; }
+.gap8  { height: 8px; }
+.gap12 { height: 12px; }
+.gap14 { height: 14px; }
+.gap24 { height: 24px; }

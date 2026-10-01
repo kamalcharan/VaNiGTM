@@ -1,0 +1,282 @@
+/* Install — console theme only, no invented palette. */
+
+.lede {
+  font-size: var(--fs-ui);
+  color: var(--color-muted);
+  line-height: 1.55;
+  max-width: 780px;
+  margin: 0 0 22px;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 820px;
+}
+
+.card {
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--glass);
+  padding: 18px 20px 20px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.stepNo {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--color-bg);
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.stepTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  margin: 0;
+}
+
+.note {
+  font-size: var(--fs-ui);
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin: 0 0 14px;
+  max-width: 68ch;
+}
+.note code,
+.emptyInline code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  padding: 1px 5px;
+  background: var(--color-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+}
+
+/* ── snippet ──────────────────────────────────────────────────────────── */
+
+.snippet {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  padding: 14px 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  margin: 0 0 14px;
+  /* The tag is one long line and must stay copyable verbatim — wrap it rather
+     than scrolling it, so nothing is hidden off the right edge. */
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--color-text);
+}
+
+/* ── origins ──────────────────────────────────────────────────────────── */
+
+.domainBlock + .domainBlock {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.domainName {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  color: var(--color-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.originList {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.originRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+}
+
+.originName {
+  flex: 1 1 auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-ui);
+  word-break: break-all;
+}
+
+/* Fixed width so the origin names line up whatever their status reads. */
+.pill {
+  flex: 0 0 auto;
+  min-width: 124px;
+  text-align: center;
+}
+
+.addRow {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.input {
+  flex: 1 1 auto;
+  height: var(--input-height);
+  padding: var(--input-padding);
+  border: var(--input-border-width) solid var(--glass-border);
+  border-radius: var(--input-radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-ui);
+}
+.input::placeholder {
+  opacity: var(--input-placeholder-opacity);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--gold) var(--input-focus-ring-opacity), transparent);
+}
+
+/* ── buttons ──────────────────────────────────────────────────────────── */
+
+.primary {
+  flex: 0 0 auto;
+  height: var(--btn-height);
+  padding: 0 18px;
+  border: none;
+  border-radius: var(--btn-radius);
+  background: var(--gold);
+  color: var(--color-primary-fg);
+  font-family: var(--font-body);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-font-weight);
+  letter-spacing: var(--btn-letter-spacing);
+  cursor: pointer;
+}
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ghost {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.ghost:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--gold);
+}
+.ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primaryLink {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--gold);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  text-decoration: none;
+}
+.primaryLink:hover {
+  text-decoration: underline;
+}
+
+/* ── empty / not-live states ──────────────────────────────────────────── */
+
+.empty,
+.emptyInline {
+  font-size: var(--fs-ui);
+  color: var(--color-muted);
+  line-height: 1.6;
+  padding: 12px 14px;
+  border: 1px dashed var(--glass-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.emptyInline {
+  margin-bottom: 12px;
+}
+
+.checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.checkFail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: var(--fs-ui);
+  color: var(--color-text);
+}
+.checkFail span {
+  color: var(--color-muted);
+  font-size: var(--fs-sm);
+}
+
+/* Only the first missing check is actionable; the rest are gated behind it. */
+.blockedNote {
+  margin-left: 8px;
+  font-size: var(--fs-sm);
+  color: var(--color-muted);
+  opacity: 0.7;
+}
+
+.checkLine {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+/* The server's explanation for a check that fails in a confusing way. */
+.checkDetail {
+  margin: 5px 0 0 20px;
+  font-size: var(--fs-md);
+  color: var(--color-muted);
+  line-height: 1.55;
+  max-width: 62ch;
+}

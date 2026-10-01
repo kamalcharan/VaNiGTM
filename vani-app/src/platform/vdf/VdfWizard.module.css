@@ -1,0 +1,298 @@
+/* ═══════════════════════════════════════════════════════
+   VDF WIZARD — Step indicator with connected dots
+   Theme-compliant: ALL colors via --color-* CSS variables
+   ═══════════════════════════════════════════════════════ */
+
+.wizard {
+  padding: 0 16px;
+}
+
+.track {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+}
+
+.stepWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  min-width: 80px;
+}
+
+/* ── Connecting Line ────────────────────────────────── */
+.line {
+  position: absolute;
+  top: 16px;
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--color-border);
+  z-index: 0;
+  transition: background 300ms ease-out;
+}
+
+.lineDone {
+  background: var(--color-primary);
+}
+
+/* ── Dot ────────────────────────────────────────────── */
+.dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 1;
+}
+
+.dot:not(:disabled) {
+  cursor: pointer;
+}
+
+.dot:not(:disabled):hover {
+  border-color: var(--color-primary);
+  transform: scale(1.08);
+}
+
+.dotNum {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+/* ── Done State ─────────────────────────────────────── */
+.done {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.done svg {
+  width: 14px;
+  height: 14px;
+  color: var(--color-primary-fg);
+}
+
+/* ── Current State ──────────────────────────────────── */
+.current {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.current .dotNum {
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+/* ── Skip Indicator ─────────────────────────────────── */
+.skipDot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-info);
+  border: 2px solid var(--color-surface);
+}
+
+/* ── Labels ─────────────────────────────────────────── */
+.label {
+  font-size: var(--fs-xs);
+  color: var(--color-muted);
+  text-align: center;
+  margin-top: 8px;
+  letter-spacing: 0.02em;
+  max-width: 80px;
+  line-height: 1.3;
+}
+
+.labelCurrent {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.labelDone {
+  color: var(--color-fg);
+}
+
+/* ═══════════════════════════════════════════════════════
+   MISSION VARIANT — agent-wizard top rail (ux-references)
+
+   Plain numbered circles joined by a rule; only the active step is
+   labelled, as a pill. Nothing else carries text, so the top rail can
+   never duplicate the mission-memory rail on the left.
+
+   The connector becomes a real flex sibling here (not the absolute rule
+   the default variant uses) because the active pill is wider than a
+   circle — an absolutely-positioned line can't span unequal widths
+   without gaps.
+   ═══════════════════════════════════════════════════════ */
+
+.wizardMission {
+  padding: 0;
+}
+
+.wizardMission .track {
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.wizardMission .stepWrap {
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+  gap: 0;
+}
+
+/* every step after the first absorbs the slack, stretching its connector */
+.wizardMission .stepWrap:not(:first-child) {
+  flex: 1 1 auto;
+}
+
+.wizardMission .line {
+  position: static;
+  flex: 1 1 auto;
+  min-width: 20px;
+  width: auto;
+  height: 1px;
+  top: auto;
+  right: auto;
+  margin: 0 10px;
+  background: var(--color-border);
+}
+
+.wizardMission .lineDone {
+  background: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
+}
+
+/* Every step is circle + label. The button itself is the pill shell: it stays
+   invisible until the step is active, so emphasis — not visibility — carries
+   the current state. */
+.wizardMission .dot {
+  width: auto;
+  height: 26px;
+  flex-shrink: 0;
+  padding: 0 10px 0 2px;
+  gap: 7px;
+  border-radius: 999px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* the number keeps its own circle inside the shell */
+.wizardMission .dotNum {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.wizardMission .dot:not(:disabled):hover {
+  transform: none;
+  border-color: transparent;
+  background: var(--color-surface);
+}
+
+/* completed steps stay plain numbered circles — the ✓ belongs to the
+   mission-memory rail, which is where completion is actually recorded */
+.wizardMission .done {
+  background: transparent;
+  border-color: transparent;
+}
+
+.wizardMission .done .dotNum {
+  color: var(--color-fg);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+}
+
+.wizardMission .done .pillLabel {
+  color: var(--color-fg);
+}
+
+/* ── The active step ────────────────────────────────── */
+
+.wizardMission .current {
+  padding: 0 11px 0 4px;
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+.wizardMission .current .dotNum {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+/* live marker ahead of the number */
+.wizardMission .current::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-success);
+}
+
+.wizardMission .current .dotNum {
+  color: var(--color-fg);
+  font-weight: 700;
+}
+
+.pillLabel {
+  font-size: var(--fs-md);
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-muted);
+  white-space: nowrap;
+  transition: color 200ms ease;
+}
+
+.wizardMission .current .pillLabel {
+  color: var(--color-fg);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .wizardMission .pillLabel {
+    font-size: var(--fs-sm);
+  }
+
+  .wizardMission .line {
+    min-width: 10px;
+    margin: 0 6px;
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────── */
+@media (max-width: 640px) {
+  .stepWrap {
+    min-width: 56px;
+  }
+
+  .label {
+    font-size: var(--fs-xs);
+    max-width: 56px;
+  }
+
+  .dot {
+    width: 28px;
+    height: 28px;
+  }
+}

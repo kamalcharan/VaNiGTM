@@ -1,0 +1,133 @@
+/* ═══════════════════════════════════════════════════════
+   VDF MISSION MEMORY — accumulating wizard rail
+   Theme-compliant: ALL colors via --color-* CSS variables
+   ═══════════════════════════════════════════════════════ */
+
+.rail,
+.scroll,
+.entry,
+.slot {
+  box-sizing: border-box;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The rail grows to its natural height as the mission accumulates — no cap,
+   no internal scroll. It lives inside a `position: sticky` container (the
+   page that owns the layout), so native sticky-scroll behavior handles a
+   rail taller than the viewport correctly on its own: pinned while you
+   scroll past it, then scrolls away with the page once you pass its end.
+   Two earlier versions of this file tried to cap the height and paper over
+   the cap with a JS scrollIntoView effect — both were fragile in different
+   ways. This is the version with nothing left to get wrong. */
+.scroll {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ── Step separator — a hairline rule, not a heading ─────────────────── */
+
+.separator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0 10px;
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.entry:first-child .separator {
+  border-top: none;
+  padding-top: 0;
+}
+
+.sepMark {
+  color: var(--color-success);
+  font-size: var(--fs-sm);
+  flex-shrink: 0;
+}
+
+.sepText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.separatorActive {
+  color: var(--color-primary);
+}
+
+.separatorActive .sepMark {
+  color: var(--color-primary);
+}
+
+/* ── Artifact slot — the handoff's landing zone ──────────────────────── */
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* A filed artifact sits in its own card so each step reads as one object in
+   memory rather than loose content under a rule. Held at partial surface
+   opacity so the chips and rows INSIDE it stay legible as separate elements. */
+.slot:not(:empty) {
+  padding: 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+}
+
+/* The active step's slot is drawn before its artifact exists so the flight
+   has something to measure. Give it enough body to land in. */
+.slotEmpty {
+  min-height: 52px;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 26%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-primary) 4%, transparent);
+  margin-bottom: 14px;
+}
+
+/* Arrival flash — the handoff adds this class on landing (useMissionHandoff).
+   Global, not module-scoped: the hook sets it via classList on a DOM node. */
+:global(.mission-step-landed) {
+  animation: mission-land 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* A slot that received nothing has no box to flash — without this the
+   glow renders as a bright bar across an empty step (steps 4–6). */
+.slot:empty:global(.mission-step-landed) {
+  animation: none;
+}
+
+@keyframes mission-land {
+  0%   { box-shadow: 0 0 0 0 var(--color-primary-glow); }
+  35%  { box-shadow: 0 0 0 4px var(--color-primary-glow); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(.mission-step-landed) {
+    animation: none;
+  }
+}

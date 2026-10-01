@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /preview
+Disallow: /bcl2025/
+Disallow: /bcl-offers/
+
+# /proposals/ is deliberately NOT disallowed here, and that is not an oversight.
+# A Disallow stops the crawler fetching the page, which stops it ever seeing the
+# noindex — so a URL shared by email can still surface in results, contentless,
+# if anyone links it. Keeping it crawlable lets the X-Robots-Tag: noindex header
+# in vercel.json actually do its job. Do not "tighten" this by adding a Disallow.
+
+Sitemap: https://vikuna.io/sitemap.xml

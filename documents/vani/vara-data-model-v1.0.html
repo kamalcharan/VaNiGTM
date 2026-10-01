@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vara — Data Model v1.0</title>
+<style>
+:root{
+  --paper:#faf9f6; --card:#ffffff; --ink:#1c1b19; --ink2:#4c4a45; --muted:#8a8780;
+  --line:#e6e4dd; --line2:#d5d2c8;
+  --accent:#4a3aa7; --accent2:#2a5fae; --warm:#b8501e; --good:#1d7a1d; --crit:#b03030; --gold:#9a6b00;
+  --grad:linear-gradient(120deg,#2a5fae,#4a3aa7 60%,#8d3f76);
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --serif:Georgia,'Times New Roman',serif;
+  --mono:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:14.5px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.page{max-width:1080px;margin:0 auto;padding:0 36px 120px}
+.cover{padding:70px 0 40px;border-bottom:3px solid var(--ink)}
+.cover .brand{font-size:13px;letter-spacing:.28em;text-transform:uppercase;font-weight:700;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:18px}
+.cover h1{font-family:var(--serif);font-size:46px;line-height:1.1;font-weight:400}
+.cover h1 b{font-weight:700}
+.cover .meta{display:flex;gap:24px;margin-top:24px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.cover .meta b{color:var(--ink2);font-weight:600}
+section{padding-top:56px}
+.sec-tag{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:800;margin-bottom:8px}
+h2{font-family:var(--serif);font-size:29px;font-weight:400;margin-bottom:14px}
+h3{font-size:15px;font-weight:800;margin:28px 0 10px}
+p{max-width:840px;margin-bottom:12px}
+.lead{font-size:16px;color:var(--ink2)}
+.callout{border-left:4px solid var(--accent);background:var(--card);border-radius:0 12px 12px 0;padding:15px 20px;margin:16px 0;max-width:880px;box-shadow:0 2px 10px rgba(28,27,25,.04)}
+.callout.warn{border-color:var(--warm)}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:10px 16px;border-bottom:2px solid var(--line);font-weight:800;background:var(--paper)}
+td{padding:10px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td:first-child{font-weight:700;white-space:nowrap}
+code, .mono{font-family:var(--mono);font-size:12.5px}
+.ok{color:var(--good);font-weight:700}
+
+/* ERD */
+.erd{margin:20px 0;padding:24px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 2px 14px rgba(28,27,25,.04)}
+.erd-title{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:16px}
+.erd-lane{margin-bottom:8px}
+.erd-lane-label{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;margin:14px 0 8px}
+.erd-lane-label.vani{color:var(--accent2)}
+.erd-lane-label.vara{color:var(--warm)}
+.erd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:10px}
+.ent{border:1.5px solid var(--line2);border-radius:10px;background:var(--paper);overflow:hidden}
+.ent .e-name{font-family:var(--mono);font-size:11.5px;font-weight:700;padding:7px 10px;border-bottom:1px solid var(--line)}
+.ent.vani .e-name{background:rgba(42,95,174,.07);color:#1c3f74}
+.ent.vara .e-name{background:rgba(184,80,30,.07);color:#7c3512}
+.ent.svc .e-name{background:rgba(154,107,0,.08);color:#6b4a00}
+.ent .e-cols{padding:6px 10px;font-family:var(--mono);font-size:10.5px;line-height:1.7;color:var(--ink2)}
+.ent .e-cols b{color:var(--accent);font-weight:700}
+.ent .e-cols i{color:var(--muted);font-style:normal}
+.ent .e-cols .ao{color:var(--crit);font-size:9px;letter-spacing:.08em;font-weight:800}
+
+/* SQL blocks */
+details{margin:14px 0;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+summary{cursor:pointer;padding:13px 18px;font-weight:800;font-size:13.5px;background:linear-gradient(120deg,rgba(42,95,174,.05),rgba(74,58,167,.05))}
+summary .sum-sub{font-weight:500;color:var(--muted);font-size:12px;margin-left:10px}
+pre{background:#141419;color:#d7d7e0;padding:20px 22px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.6;max-height:640px;overflow-y:auto}
+pre .c{color:#7d7d92}
+footer{margin-top:70px;padding-top:20px;border-top:3px solid var(--ink);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+@media print{pre{max-height:none;color:#111;background:#f4f4f4}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="cover">
+  <div class="brand">VARA · Data Model · VaNi Talent Agent</div>
+  <h1><b>Vara</b> — Data Model <span style="color:var(--muted)">v1.0</span></h1>
+  <div class="meta">
+    <span>Status <b>Validated — runs clean on PostgreSQL 16</b></span>
+    <span>Owner <b>Charan · Vikuna</b></span>
+    <span>Date <b>16 Aug 2026</b></span>
+    <span>Companion to <b>Specification v0.2 (Sections 14–15)</b></span>
+    <span>Artifacts <b>3 migration files, dependency-ordered</b></span>
+  </div>
+</div>
+
+<!-- ============ 1 ============ -->
+<section id="d1">
+  <div class="sec-tag">Section 1</div>
+  <h2>The vani_ spine is net-new — migration 001 creates it</h2>
+  <p class="lead">Nothing in VaNiGTM provides the platform dependencies today. The spec described the vani_ layer as if it existed; it does not. Migration <b>001</b> is therefore the platform-creation step — it must run before any agent table, and it is the layer Nova will later reuse without another line of platform DDL.</p>
+  <table>
+    <tr><th style="width:250px">Dependency question</th><th>Resolution in this model</th></tr>
+    <tr><td>Existing auth (Supabase / legacy)</td><td><code>vani_user.auth_ref</code> is the bridge — a nullable uuid pointing at the existing auth provider's user id. Platform identity lives in vani_user; authentication stays where it is. No migration of legacy users is required to start; they link on first login.</td></tr>
+    <tr><td>Legacy VN_ / GTM tables</td><td>Coexist untouched — "let history be history." No data migration, no renames. New work reads/writes the vani_/vara_ layer only.</td></tr>
+    <tr><td>Creation order</td><td><b>001</b> vani_ platform spine + shared services → <b>002</b> vara_ agent tables → <b>003</b> learning, functions, view, seed. Each file is idempotent-safe to review and runs in one transaction per file.</td></tr>
+    <tr><td>Seed reality</td><td>003 seeds the agent registry (vara + its three roles) and <b>Vikuna as tenant #1</b> — a real vani_tenant row with careers.vikuna.io as a candidate domain. Dogfooding starts as a tenant, not a special case.</td></tr>
+  </table>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="d2">
+  <div class="sec-tag">Section 2</div>
+  <h2>Entity-relationship map</h2>
+  <p>Key columns only — <b>bold = PK</b>, → = FK target, <span class="ao" style="color:var(--crit);font-size:10px;font-weight:800">AO</span> = append-only. Full structures are in the DDL of Section 4.</p>
+
+  <div class="erd">
+    <div class="erd-title">vani_ — platform level · created by 001</div>
+    <div class="erd-lane-label vani">Identity &amp; tenancy</div>
+    <div class="erd-grid">
+      <div class="ent vani"><div class="e-name">vani_tenant</div><div class="e-cols"><b>id</b> · slug ⭑ · status · data_region</div></div>
+      <div class="ent vani"><div class="e-name">vani_tenant_domain</div><div class="e-cols"><b>id</b> · tenant_id → tenant · domain ⭑ · purpose · embed_origins[]</div></div>
+      <div class="ent vani"><div class="e-name">vani_user</div><div class="e-cols"><b>id</b> · email ⭑ · auth_ref <i>(bridge)</i></div></div>
+      <div class="ent vani"><div class="e-name">vani_membership</div><div class="e-cols"><b>id</b> · tenant_id → · user_id → · platform_role · ⭑(tenant,user)</div></div>
+    </div>
+    <div class="erd-lane-label vani">Agent fabric</div>
+    <div class="erd-grid">
+      <div class="ent vani"><div class="e-name">vani_agent</div><div class="e-cols"><b>id</b> · code ⭑ <i>(vara, nova)</i> · version</div></div>
+      <div class="ent vani"><div class="e-name">vani_tenant_agent</div><div class="e-cols"><b>id</b> · tenant_id → · agent_id → · status · gateway_ref · ⭑(tenant,agent)</div></div>
+      <div class="ent vani"><div class="e-name">vani_agent_role</div><div class="e-cols"><b>id</b> · agent_id → · code <i>(ta, hm, calibration_approver)</i></div></div>
+      <div class="ent vani"><div class="e-name">vani_user_agent_role</div><div class="e-cols"><b>id</b> · tenant_id → · user_id → · agent_id → · agent_role_id →</div></div>
+    </div>
+    <div class="erd-lane-label vani">Org context &amp; packs</div>
+    <div class="erd-grid">
+      <div class="ent vani"><div class="e-name">vani_role_family</div><div class="e-cols"><b>id</b> · tenant_id → · name · parent_id → self</div></div>
+      <div class="ent vani"><div class="e-name">vani_domain_pack</div><div class="e-cols"><b>id</b> · code+version ⭑ · payload jsonb <i>(per-agent namespaces)</i></div></div>
+      <div class="ent vani"><div class="e-name">vani_tenant_pack_binding</div><div class="e-cols"><b>id</b> · tenant_id → · pack_id → · bound once, delegated</div></div>
+      <div class="ent vani"><div class="e-name">vani_llm_provider</div><div class="e-cols"><b>id</b> · tenant_id → · credentials_enc · test_status</div></div>
+    </div>
+    <div class="erd-lane-label vani">Shared services</div>
+    <div class="erd-grid">
+      <div class="ent vani svc"><div class="e-name">vani_template</div><div class="e-cols"><b>id</b> · tenant → · agent → · code · channel · provider=msg91 · approval_status</div></div>
+      <div class="ent vani svc"><div class="e-name">vani_comms_log <span class="ao">AO</span></div><div class="e-cols"><b>id</b> · template → · ref_entity+ref_id · status</div></div>
+      <div class="ent vani svc"><div class="e-name">vani_metering_event <span class="ao">AO</span></div><div class="e-cols"><b>id</b> · agent → · unit_type · ref_id · occurred_at</div></div>
+      <div class="ent vani svc"><div class="e-name">vani_audit_log <span class="ao">AO</span></div><div class="e-cols"><b>id</b> · actor_type <i>(never "model")</i> · entity+entity_id · before/after</div></div>
+    </div>
+
+    <div class="erd-title" style="margin-top:26px">vara_ — agent level · created by 002 + 003 · all tenant-scoped</div>
+    <div class="erd-lane-label vara">Config &amp; definition</div>
+    <div class="erd-grid">
+      <div class="ent vara"><div class="e-name">vara_family_profile</div><div class="e-cols"><b>id</b> · family_id → vani_role_family ⭑1:1 · axis_weights · default_threshold · active_config_id →</div></div>
+      <div class="ent vara"><div class="e-name">vara_scoring_config <span class="ao">AO</span></div><div class="e-cols"><b>id</b> · family_id → · version ⭑ · weights · created_from → proposal · approved_by → user</div></div>
+      <div class="ent vara"><div class="e-name">vara_jd</div><div class="e-cols"><b>id</b> · family_id → · status · current_version_id →</div></div>
+      <div class="ent vara"><div class="e-name">vara_jd_version <span class="ao">AO</span></div><div class="e-cols"><b>id</b> · jd_id → · version ⭑ · must_haves · knockouts · threshold · window_days · cooldown_days</div></div>
+    </div>
+    <div class="erd-lane-label vara">People — the talent pool</div>
+    <div class="erd-grid">
+      <div class="ent vara"><div class="e-name">vara_candidate</div><div class="e-cols"><b>id</b> · display_name · pool_tags[] · retention_until · current_consent_id →</div></div>
+      <div class="ent vara"><div class="e-name">vara_candidate_pii</div><div class="e-cols"><b>candidate_id</b> → 1:1 · email · phone · whatsapp · links <i>(purge deletes this row)</i></div></div>
+      <div class="ent vara"><div class="e-name">vara_consent</div><div class="e-cols"><b>id</b> · candidate_id → · consent_version · granted_at · withdrawn_at <i>(delete-protected)</i></div></div>
+    </div>
+    <div class="erd-lane-label vara">Pursuit</div>
+    <div class="erd-grid">
+      <div class="ent vara"><div class="e-name">vara_application</div><div class="e-cols"><b>id</b> · candidate → · jd → · jd_version → <i>(pinned)</i> · attempt_no · ⭑(candidate,jd,attempt) · state · window_expires_at · closed_by_type <i>(human|rule|timer)</i> · close_reason_code</div></div>
+      <div class="ent vara"><div class="e-name">vara_artifact <span class="ao">AO</span></div><div class="e-cols"><b>id</b> · candidate → · adapter · storage_ref · hash <i>(raw first)</i></div></div>
+      <div class="ent vara"><div class="e-name">vara_extraction</div><div class="e-cols"><b>id</b> · artifact → · fields jsonb <i>(evidence spans + confidence)</i></div></div>
+      <div class="ent vara"><div class="e-name">vara_chat_turn <span class="ao">AO</span></div><div class="e-cols"><b>id</b> · application → · turn_no ⭑ · speaker · content</div></div>
+      <div class="ent vara"><div class="e-name">vara_score_snapshot <span class="ao">AO</span></div><div class="e-cols"><b>id</b> · application → · config → <i>(stamped)</i> · composite · axes <i>(evidence refs)</i> · <i>insert emits metering</i></div></div>
+      <div class="ent vara"><div class="e-name">vara_flag</div><div class="e-cols"><b>id</b> · application → · source_a/source_b <i>(verbatim)</i> · never scores</div></div>
+    </div>
+    <div class="erd-lane-label vara">Learning + derived</div>
+    <div class="erd-grid">
+      <div class="ent vara"><div class="e-name">vara_calibration_signal <span class="ao">AO</span></div><div class="e-cols"><b>id</b> · family → · application → · signal · actor_id →</div></div>
+      <div class="ent vara"><div class="e-name">vara_calibration_proposal</div><div class="e-cols"><b>id</b> · family → · change · status · decided_by → · resulting_config_id →</div></div>
+      <div class="ent vara"><div class="e-name">vara_candidate_history <i>(view)</i></div><div class="e-cols">computed join: candidate × applications × latest snapshot — never stored</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="d3">
+  <div class="sec-tag">Section 3</div>
+  <h2>Validation — this DDL ran, and the guarantees held</h2>
+  <p>Executed top-to-bottom on PostgreSQL 16 before delivery. Objects created: <b>31 tables · 27 RLS policies · 11 triggers · 1 view · 5 functions</b>. Functional checks, all passing:</p>
+  <table>
+    <tr><th style="width:330px">Check</th><th>Result</th></tr>
+    <tr><td>Legal lifecycle path</td><td><span class="ok">PASS</span> — applied → scored → closing → held → handover via vara_transition()</td></tr>
+    <tr><td>Metering fires on snapshot insert</td><td><span class="ok">PASS</span> — vani_metering_event written by trigger, 1:1</td></tr>
+    <tr><td>Every transition audited</td><td><span class="ok">PASS</span> — 4 transitions ⇒ 4 vani_audit_log rows, same transaction</td></tr>
+    <tr><td>Timer cannot close outside the window</td><td><span class="ok">PASS</span> — timer actor rejected on any edge but closing → closed</td></tr>
+    <tr><td>Rule cannot act outside knockouts</td><td><span class="ok">PASS</span> — rule actor rejected on any edge but applied → knockout_closed</td></tr>
+    <tr><td>“model” is not an actor</td><td><span class="ok">PASS</span> — transition raises on actor_type = model</td></tr>
+    <tr><td>Score snapshots immutable</td><td><span class="ok">PASS</span> — UPDATE rejected by append-only guard</td></tr>
+    <tr><td>Multiple attempts (D7)</td><td><span class="ok">PASS</span> — second attempt inserts; duplicate (candidate, jd, attempt) blocked</td></tr>
+    <tr><td>History is a view (D7)</td><td><span class="ok">PASS</span> — vara_candidate_history returns both attempts, computed</td></tr>
+    <tr><td>DPDP purge</td><td><span class="ok">PASS</span> — PII row deleted, chat blanked, skeleton redacted, audit survives</td></tr>
+    <tr><td>RLS cross-tenant blindness</td><td><span class="ok">PASS</span> — non-superuser under another tenant sees zero vara_ rows; FK integrity also caught an invalid actor id during testing</td></tr>
+  </table>
+  <div class="callout warn"><b>Two policies the model depends on (enforce in code review):</b> ① audit payloads reference ids, never raw PII — this is what lets purge leave audit intact; ② vara_application.state changes <b>only</b> through vara_transition() — grant no direct UPDATE on the state column to the app role.</div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="d4">
+  <div class="sec-tag">Section 4</div>
+  <h2>The DDL — three migrations, dependency-ordered</h2>
+  <p>The same files delivered alongside this document, embedded verbatim. Claude Code runs them in order against the VaNiGTM Postgres.</p>
+  <details open><summary>001_vani_platform.sql<span class="sum-sub">the platform spine — net-new, shared by every agent</span></summary><pre>-- ============================================================================
+-- 001_vani_platform.sql
+-- VaNi platform spine — NET-NEW. Nothing in VaNiGTM provides these today;
+-- this migration creates the platform dependencies every agent (Vara first,
+-- Nova next) hangs off. Coexists with legacy VN_/GTM tables; no history
+-- is migrated (&quot;let history be history&quot;).
+--
+-- Conventions:
+--   * lowercase identifiers, prefix = owner (vani_ platform, vara_ agent)
+--   * all ids uuid, all timestamps timestamptz
+--   * every tenant-scoped table: tenant_id + RLS policy tenant_isolation
+--   * platform artifacts (agent registry, roles catalog, domain packs)
+--     carry no tenant_id and no RLS
+--   * append-only tables get the vani_forbid_mutation trigger
+-- ============================================================================
+
+create extension if not exists pgcrypto;
+
+-- ---------------------------------------------------------------------------
+-- Helpers
+-- ---------------------------------------------------------------------------
+
+-- Current tenant for RLS. The app sets:  SET app.tenant_id = &#x27;&lt;uuid&gt;&#x27;;
+create or replace function vani_current_tenant() returns uuid
+language sql stable as
+$$ select nullif(current_setting(&#x27;app.tenant_id&#x27;, true), &#x27;&#x27;)::uuid $$;
+
+-- Append-only guard: attach BEFORE UPDATE OR DELETE.
+create or replace function vani_forbid_mutation() returns trigger
+language plpgsql as
+$$ begin
+     raise exception &#x27;table % is append-only (append-only guard)&#x27;, tg_table_name;
+   end $$;
+
+-- ---------------------------------------------------------------------------
+-- Identity &amp; tenancy
+-- ---------------------------------------------------------------------------
+
+create table vani_tenant (
+  id           uuid primary key default gen_random_uuid(),
+  slug         text not null unique,
+  name         text not null,
+  status       text not null default &#x27;active&#x27;
+               check (status in (&#x27;active&#x27;,&#x27;suspended&#x27;)),
+  data_region  text not null default &#x27;in&#x27;,
+  created_at   timestamptz not null default now()
+);
+comment on table vani_tenant is
+  &#x27;Subscribing organisation. Vikuna itself is a row here (tenant #1) — no code special-case.&#x27;;
+
+create table vani_tenant_domain (
+  id             uuid primary key default gen_random_uuid(),
+  tenant_id      uuid not null references vani_tenant(id) on delete cascade,
+  domain         text not null unique,
+  purpose        text not null check (purpose in (&#x27;candidate&#x27;,&#x27;workspace&#x27;)),
+  verified_at    timestamptz,
+  embed_origins  text[] not null default &#x27;{}&#x27;,
+  created_at     timestamptz not null default now()
+);
+comment on column vani_tenant_domain.embed_origins is
+  &#x27;Origin allowlist for the tenant-scoped embed token (candidate surfaces on tenant domain).&#x27;;
+
+create table vani_user (
+  id          uuid primary key default gen_random_uuid(),
+  email       text not null unique,
+  name        text,
+  auth_ref    uuid,   -- bridge to the existing auth provider (e.g. Supabase auth.users.id)
+  status      text not null default &#x27;active&#x27; check (status in (&#x27;active&#x27;,&#x27;disabled&#x27;)),
+  created_at  timestamptz not null default now()
+);
+comment on table vani_user is
+  &#x27;Platform identity. Agents never store users. auth_ref bridges to the existing auth stack.&#x27;;
+
+create table vani_membership (
+  id             uuid primary key default gen_random_uuid(),
+  tenant_id      uuid not null references vani_tenant(id) on delete cascade,
+  user_id        uuid not null references vani_user(id) on delete cascade,
+  platform_role  text not null default &#x27;member&#x27; check (platform_role in (&#x27;admin&#x27;,&#x27;member&#x27;)),
+  created_at     timestamptz not null default now(),
+  unique (tenant_id, user_id)
+);
+
+-- ---------------------------------------------------------------------------
+-- Agent fabric
+-- ---------------------------------------------------------------------------
+
+create table vani_agent (
+  id       uuid primary key default gen_random_uuid(),
+  code     text not null unique,          -- &#x27;vara&#x27;, &#x27;nova&#x27;
+  name     text not null,
+  version  text not null default &#x27;1.0&#x27;,
+  status   text not null default &#x27;active&#x27; check (status in (&#x27;active&#x27;,&#x27;retired&#x27;))
+);
+
+create table vani_tenant_agent (
+  id           uuid primary key default gen_random_uuid(),
+  tenant_id    uuid not null references vani_tenant(id) on delete cascade,
+  agent_id     uuid not null references vani_agent(id),
+  status       text not null default &#x27;provisioned&#x27;
+               check (status in (&#x27;provisioned&#x27;,&#x27;activating&#x27;,&#x27;live&#x27;,&#x27;suspended&#x27;)),
+  activated_at timestamptz,
+  gateway_ref  text,                      -- per-agent commercial gateway handle
+  unique (tenant_id, agent_id)
+);
+comment on table vani_tenant_agent is
+  &#x27;The subscription: tenant x agent. Per-agent commercial gateway hangs here.&#x27;;
+
+create table vani_agent_role (
+  id        uuid primary key default gen_random_uuid(),
+  agent_id  uuid not null references vani_agent(id) on delete cascade,
+  code      text not null,                -- vara declares: ta | hm | calibration_approver
+  name      text not null,
+  unique (agent_id, code)
+);
+
+create table vani_user_agent_role (
+  id             uuid primary key default gen_random_uuid(),
+  tenant_id      uuid not null references vani_tenant(id) on delete cascade,
+  user_id        uuid not null references vani_user(id) on delete cascade,
+  agent_id       uuid not null references vani_agent(id),
+  agent_role_id  uuid not null references vani_agent_role(id),
+  granted_by     uuid references vani_user(id),
+  granted_at     timestamptz not null default now(),
+  unique (tenant_id, user_id, agent_id, agent_role_id)
+);
+comment on table vani_user_agent_role is
+  &#x27;&quot;Roles filtered per agent&quot; — an HM in Vara can be nothing in Nova.&#x27;;
+
+-- ---------------------------------------------------------------------------
+-- Org context &amp; packs
+-- ---------------------------------------------------------------------------
+
+create table vani_role_family (
+  id           uuid primary key default gen_random_uuid(),
+  tenant_id    uuid not null references vani_tenant(id) on delete cascade,
+  name         text not null,
+  description  text,
+  parent_id    uuid references vani_role_family(id),
+  created_at   timestamptz not null default now(),
+  unique (tenant_id, name)
+);
+comment on table vani_role_family is
+  &#x27;Org structure — agent-neutral. Agents extend (vara_family_profile), never modify.&#x27;;
+
+create table vani_domain_pack (
+  id            uuid primary key default gen_random_uuid(),
+  code          text not null,
+  version       int  not null default 1,
+  domain        text not null,            -- technology | sales | healthcare | ...
+  payload       jsonb not null,           -- question banks, JD/knockout templates,
+                                          -- signal-adapter manifest, vocabulary —
+                                          -- namespaced per agent inside the payload
+  published_at  timestamptz not null default now(),
+  unique (code, version)
+);
+
+create table vani_tenant_pack_binding (
+  id        uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references vani_tenant(id) on delete cascade,
+  pack_id   uuid not null references vani_domain_pack(id),
+  bound_by  uuid references vani_user(id),
+  bound_at  timestamptz not null default now(),
+  unique (tenant_id, pack_id)
+);
+comment on table vani_tenant_pack_binding is
+  &#x27;Industry declared once at the platform lane; each agent activates its namespace of the payload.&#x27;;
+
+-- ---------------------------------------------------------------------------
+-- Shared services
+-- ---------------------------------------------------------------------------
+
+create table vani_llm_provider (
+  id               uuid primary key default gen_random_uuid(),
+  tenant_id        uuid not null references vani_tenant(id) on delete cascade,
+  provider_code    text not null,
+  credentials_enc  text not null,         -- encrypted at rest; never pooled across tenants
+  last_test_at     timestamptz,
+  test_status      text not null default &#x27;untested&#x27;
+                   check (test_status in (&#x27;untested&#x27;,&#x27;passed&#x27;,&#x27;failed&#x27;)),
+  unique (tenant_id, provider_code)
+);
+
+create table vani_template (
+  id               uuid primary key default gen_random_uuid(),
+  tenant_id        uuid not null references vani_tenant(id) on delete cascade,
+  agent_id         uuid not null references vani_agent(id),
+  code             text not null,         -- ACK-01 INV-01 REJ-01 REJ-02 POOL-01 POOL-02
+  channel          text not null check (channel in (&#x27;email&#x27;,&#x27;whatsapp&#x27;,&#x27;sms&#x27;)),
+  body             text not null,
+  variables        jsonb not null default &#x27;{}&#x27;,
+  provider         text not null default &#x27;msg91&#x27;,   -- ContractNest MSG91 infra, sender &quot;vani&quot;
+  approval_status  text not null default &#x27;draft&#x27;
+                   check (approval_status in (&#x27;draft&#x27;,&#x27;pending&#x27;,&#x27;approved&#x27;,&#x27;rejected&#x27;)),
+  version          int not null default 1,
+  unique (tenant_id, agent_id, code, channel, version)
+);
+
+create table vani_comms_log (
+  id               uuid primary key default gen_random_uuid(),
+  tenant_id        uuid not null references vani_tenant(id) on delete cascade,
+  agent_id         uuid not null references vani_agent(id),
+  template_id      uuid references vani_template(id),
+  channel          text not null check (channel in (&#x27;email&#x27;,&#x27;whatsapp&#x27;,&#x27;sms&#x27;)),
+  recipient_ref    text not null,         -- opaque ref, not raw PII (PII lives in vara_candidate_pii)
+  ref_entity       text not null,         -- e.g. &#x27;vara_application&#x27;
+  ref_id           uuid not null,
+  provider_msg_id  text,
+  status           text not null default &#x27;queued&#x27;
+                   check (status in (&#x27;queued&#x27;,&#x27;sent&#x27;,&#x27;delivered&#x27;,&#x27;failed&#x27;,&#x27;opted_out&#x27;)),
+  sent_at          timestamptz not null default now()
+);
+
+create table vani_metering_event (
+  id           uuid primary key default gen_random_uuid(),
+  tenant_id    uuid not null references vani_tenant(id) on delete cascade,
+  agent_id     uuid not null references vani_agent(id),
+  unit_type    text not null check (unit_type in (&#x27;candidate_scored&#x27;,&#x27;knockout_close&#x27;)),
+  ref_table    text not null,
+  ref_id       uuid not null,
+  qty          int  not null default 1 check (qty &gt; 0),
+  occurred_at  timestamptz not null default now()
+);
+
+create table vani_audit_log (
+  id          uuid primary key default gen_random_uuid(),
+  tenant_id   uuid not null references vani_tenant(id) on delete cascade,
+  agent_id    uuid references vani_agent(id),         -- null = platform event
+  actor_type  text not null check (actor_type in (&#x27;human&#x27;,&#x27;rule&#x27;,&#x27;timer&#x27;,&#x27;system&#x27;)),
+                                                      -- &quot;model&quot; is not a legal actor
+  actor_id    uuid,
+  entity      text not null,
+  entity_id   uuid not null,
+  action      text not null,
+  before      jsonb,
+  after       jsonb,
+  at          timestamptz not null default now()
+);
+comment on table vani_audit_log is
+  &#x27;One audit spine across agents (D3). POLICY: payloads reference ids, never raw PII — &#x27;
+  &#x27;this is what lets DPDP purge leave audit intact.&#x27;;
+
+-- ---------------------------------------------------------------------------
+-- Append-only guards
+-- ---------------------------------------------------------------------------
+
+create trigger comms_log_append_only  before update or delete on vani_comms_log
+  for each row execute function vani_forbid_mutation();
+create trigger metering_append_only   before update or delete on vani_metering_event
+  for each row execute function vani_forbid_mutation();
+create trigger audit_append_only      before update or delete on vani_audit_log
+  for each row execute function vani_forbid_mutation();
+
+-- ---------------------------------------------------------------------------
+-- RLS — tenant-scoped tables. Platform artifacts (vani_agent, vani_agent_role,
+-- vani_domain_pack) and global identity (vani_user) carry no tenant policy;
+-- the operator role connects with BYPASSRLS.
+-- ---------------------------------------------------------------------------
+
+alter table vani_tenant enable row level security;
+create policy tenant_isolation on vani_tenant
+  using (id = vani_current_tenant());
+
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    &#x27;vani_tenant_domain&#x27;,&#x27;vani_membership&#x27;,&#x27;vani_tenant_agent&#x27;,&#x27;vani_user_agent_role&#x27;,
+    &#x27;vani_role_family&#x27;,&#x27;vani_tenant_pack_binding&#x27;,&#x27;vani_llm_provider&#x27;,
+    &#x27;vani_template&#x27;,&#x27;vani_comms_log&#x27;,&#x27;vani_metering_event&#x27;,&#x27;vani_audit_log&#x27;
+  ] loop
+    execute format(&#x27;alter table %I enable row level security&#x27;, t);
+    execute format(
+      &#x27;create policy tenant_isolation on %I using (tenant_id = vani_current_tenant()) &#x27;
+      &#x27;with check (tenant_id = vani_current_tenant())&#x27;, t);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Indexes (hot paths)
+-- ---------------------------------------------------------------------------
+
+create index idx_comms_ref      on vani_comms_log (ref_entity, ref_id);
+create index idx_metering_agg   on vani_metering_event (tenant_id, agent_id, occurred_at);
+create index idx_audit_entity   on vani_audit_log (tenant_id, entity, entity_id, at);
+create index idx_uar_lookup     on vani_user_agent_role (tenant_id, agent_id, user_id);
+</pre></details>
+<details open><summary>002_vara_agent.sql<span class="sum-sub">Vara's tables — config, definition, people, pursuit</span></summary><pre>-- ============================================================================
+-- 002_vara_agent.sql
+-- Vara agent tables. Depends on 001 (vani_ platform spine).
+-- Everything here is tenant-scoped under RLS. Activating Vara adds rows;
+-- deactivating removes them; nothing in vani_ changes either way.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Config
+-- ---------------------------------------------------------------------------
+
+create table vara_family_profile (
+  id                 uuid primary key default gen_random_uuid(),
+  tenant_id          uuid not null references vani_tenant(id) on delete cascade,
+  family_id          uuid not null unique references vani_role_family(id) on delete cascade,
+  axis_weights       jsonb not null default &#x27;{&quot;skill&quot;:55,&quot;avail&quot;:25,&quot;exp&quot;:20}&#x27;,
+  default_threshold  int  not null default 30 check (default_threshold between 0 and 100),
+  active_config_id   uuid,   -- fk added below, after vara_scoring_config exists
+  created_at         timestamptz not null default now()
+);
+comment on table vara_family_profile is
+  &#x27;D6: 1:1 talent overlay on vani_role_family. Definition is the org&#x27;&#x27;s; talent behaviour is Vara&#x27;&#x27;s.&#x27;;
+
+create table vara_scoring_config (
+  id                 uuid primary key default gen_random_uuid(),
+  tenant_id          uuid not null references vani_tenant(id) on delete cascade,
+  family_id          uuid not null references vani_role_family(id) on delete cascade,
+  version            int  not null,
+  weights            jsonb not null,
+  components         jsonb not null,
+  threshold_default  int  not null check (threshold_default between 0 and 100),
+  created_from       uuid,   -- fk to vara_calibration_proposal added in 003
+  approved_by        uuid references vani_user(id),
+  created_at         timestamptz not null default now(),
+  unique (tenant_id, family_id, version)
+);
+
+alter table vara_family_profile
+  add constraint fk_active_config
+  foreign key (active_config_id) references vara_scoring_config(id);
+
+-- ---------------------------------------------------------------------------
+-- Definition
+-- ---------------------------------------------------------------------------
+
+create table vara_jd (
+  id                  uuid primary key default gen_random_uuid(),
+  tenant_id           uuid not null references vani_tenant(id) on delete cascade,
+  family_id           uuid not null references vani_role_family(id),
+  title               text not null,
+  status              text not null default &#x27;draft&#x27;
+                      check (status in (&#x27;draft&#x27;,&#x27;published&#x27;,&#x27;closed&#x27;)),
+  current_version_id  uuid,   -- fk added below (circular with vara_jd_version)
+  created_by          uuid references vani_user(id),
+  created_at          timestamptz not null default now()
+);
+
+create table vara_jd_version (
+  id                     uuid primary key default gen_random_uuid(),
+  tenant_id              uuid not null references vani_tenant(id) on delete cascade,
+  jd_id                  uuid not null references vara_jd(id) on delete cascade,
+  version                int  not null,
+  facts                  jsonb not null default &#x27;{}&#x27;,   -- band, location, team...
+  must_haves             jsonb not null default &#x27;[]&#x27;,   -- weighted; nice-to-have flagged
+  knockouts              jsonb not null default &#x27;[]&#x27;,   -- deterministic expressions
+  threshold              int  not null check (threshold between 0 and 100),
+  window_days            int  not null default 3  check (window_days &gt;= 0),
+  reapply_cooldown_days  int  not null default 90 check (reapply_cooldown_days &gt;= 0),
+  created_by             uuid references vani_user(id),
+  created_at             timestamptz not null default now(),
+  unique (jd_id, version)
+);
+comment on table vara_jd_version is
+  &#x27;Immutable. Applications pin the version that scored them; edits create versions.&#x27;;
+
+alter table vara_jd
+  add constraint fk_current_version
+  foreign key (current_version_id) references vara_jd_version(id);
+
+-- ---------------------------------------------------------------------------
+-- People — the talent pool
+-- ---------------------------------------------------------------------------
+
+create table vara_candidate (
+  id                  uuid primary key default gen_random_uuid(),
+  tenant_id           uuid not null references vani_tenant(id) on delete cascade,
+  display_name        text not null,
+  pool_tags           text[] not null default &#x27;{}&#x27;,   -- silver_medalist, future_fit...
+  current_consent_id  uuid,   -- fk added below, after vara_consent exists
+  retention_until     date,
+  created_at          timestamptz not null default now()
+);
+comment on table vara_candidate is
+  &#x27;Durable person, alive across JDs and years. Strictly per-tenant; never matched across tenants.&#x27;;
+
+create table vara_candidate_pii (
+  candidate_id  uuid primary key references vara_candidate(id) on delete cascade,
+  tenant_id     uuid not null references vani_tenant(id) on delete cascade,
+  email         text,
+  phone         text,
+  whatsapp      text,
+  location      text,
+  links         jsonb not null default &#x27;{}&#x27;
+);
+comment on table vara_candidate_pii is
+  &#x27;D4: DPDP purge deletes this row; skeleton, scores and audit survive (audit holds no PII by policy).&#x27;;
+
+create table vara_consent (
+  id               uuid primary key default gen_random_uuid(),
+  tenant_id        uuid not null references vani_tenant(id) on delete cascade,
+  candidate_id     uuid not null references vara_candidate(id) on delete cascade,
+  consent_version  text not null,
+  granted_at       timestamptz not null default now(),
+  channel          text not null,
+  withdrawn_at     timestamptz
+);
+
+alter table vara_candidate
+  add constraint fk_current_consent
+  foreign key (current_consent_id) references vara_consent(id);
+
+-- ---------------------------------------------------------------------------
+-- Pursuit
+-- ---------------------------------------------------------------------------
+
+create table vara_application (
+  id                 uuid primary key default gen_random_uuid(),
+  tenant_id          uuid not null references vani_tenant(id) on delete cascade,
+  candidate_id       uuid not null references vara_candidate(id) on delete cascade,
+  jd_id              uuid not null references vara_jd(id) on delete cascade,
+  jd_version_id      uuid not null references vara_jd_version(id),
+  attempt_no         int  not null default 1 check (attempt_no &gt;= 1),
+  state              text not null default &#x27;applied&#x27;
+                     check (state in (&#x27;applied&#x27;,&#x27;knockout_closed&#x27;,&#x27;scored&#x27;,&#x27;closing&#x27;,
+                                      &#x27;held&#x27;,&#x27;handover&#x27;,&#x27;advanced&#x27;,&#x27;closed&#x27;,&#x27;hired&#x27;)),
+  window_expires_at  timestamptz,
+  held_by            uuid references vani_user(id),
+  held_at            timestamptz,
+  advanced_by        uuid references vani_user(id),
+  advanced_at        timestamptz,
+  closed_by_type     text check (closed_by_type in (&#x27;human&#x27;,&#x27;rule&#x27;,&#x27;timer&#x27;)),
+  closed_by          uuid,
+  close_reason_code  text,     -- knockout:&lt;rule_id&gt; | below_threshold | hm_pass | withdrew
+  decision_reason    text,
+  closed_at          timestamptz,
+  created_at         timestamptz not null default now(),
+  unique (candidate_id, jd_id, attempt_no),
+  -- D7: a close is a state + these columns + audit + comms rows. Closed rows must say who/how.
+  check (state not in (&#x27;closed&#x27;,&#x27;knockout_closed&#x27;) or closed_by_type is not null)
+);
+
+create table vara_artifact (
+  id            uuid primary key default gen_random_uuid(),
+  tenant_id     uuid not null references vani_tenant(id) on delete cascade,
+  candidate_id  uuid not null references vara_candidate(id) on delete cascade,
+  application_id uuid references vara_application(id),
+  adapter       text not null
+                check (adapter in (&#x27;docx&#x27;,&#x27;pdf&#x27;,&#x27;linkedin_export&#x27;,&#x27;github_api&#x27;,&#x27;url&#x27;,&#x27;csv&#x27;)),
+  kind          text not null default &#x27;resume&#x27;,
+  storage_ref   text not null,
+  content_hash  text not null,
+  provided_at   timestamptz not null default now()
+);
+comment on table vara_artifact is &#x27;Raw before parsed, always. Candidate-provided only — no scraping.&#x27;;
+
+create table vara_extraction (
+  id                 uuid primary key default gen_random_uuid(),
+  tenant_id          uuid not null references vani_tenant(id) on delete cascade,
+  artifact_id        uuid not null references vara_artifact(id) on delete cascade,
+  extractor_version  text not null,
+  fields             jsonb not null,   -- per field: value, evidence span, confidence
+  status             text not null default &#x27;ok&#x27;
+                     check (status in (&#x27;ok&#x27;,&#x27;low_confidence&#x27;,&#x27;rejected&#x27;)),
+  created_at         timestamptz not null default now()
+);
+
+create table vara_chat_turn (
+  id                 uuid primary key default gen_random_uuid(),
+  tenant_id          uuid not null references vani_tenant(id) on delete cascade,
+  application_id     uuid not null references vara_application(id) on delete cascade,
+  turn_no            int  not null,
+  speaker            text not null check (speaker in (&#x27;vara&#x27;,&#x27;candidate&#x27;)),
+  content            text not null,
+  maps_to_component  text,
+  created_at         timestamptz not null default now(),
+  unique (application_id, turn_no)
+);
+comment on table vara_chat_turn is &#x27;D5: evidence cites turn_id, not offsets in a transcript blob.&#x27;;
+
+create table vara_score_snapshot (
+  id              uuid primary key default gen_random_uuid(),
+  tenant_id       uuid not null references vani_tenant(id) on delete cascade,
+  application_id  uuid not null references vara_application(id) on delete cascade,
+  config_id       uuid not null references vara_scoring_config(id),
+  composite       int  not null check (composite between 0 and 100),
+  axes            jsonb not null,   -- per component: score, weight, evidence refs (turn_id | artifact_id)
+  flags_count     int  not null default 0,
+  created_at      timestamptz not null default now()
+);
+
+create table vara_flag (
+  id              uuid primary key default gen_random_uuid(),
+  tenant_id       uuid not null references vani_tenant(id) on delete cascade,
+  application_id  uuid not null references vara_application(id) on delete cascade,
+  kind            text not null default &#x27;consistency&#x27;,
+  source_a        jsonb not null,   -- verbatim
+  source_b        jsonb not null,   -- verbatim
+  status          text not null default &#x27;open&#x27;
+                  check (status in (&#x27;open&#x27;,&#x27;discussed&#x27;,&#x27;dismissed&#x27;)),
+  raised_at       timestamptz not null default now()
+);
+comment on table vara_flag is &#x27;Human-facing contradictions. Never feeds the composite.&#x27;;
+
+-- ---------------------------------------------------------------------------
+-- Metering hook: writing a snapshot IS the metering event (Section 3 of spec)
+-- ---------------------------------------------------------------------------
+
+create or replace function vara_emit_metering() returns trigger
+language plpgsql as
+$$
+begin
+  insert into vani_metering_event (tenant_id, agent_id, unit_type, ref_table, ref_id)
+  select new.tenant_id, a.id, &#x27;candidate_scored&#x27;, &#x27;vara_score_snapshot&#x27;, new.id
+  from vani_agent a where a.code = &#x27;vara&#x27;;
+  return new;
+end
+$$;
+
+create trigger snapshot_meters after insert on vara_score_snapshot
+  for each row execute function vara_emit_metering();
+
+-- ---------------------------------------------------------------------------
+-- Append-only / immutability guards
+-- ---------------------------------------------------------------------------
+
+create trigger scoring_config_append_only before update or delete on vara_scoring_config
+  for each row execute function vani_forbid_mutation();
+create trigger jd_version_append_only     before update or delete on vara_jd_version
+  for each row execute function vani_forbid_mutation();
+create trigger artifact_append_only       before update or delete on vara_artifact
+  for each row execute function vani_forbid_mutation();
+create trigger snapshot_append_only       before update or delete on vara_score_snapshot
+  for each row execute function vani_forbid_mutation();
+create trigger chat_turn_append_only      before update or delete on vara_chat_turn
+  for each row execute function vani_forbid_mutation();
+-- vara_consent: withdrawal updates withdrawn_at, so consent is delete-protected only.
+create or replace function vani_forbid_delete() returns trigger
+language plpgsql as
+$$ begin raise exception &#x27;table % is delete-protected&#x27;, tg_table_name; end $$;
+create trigger consent_no_delete before delete on vara_consent
+  for each row execute function vani_forbid_delete();
+
+-- NOTE: the DPDP purge function (003) is the single sanctioned bypass of these
+-- guards, via SECURITY DEFINER + session_replication_role = replica.
+
+-- ---------------------------------------------------------------------------
+-- RLS — every vara_ table
+-- ---------------------------------------------------------------------------
+
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    &#x27;vara_family_profile&#x27;,&#x27;vara_scoring_config&#x27;,&#x27;vara_jd&#x27;,&#x27;vara_jd_version&#x27;,
+    &#x27;vara_candidate&#x27;,&#x27;vara_candidate_pii&#x27;,&#x27;vara_consent&#x27;,&#x27;vara_application&#x27;,
+    &#x27;vara_artifact&#x27;,&#x27;vara_extraction&#x27;,&#x27;vara_chat_turn&#x27;,&#x27;vara_score_snapshot&#x27;,&#x27;vara_flag&#x27;
+  ] loop
+    execute format(&#x27;alter table %I enable row level security&#x27;, t);
+    execute format(
+      &#x27;create policy tenant_isolation on %I using (tenant_id = vani_current_tenant()) &#x27;
+      &#x27;with check (tenant_id = vani_current_tenant())&#x27;, t);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Indexes (hot paths)
+-- ---------------------------------------------------------------------------
+
+create index idx_app_jd_state    on vara_application (tenant_id, jd_id, state);
+create index idx_app_candidate   on vara_application (tenant_id, candidate_id);
+create index idx_app_timer_sweep on vara_application (window_expires_at) where state = &#x27;closing&#x27;;
+create index idx_snapshot_latest on vara_score_snapshot (application_id, created_at desc);
+create index idx_chat_app        on vara_chat_turn (application_id);
+create index idx_candidate_tags  on vara_candidate using gin (pool_tags);
+create index idx_pii_email       on vara_candidate_pii (tenant_id, email);
+create index idx_artifact_cand   on vara_artifact (tenant_id, candidate_id);
+</pre></details>
+<details open><summary>003_vara_learning_functions_seed.sql<span class="sum-sub">learning, transition + purge functions, history view, seed</span></summary><pre>-- ============================================================================
+-- 003_vara_learning_functions_seed.sql
+-- Calibration tables, the candidate-history view, the guarded state-transition
+-- function, the DPDP purge function, and seed data.
+-- Depends on 001 + 002.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Learning
+-- ---------------------------------------------------------------------------
+
+create table vara_calibration_signal (
+  id              uuid primary key default gen_random_uuid(),
+  tenant_id       uuid not null references vani_tenant(id) on delete cascade,
+  family_id       uuid not null references vani_role_family(id) on delete cascade,
+  application_id  uuid references vara_application(id),
+  signal          text not null
+                  check (signal in (&#x27;rescue&#x27;,&#x27;hold&#x27;,&#x27;resume&#x27;,&#x27;close_now&#x27;,
+                                    &#x27;hm_interview&#x27;,&#x27;hm_pass&#x27;,&#x27;hire&#x27;,&#x27;audit_review&#x27;)),
+  actor_id        uuid references vani_user(id),
+  payload         jsonb not null default &#x27;{}&#x27;,
+  at              timestamptz not null default now()
+);
+
+create table vara_calibration_proposal (
+  id                   uuid primary key default gen_random_uuid(),
+  tenant_id            uuid not null references vani_tenant(id) on delete cascade,
+  family_id            uuid not null references vani_role_family(id) on delete cascade,
+  change               jsonb not null,        -- e.g. {&quot;threshold&quot;: {&quot;from&quot;:30,&quot;to&quot;:27}}
+  evidence             jsonb not null,
+  confidence           text not null check (confidence in (&#x27;low&#x27;,&#x27;medium&#x27;,&#x27;high&#x27;)),
+  status               text not null default &#x27;proposed&#x27;
+                       check (status in (&#x27;proposed&#x27;,&#x27;approved&#x27;,&#x27;declined&#x27;)),
+  decided_by           uuid references vani_user(id),
+  decided_at           timestamptz,
+  resulting_config_id  uuid references vara_scoring_config(id),
+  created_at           timestamptz not null default now()
+);
+
+alter table vara_scoring_config
+  add constraint fk_created_from
+  foreign key (created_from) references vara_calibration_proposal(id);
+
+create trigger cal_signal_append_only before update or delete on vara_calibration_signal
+  for each row execute function vani_forbid_mutation();
+
+do $$
+declare t text;
+begin
+  foreach t in array array[&#x27;vara_calibration_signal&#x27;,&#x27;vara_calibration_proposal&#x27;] loop
+    execute format(&#x27;alter table %I enable row level security&#x27;, t);
+    execute format(
+      &#x27;create policy tenant_isolation on %I using (tenant_id = vani_current_tenant()) &#x27;
+      &#x27;with check (tenant_id = vani_current_tenant())&#x27;, t);
+  end loop;
+end $$;
+
+create index idx_signal_family on vara_calibration_signal (tenant_id, family_id, at);
+
+-- ---------------------------------------------------------------------------
+-- Derived, not stored: candidate history (powers the profile History tab)
+-- ---------------------------------------------------------------------------
+
+create view vara_candidate_history as
+select
+  c.tenant_id,
+  c.id                  as candidate_id,
+  c.display_name,
+  c.pool_tags,
+  a.id                  as application_id,
+  j.title               as jd_title,
+  a.attempt_no,
+  a.state,
+  s.composite           as latest_score,
+  s.config_id           as scored_under_config,
+  s.created_at          as scored_at,
+  a.close_reason_code,
+  a.closed_by_type,
+  a.closed_at,
+  a.created_at          as applied_at
+from vara_candidate c
+join vara_application a on a.candidate_id = c.id
+join vara_jd j          on j.id = a.jd_id
+left join lateral (
+  select composite, config_id, created_at
+  from vara_score_snapshot s
+  where s.application_id = a.id
+  order by s.created_at desc
+  limit 1
+) s on true;
+
+-- ---------------------------------------------------------------------------
+-- Guarded state transition — THE way vara_application.state changes.
+-- Enforces the Flow D2 edges, the actor rules (&quot;model&quot; is not an actor;
+-- rules only knockout; timers only expire windows), and writes the audit
+-- row in the same transaction.
+-- ---------------------------------------------------------------------------
+
+create or replace function vara_transition(
+  p_application  uuid,
+  p_new_state    text,
+  p_actor_type   text,                    -- human | rule | timer | system
+  p_actor        uuid default null,
+  p_reason_code  text default null,
+  p_reason       text default null
+) returns void
+language plpgsql as
+$$
+declare
+  v_app    vara_application%rowtype;
+  v_agent  uuid;
+  v_edge   boolean;
+begin
+  select id into v_agent from vani_agent where code = &#x27;vara&#x27;;
+
+  select * into v_app from vara_application where id = p_application for update;
+  if not found then
+    raise exception &#x27;application % not found&#x27;, p_application;
+  end if;
+
+  -- Legal edges (Flow D2)
+  v_edge := case
+    when v_app.state = &#x27;applied&#x27;  and p_new_state in (&#x27;knockout_closed&#x27;,&#x27;scored&#x27;)            then true
+    when v_app.state = &#x27;scored&#x27;   and p_new_state in (&#x27;closing&#x27;,&#x27;handover&#x27;)                  then true
+    when v_app.state = &#x27;closing&#x27;  and p_new_state in (&#x27;held&#x27;,&#x27;handover&#x27;,&#x27;closed&#x27;)            then true
+    when v_app.state = &#x27;held&#x27;     and p_new_state in (&#x27;closing&#x27;,&#x27;handover&#x27;)                  then true
+    when v_app.state = &#x27;handover&#x27; and p_new_state in (&#x27;advanced&#x27;,&#x27;closing&#x27;,&#x27;closed&#x27;)         then true
+    when v_app.state = &#x27;advanced&#x27; and p_new_state in (&#x27;handover&#x27;,&#x27;closed&#x27;,&#x27;hired&#x27;)           then true
+    else false
+  end;
+  if not v_edge then
+    raise exception &#x27;illegal transition % -&gt; % (application %)&#x27;,
+      v_app.state, p_new_state, p_application;
+  end if;
+
+  -- Actor rules: a model score is never an actor.
+  if p_actor_type not in (&#x27;human&#x27;,&#x27;rule&#x27;,&#x27;timer&#x27;,&#x27;system&#x27;) then
+    raise exception &#x27;illegal actor_type % — &quot;model&quot; is not a legal actor&#x27;, p_actor_type;
+  end if;
+  if p_actor_type = &#x27;rule&#x27;  and not (v_app.state = &#x27;applied&#x27; and p_new_state = &#x27;knockout_closed&#x27;) then
+    raise exception &#x27;actor &quot;rule&quot; may only close on knockouts (applied -&gt; knockout_closed)&#x27;;
+  end if;
+  if p_actor_type = &#x27;timer&#x27; and not (v_app.state = &#x27;closing&#x27; and p_new_state = &#x27;closed&#x27;) then
+    raise exception &#x27;actor &quot;timer&quot; may only expire closing windows (closing -&gt; closed)&#x27;;
+  end if;
+  if p_actor_type = &#x27;system&#x27; and p_new_state in (&#x27;closed&#x27;,&#x27;knockout_closed&#x27;,&#x27;hired&#x27;,&#x27;advanced&#x27;) then
+    raise exception &#x27;actor &quot;system&quot; may only route (score / window entry), never decide&#x27;;
+  end if;
+
+  -- Apply
+  update vara_application set
+    state             = p_new_state,
+    held_by           = case when p_new_state = &#x27;held&#x27; then p_actor else held_by end,
+    held_at           = case when p_new_state = &#x27;held&#x27; then now() else held_at end,
+    advanced_by       = case when p_new_state = &#x27;advanced&#x27; then p_actor else advanced_by end,
+    advanced_at       = case when p_new_state = &#x27;advanced&#x27; then now() else advanced_at end,
+    closed_by_type    = case when p_new_state in (&#x27;closed&#x27;,&#x27;knockout_closed&#x27;)
+                             then p_actor_type else closed_by_type end,
+    closed_by         = case when p_new_state in (&#x27;closed&#x27;,&#x27;knockout_closed&#x27;)
+                             then p_actor else closed_by end,
+    close_reason_code = case when p_new_state in (&#x27;closed&#x27;,&#x27;knockout_closed&#x27;)
+                             then coalesce(p_reason_code, close_reason_code) end,
+    decision_reason   = case when p_new_state in (&#x27;closed&#x27;,&#x27;knockout_closed&#x27;,&#x27;hired&#x27;)
+                             then coalesce(p_reason, decision_reason) else decision_reason end,
+    closed_at         = case when p_new_state in (&#x27;closed&#x27;,&#x27;knockout_closed&#x27;)
+                             then now() else closed_at end,
+    window_expires_at = case when p_new_state = &#x27;closing&#x27; and v_app.state &lt;&gt; &#x27;held&#x27;
+                             then now() + make_interval(days =&gt;
+                                  (select jv.window_days from vara_jd_version jv
+                                   where jv.id = v_app.jd_version_id))
+                             else window_expires_at end
+  where id = p_application;
+
+  -- Audit in the same transaction — the transition IS the audit event.
+  insert into vani_audit_log
+    (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
+  values
+    (v_app.tenant_id, v_agent, p_actor_type, p_actor, &#x27;vara_application&#x27;, p_application,
+     &#x27;transition&#x27;,
+     jsonb_build_object(&#x27;state&#x27;, v_app.state),
+     jsonb_build_object(&#x27;state&#x27;, p_new_state,
+                        &#x27;reason_code&#x27;, p_reason_code, &#x27;reason&#x27;, p_reason));
+
+  -- Knockout closes meter at the reduced unit.
+  if p_new_state = &#x27;knockout_closed&#x27; then
+    insert into vani_metering_event (tenant_id, agent_id, unit_type, ref_table, ref_id)
+    values (v_app.tenant_id, v_agent, &#x27;knockout_close&#x27;, &#x27;vara_application&#x27;, p_application);
+  end if;
+end
+$$;
+
+-- ---------------------------------------------------------------------------
+-- DPDP purge — the single sanctioned bypass of the append-only guards.
+-- Deletes PII + artifacts + extractions, blanks chat content, redacts the
+-- candidate skeleton. Scores, states and audit survive (no PII by policy).
+-- ---------------------------------------------------------------------------
+
+create or replace function vara_purge_candidate(p_candidate uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as
+$$
+declare
+  v_tenant uuid;
+  v_agent  uuid;
+begin
+  select tenant_id into v_tenant from vara_candidate where id = p_candidate;
+  if not found then
+    raise exception &#x27;candidate % not found&#x27;, p_candidate;
+  end if;
+  select id into v_agent from vani_agent where code = &#x27;vara&#x27;;
+
+  -- Disable user triggers (append-only guards) for this transaction only.
+  set local session_replication_role = replica;
+
+  delete from vara_candidate_pii where candidate_id = p_candidate;
+  delete from vara_extraction
+    where artifact_id in (select id from vara_artifact where candidate_id = p_candidate);
+  delete from vara_artifact where candidate_id = p_candidate;
+  update vara_chat_turn set content = &#x27;[purged]&#x27;
+    where application_id in
+      (select id from vara_application where candidate_id = p_candidate);
+  update vara_candidate
+     set display_name = &#x27;Redacted&#x27;, pool_tags = &#x27;{}&#x27;, retention_until = null
+   where id = p_candidate;
+
+  set local session_replication_role = default;
+
+  insert into vani_audit_log
+    (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, after)
+  values
+    (v_tenant, v_agent, &#x27;system&#x27;, null, &#x27;vara_candidate&#x27;, p_candidate,
+     &#x27;dpdp_purge&#x27;, jsonb_build_object(&#x27;purged&#x27;, true));
+end
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Seed — agent registry, Vara&#x27;s role catalog, Vikuna as tenant #1
+-- ---------------------------------------------------------------------------
+
+insert into vani_agent (code, name, version) values
+  (&#x27;vara&#x27;, &#x27;Vara — the chosen one · VaNi Talent&#x27;, &#x27;1.0&#x27;)
+on conflict (code) do nothing;
+
+insert into vani_agent_role (agent_id, code, name)
+select a.id, r.code, r.name
+from vani_agent a,
+     (values (&#x27;ta&#x27;,&#x27;Talent Acquisition&#x27;),
+             (&#x27;hm&#x27;,&#x27;Hiring Manager&#x27;),
+             (&#x27;calibration_approver&#x27;,&#x27;Calibration Approver&#x27;)) as r(code, name)
+where a.code = &#x27;vara&#x27;
+on conflict (agent_id, code) do nothing;
+
+-- Vikuna: tenant #1 — a real row, no code special-case.
+insert into vani_tenant (slug, name, data_region)
+values (&#x27;vikuna&#x27;, &#x27;Vikuna Technologies&#x27;, &#x27;in&#x27;)
+on conflict (slug) do nothing;
+
+insert into vani_tenant_domain (tenant_id, domain, purpose, embed_origins)
+select t.id, &#x27;careers.vikuna.io&#x27;, &#x27;candidate&#x27;, array[&#x27;https://vikuna.io&#x27;,&#x27;https://careers.vikuna.io&#x27;]
+from vani_tenant t where t.slug = &#x27;vikuna&#x27;
+on conflict (domain) do nothing;
+
+insert into vani_tenant_agent (tenant_id, agent_id, status)
+select t.id, a.id, &#x27;provisioned&#x27;
+from vani_tenant t, vani_agent a
+where t.slug = &#x27;vikuna&#x27; and a.code = &#x27;vara&#x27;
+on conflict (tenant_id, agent_id) do nothing;
+</pre></details>
+</section>
+
+<footer>
+  <span><b>Vara Data Model v1.0</b> · validated on PostgreSQL 16 · VaNi Talent Agent · Vikuna</span>
+  <span>rules reject · models rank · humans decide</span>
+</footer>
+</div>
+</body>
+</html>

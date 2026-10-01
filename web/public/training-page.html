@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training & Skill Building | Vikuna Technologies</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,300;1,9..144,400;1,9..144,700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0A0F1E;
+    --ink-soft: #2D3450;
+    --paper: #F7F6F2;
+    --paper-warm: #EEEAE0;
+    --accent: #E8420A;
+    --accent-soft: #FF6B35;
+    --teal: #0B7B6B;
+    --teal-light: #12A090;
+    --gold: #C9973A;
+    --gold-light: #E0B050;
+    --gold-dim: rgba(201,151,58,0.1);
+    --white: #FFFFFF;
+    --border: rgba(10,15,30,0.1);
+    --font-display: 'Fraunces', serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-body);
+    background: var(--paper);
+    color: var(--ink);
+    overflow-x: hidden;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 60px;
+    background: rgba(247,246,242,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: var(--font-display); font-weight: 800;
+    font-size: 20px; letter-spacing: -0.5px;
+    color: var(--ink); text-decoration: none;
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-back {
+    font-size: 13px; font-weight: 500; color: var(--ink-soft);
+    text-decoration: none; display: flex; align-items: center; gap: 6px;
+    transition: color 0.2s;
+  }
+  .nav-back:hover { color: var(--ink); }
+  .nav-cta {
+    background: var(--gold); color: var(--white);
+    padding: 10px 22px; border-radius: 4px;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.3px;
+    text-decoration: none; transition: background 0.2s;
+  }
+  .nav-cta:hover { background: var(--gold-light); }
+
+  /* ── SHARED ── */
+  section { padding: 100px 60px; }
+  .section-label {
+    font-family: var(--font-display);
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 3px; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-label::after {
+    content: ''; display: block;
+    width: 32px; height: 1px; background: var(--gold);
+  }
+  h1, h2, h3, h4 { font-family: var(--font-display); }
+  .btn-gold {
+    background: var(--gold); color: var(--white);
+    padding: 14px 28px; border-radius: 4px;
+    font-size: 14px; font-weight: 600;
+    text-decoration: none; display: inline-block;
+    transition: all 0.2s;
+  }
+  .btn-gold:hover { background: var(--gold-light); transform: translateY(-2px); }
+  .btn-ghost {
+    background: transparent; color: rgba(255,255,255,0.7);
+    padding: 14px 28px; border-radius: 4px;
+    font-size: 14px; font-weight: 500;
+    text-decoration: none; border: 1px solid rgba(255,255,255,0.15);
+    transition: all 0.2s; display: inline-block;
+  }
+  .btn-ghost:hover { border-color: rgba(255,255,255,0.4); color: var(--white); }
+  .btn-dark {
+    background: var(--ink); color: var(--white);
+    padding: 14px 28px; border-radius: 4px;
+    font-size: 14px; font-weight: 600;
+    text-decoration: none; display: inline-block;
+    transition: all 0.2s;
+  }
+  .btn-dark:hover { background: var(--ink-soft); transform: translateY(-2px); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh; background: var(--ink);
+    display: flex; align-items: center;
+    padding: 120px 60px 80px;
+    position: relative; overflow: hidden;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(201,151,58,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,151,58,0.04) 1px, transparent 1px);
+    background-size: 72px 72px;
+  }
+  .hero-glow {
+    position: absolute; top: -100px; right: -100px;
+    width: 600px; height: 600px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,151,58,0.1) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .hero-glow2 {
+    position: absolute; bottom: 0; left: 60px;
+    width: 400px; height: 400px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,66,10,0.06) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .hero-content { position: relative; z-index: 2; max-width: 780px; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    border: 1px solid rgba(201,151,58,0.35);
+    background: rgba(201,151,58,0.08);
+    padding: 7px 16px; border-radius: 100px;
+    margin-bottom: 36px;
+  }
+  .hero-badge-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gold-light); animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.4; transform:scale(1.4); }
+  }
+  .hero-badge-text {
+    font-size: 12px; font-weight: 500;
+    color: var(--gold-light); letter-spacing: 0.5px;
+  }
+  .hero h1 {
+    font-size: clamp(42px, 5.5vw, 72px);
+    font-weight: 800; line-height: 1.05;
+    letter-spacing: -2px; color: var(--white); margin-bottom: 24px;
+  }
+  .hero h1 em { font-style: italic; color: var(--gold-light); }
+  .hero-sub {
+    font-size: clamp(16px, 1.8vw, 20px); font-weight: 300;
+    line-height: 1.75; color: rgba(255,255,255,0.6);
+    max-width: 600px; margin-bottom: 16px;
+  }
+  .hero-sub strong { color: var(--white); font-weight: 500; }
+  .hero-sub2 {
+    font-size: 15px; color: rgba(255,255,255,0.35);
+    max-width: 540px; line-height: 1.7; margin-bottom: 48px;
+  }
+  .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 56px; }
+  /* CDO integration callout in hero */
+  .hero-integration {
+    display: flex; align-items: flex-start; gap: 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0; padding: 18px 24px;
+    max-width: 580px;
+  }
+  .hero-integration-icon { font-size: 18px; flex-shrink: 0; padding-top: 2px; }
+  .hero-integration-text {
+    font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.55);
+  }
+  .hero-integration-text strong { color: rgba(255,255,255,0.85); font-weight: 500; }
+  .hero-integration-text a {
+    color: var(--gold-light); text-decoration: none; font-weight: 500;
+    transition: opacity 0.2s;
+  }
+  .hero-integration-text a:hover { opacity: 0.8; }
+
+  /* ── THE GAP ── */
+  .gap-section { background: var(--paper-warm); }
+  .gap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+  .gap-content h2 {
+    font-size: clamp(26px, 3vw, 40px); font-weight: 800;
+    letter-spacing: -1.2px; line-height: 1.15; margin-bottom: 20px;
+  }
+  .gap-content h2 em { font-style: italic; color: var(--accent); }
+  .gap-content p {
+    font-size: 15px; line-height: 1.85; color: var(--ink-soft); margin-bottom: 16px;
+  }
+  .gap-content p strong { color: var(--ink); font-weight: 600; }
+  /* CDO integration note */
+  .gap-cdo-note {
+    margin-top: 24px; padding: 18px 20px;
+    background: var(--white); border-radius: 8px;
+    border-left: 3px solid var(--gold);
+    font-size: 14px; line-height: 1.7; color: var(--ink-soft);
+  }
+  .gap-cdo-note strong { color: var(--ink); font-weight: 600; }
+  .gap-visual { display: flex; flex-direction: column; gap: 12px; }
+  .gap-compare {
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    background: var(--white);
+  }
+  .gap-compare-header {
+    display: grid; grid-template-columns: 1fr 1fr;
+  }
+  .gap-compare-col-label {
+    padding: 12px 20px; font-size: 11px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+  }
+  .gap-compare-col-label.bad {
+    background: rgba(232,66,10,0.06); color: var(--accent);
+    border-right: 1px solid var(--border);
+  }
+  .gap-compare-col-label.good {
+    background: rgba(201,151,58,0.08); color: var(--gold);
+  }
+  .gap-compare-rows { display: flex; flex-direction: column; }
+  .gap-compare-row {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--border);
+  }
+  .gap-compare-cell {
+    padding: 14px 20px; font-size: 13px; line-height: 1.5; color: var(--ink-soft);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .gap-compare-cell.bad { border-right: 1px solid var(--border); }
+  .gap-compare-cell::before {
+    font-size: 12px; flex-shrink: 0; margin-top: 1px;
+  }
+  .gap-compare-cell.bad::before { content: '✗'; color: var(--accent); }
+  .gap-compare-cell.good::before { content: '✓'; color: var(--gold); }
+  /* Three delivery mode badges */
+  .delivery-badges {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .delivery-badge {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 100px; padding: 8px 16px;
+    font-size: 13px; font-weight: 500; color: var(--ink-soft);
+    transition: border-color 0.2s;
+  }
+  .delivery-badge:hover { border-color: var(--gold); }
+  .delivery-badge-icon { font-size: 15px; }
+
+  /* ── PROGRAMMES ── */
+  .programmes { background: var(--white); }
+  .programmes h2 {
+    font-size: clamp(28px, 3vw, 44px); font-weight: 800;
+    letter-spacing: -1.2px; margin-bottom: 12px;
+  }
+  .programmes-intro {
+    font-size: 16px; color: var(--ink-soft); max-width: 580px;
+    line-height: 1.8; margin-bottom: 52px;
+  }
+  .programmes-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 24px; margin-bottom: 32px;
+  }
+  .prog-card {
+    border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; background: var(--paper);
+    transition: all 0.2s; position: relative;
+  }
+  .prog-card:hover { box-shadow: 0 12px 40px rgba(10,15,30,0.1); transform: translateY(-3px); }
+  .prog-card-top {
+    padding: 32px 32px 24px; position: relative;
+  }
+  .prog-card:nth-child(1) .prog-card-top { background: linear-gradient(135deg, #0A0F1E 0%, #1a2340 100%); }
+  .prog-card:nth-child(2) .prog-card-top { background: linear-gradient(135deg, #0D2420 0%, #0B3830 100%); }
+  .prog-card:nth-child(3) .prog-card-top { background: linear-gradient(135deg, #2A1A08 0%, #3D2810 100%); }
+  .prog-card:nth-child(4) .prog-card-top { background: linear-gradient(135deg, #1A0A14 0%, #2D1020 100%); }
+  .prog-card-icon { font-size: 32px; margin-bottom: 16px; display: block; }
+  .prog-card-audience {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--gold-light);
+    margin-bottom: 8px; opacity: 0.8;
+  }
+  .prog-card h3 {
+    font-size: 22px; font-weight: 700; color: var(--white);
+    letter-spacing: -0.5px; line-height: 1.2; margin-bottom: 10px;
+  }
+  .prog-card-tagline {
+    font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.6;
+  }
+  /* CDO link badge on card 1 */
+  .prog-cdo-badge {
+    position: absolute; top: 16px; right: 16px;
+    background: rgba(201,151,58,0.2); border: 1px solid rgba(201,151,58,0.35);
+    border-radius: 100px; padding: 4px 10px;
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--gold-light);
+  }
+  .prog-card-body { padding: 24px 32px 32px; }
+  .prog-card-desc {
+    font-size: 14px; line-height: 1.75; color: var(--ink-soft); margin-bottom: 20px;
+  }
+  .prog-card-desc strong { color: var(--ink); font-weight: 600; }
+  .prog-outcomes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  .prog-outcome {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 13px; line-height: 1.5; color: var(--ink-soft);
+  }
+  .prog-outcome-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gold); flex-shrink: 0; margin-top: 5px;
+  }
+  .prog-delivery {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .prog-mode {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+    padding: 3px 10px; border-radius: 100px;
+    background: var(--gold-dim); color: var(--gold);
+    border: 1px solid rgba(201,151,58,0.2);
+  }
+
+  /* ── HOW WE DESIGN ── */
+  .design { background: var(--paper-warm); }
+  .design-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
+  .design-content h2 {
+    font-size: clamp(26px, 3vw, 40px); font-weight: 800;
+    letter-spacing: -1.2px; line-height: 1.15; margin-bottom: 20px;
+  }
+  .design-content h2 em { font-style: italic; color: var(--gold); }
+  .design-content p {
+    font-size: 15px; line-height: 1.85; color: var(--ink-soft); margin-bottom: 20px;
+  }
+  .design-content p strong { color: var(--ink); font-weight: 600; }
+  /* CDO connection in design section */
+  .design-cdo-bridge {
+    background: var(--ink); border-radius: 10px; padding: 24px 28px;
+    margin-top: 8px;
+  }
+  .design-cdo-bridge-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 12px;
+  }
+  .design-cdo-bridge p {
+    font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.55);
+    margin-bottom: 0;
+  }
+  .design-cdo-bridge p strong { color: rgba(255,255,255,0.9); font-weight: 500; }
+  .design-steps { display: flex; flex-direction: column; gap: 0; }
+  .design-step {
+    display: flex; gap: 20px; align-items: flex-start;
+    padding: 20px 0; border-bottom: 1px solid var(--border);
+  }
+  .design-step:last-child { border-bottom: none; }
+  .design-step-num {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    background: var(--ink); display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 13px; font-weight: 800;
+    color: rgba(255,255,255,0.5);
+  }
+  .design-step:hover .design-step-num { background: var(--gold); color: var(--white); }
+  .design-step-text h4 {
+    font-size: 15px; font-weight: 700; color: var(--ink);
+    margin-bottom: 4px; letter-spacing: -0.2px;
+  }
+  .design-step-text p {
+    font-size: 13px; line-height: 1.65; color: var(--ink-soft);
+    margin-bottom: 0;
+  }
+
+  /* ── WHO IT'S FOR ── */
+  .audience { background: var(--ink); }
+  .audience .section-label { color: var(--gold-light); }
+  .audience .section-label::after { background: var(--gold-light); }
+  .audience h2 {
+    font-size: clamp(28px, 3vw, 44px); font-weight: 800;
+    letter-spacing: -1.5px; color: var(--white);
+    margin-bottom: 14px; line-height: 1.05;
+  }
+  .audience-intro {
+    font-size: 16px; color: rgba(255,255,255,0.45);
+    max-width: 520px; line-height: 1.7; margin-bottom: 52px;
+  }
+  .audience-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 40px;
+  }
+  .audience-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px; padding: 28px 24px;
+    transition: all 0.2s;
+  }
+  .audience-card:hover {
+    background: rgba(201,151,58,0.08);
+    border-color: rgba(201,151,58,0.25);
+    transform: translateY(-2px);
+  }
+  .audience-card-icon { font-size: 28px; margin-bottom: 16px; }
+  .audience-card h4 {
+    font-size: 16px; font-weight: 700; color: var(--white);
+    margin-bottom: 8px; letter-spacing: -0.3px;
+  }
+  .audience-card p {
+    font-size: 13px; line-height: 1.65; color: rgba(255,255,255,0.45);
+  }
+  /* CDO connection row */
+  .audience-cdo-row {
+    background: rgba(201,151,58,0.08);
+    border: 1px solid rgba(201,151,58,0.2);
+    border-radius: 10px; padding: 24px 32px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  }
+  .audience-cdo-text {
+    font-size: 15px; line-height: 1.7; color: rgba(255,255,255,0.6);
+    max-width: 640px;
+  }
+  .audience-cdo-text strong { color: var(--white); font-weight: 500; }
+  .audience-cdo-link {
+    background: var(--gold); color: var(--white);
+    padding: 12px 22px; border-radius: 4px;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.3px;
+    text-decoration: none; white-space: nowrap; flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .audience-cdo-link:hover { background: var(--gold-light); }
+
+  /* ── OUTCOMES ── */
+  .outcomes { background: var(--white); }
+  .outcomes h2 {
+    font-size: clamp(26px, 3vw, 42px); font-weight: 800;
+    letter-spacing: -1.2px; margin-bottom: 12px;
+  }
+  .outcomes-intro {
+    font-size: 16px; color: var(--ink-soft); max-width: 520px;
+    line-height: 1.8; margin-bottom: 52px;
+  }
+  .outcomes-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 24px; margin-bottom: 32px;
+  }
+  .outcome-card {
+    background: var(--paper); border: 1px solid var(--border);
+    border-radius: 10px; padding: 32px;
+    transition: all 0.2s;
+  }
+  .outcome-card:hover { box-shadow: 0 8px 28px rgba(10,15,30,0.08); transform: translateY(-2px); }
+  .outcome-card-stat {
+    font-family: var(--font-display);
+    font-size: 40px; font-weight: 800; line-height: 1;
+    color: var(--gold); margin-bottom: 8px;
+  }
+  .outcome-card h4 {
+    font-size: 16px; font-weight: 700; color: var(--ink);
+    margin-bottom: 8px; letter-spacing: -0.2px;
+  }
+  .outcome-card p {
+    font-size: 14px; line-height: 1.7; color: var(--ink-soft);
+  }
+  .outcomes-cdo-note {
+    background: var(--ink); border-radius: 10px;
+    padding: 32px 40px; display: grid;
+    grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
+  }
+  .outcomes-cdo-note-text {
+    font-size: 16px; line-height: 1.75; color: rgba(255,255,255,0.65);
+  }
+  .outcomes-cdo-note-text strong { color: var(--white); font-weight: 600; }
+  .outcomes-cdo-note-text em {
+    font-style: italic; color: var(--gold-light);
+  }
+  .outcomes-cdo-quote {
+    padding-left: 28px; border-left: 2px solid var(--gold);
+  }
+  .outcomes-cdo-quote p {
+    font-size: 17px; font-style: italic; font-family: var(--font-display);
+    font-weight: 400; color: rgba(255,255,255,0.55); line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .outcomes-cdo-quote-attr {
+    font-size: 12px; color: rgba(255,255,255,0.3);
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+
+  /* ── FINAL CTA ── */
+  .final { background: var(--paper-warm); text-align: center; padding: 120px 60px; }
+  .final h2 {
+    font-size: clamp(30px, 4vw, 52px); font-weight: 800;
+    letter-spacing: -2px; color: var(--ink);
+    margin-bottom: 16px; line-height: 1.05;
+  }
+  .final h2 em { font-style: italic; color: var(--gold); }
+  .final p {
+    font-size: 17px; color: var(--ink-soft);
+    margin-bottom: 40px; max-width: 460px;
+    margin-left: auto; margin-right: auto; line-height: 1.7;
+  }
+  .final-ctas { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+  .final-trust {
+    display: flex; justify-content: center; gap: 28px;
+    flex-wrap: wrap; margin-top: 24px;
+  }
+  .final-trust span {
+    font-size: 12px; color: var(--ink-soft); opacity: 0.6;
+    letter-spacing: 0.3px; display: flex; align-items: center; gap: 6px;
+  }
+  .final-trust span::before { content: '·'; color: var(--gold); opacity: 1; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--ink); padding: 32px 60px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-logo {
+    font-family: var(--font-display); font-weight: 800;
+    font-size: 15px; color: rgba(255,255,255,0.35);
+  }
+  .footer-logo span { color: var(--accent); opacity: 0.5; }
+  .footer-copy { font-size: 12px; color: rgba(255,255,255,0.18); }
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a {
+    font-size: 12px; color: rgba(255,255,255,0.25);
+    text-decoration: none; transition: color 0.2s;
+  }
+  .footer-links a:hover { color: rgba(255,255,255,0.5); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 1024px) {
+    .gap-grid, .design-grid { grid-template-columns: 1fr; gap: 40px; }
+    .programmes-grid { grid-template-columns: 1fr; }
+    .audience-grid { grid-template-columns: repeat(2, 1fr); }
+    .outcomes-grid { grid-template-columns: 1fr; }
+    .outcomes-cdo-note { grid-template-columns: 1fr; gap: 24px; }
+    .audience-cdo-row { flex-direction: column; text-align: center; }
+  }
+  @media (max-width: 768px) {
+    nav { padding: 16px 24px; }
+    section { padding: 72px 24px; }
+    .hero { padding: 100px 24px 72px; }
+    .audience-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; gap: 12px; text-align: center; }
+    .footer-links { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="nav-logo">VIKU<span>NA</span></a>
+  <a href="index.html" class="nav-back">← Back to Vikuna</a>
+  <a href="#contact" class="nav-cta">Book Training Assessment</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-glow2"></div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <div class="hero-badge-dot"></div>
+      <span class="hero-badge-text">Training & Skill Building · In-person · Virtual · Hybrid</span>
+    </div>
+    <h1>Your people <em>are</em><br>the transformation.</h1>
+    <p class="hero-sub">
+      Strategy without capability is just a plan that waits.
+      <strong>The most important investment in any transformation
+      is the people who have to make it work every day.</strong>
+    </p>
+    <p class="hero-sub2">
+      We don't deliver generic AI courses. We build training around
+      how your people actually work — so the learning sticks
+      from the first Monday morning back.
+    </p>
+    <div class="hero-ctas">
+      <a href="#contact" class="btn-gold">Book a Training Assessment</a>
+      <a href="#programmes" class="btn-ghost">See Our Programmes →</a>
+    </div>
+    <div class="hero-integration">
+      <div class="hero-integration-icon">🔗</div>
+      <p class="hero-integration-text">
+        <strong>Part of the Vikuna Transformation Journey.</strong>
+        When we engage as your <a href="index.html#services">Fractional CDO or CAiO</a>,
+        training is never an afterthought — it's built into how we exit.
+        The goal is always a team that can run it without us.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- THE GAP -->
+<section class="gap-section">
+  <div class="section-label">The Real Problem</div>
+  <div class="gap-grid">
+    <div class="gap-content">
+      <h2>Most companies are solving<br>the <em>wrong problem.</em></h2>
+      <p>
+        They buy AI tools. They run a pilot. They announce an "AI initiative."
+        And then — six months later — <strong>nothing has really changed.</strong>
+        The tools are there. The people aren't using them.
+      </p>
+      <p>
+        It's not a tools problem. It's a training problem.
+        Specifically, it's a training problem disguised as a tools problem —
+        because <strong>people are being taught what AI is,
+        not how to use it in their actual job tomorrow morning.</strong>
+      </p>
+      <div class="gap-cdo-note">
+        <strong>Why this matters for transformation leaders:</strong>
+        When a CDO or CAiO builds a strategy, the biggest risk isn't the
+        technology — it's whether the organisation can absorb it.
+        Training bridges the gap between what's designed and what's adopted.
+      </div>
+      <br>
+      <div class="delivery-badges">
+        <div class="delivery-badge">
+          <span class="delivery-badge-icon">🏢</span>
+          In-person / On-site
+        </div>
+        <div class="delivery-badge">
+          <span class="delivery-badge-icon">💻</span>
+          Online / Virtual
+        </div>
+        <div class="delivery-badge">
+          <span class="delivery-badge-icon">🔄</span>
+          Hybrid
+        </div>
+      </div>
+    </div>
+    <div class="gap-visual">
+      <div class="gap-compare">
+        <div class="gap-compare-header">
+          <div class="gap-compare-col-label bad">Generic AI Training</div>
+          <div class="gap-compare-col-label good">Vikuna Training</div>
+        </div>
+        <div class="gap-compare-rows">
+          <div class="gap-compare-row">
+            <div class="gap-compare-cell bad">Teaches what AI is</div>
+            <div class="gap-compare-cell good">Teaches how to use AI in your job</div>
+          </div>
+          <div class="gap-compare-row">
+            <div class="gap-compare-cell bad">Same content for everyone</div>
+            <div class="gap-compare-cell good">Built around your workflows</div>
+          </div>
+          <div class="gap-compare-row">
+            <div class="gap-compare-cell bad">Theory-first, examples second</div>
+            <div class="gap-compare-cell good">Hands-on from hour one</div>
+          </div>
+          <div class="gap-compare-row">
+            <div class="gap-compare-cell bad">One-time event</div>
+            <div class="gap-compare-cell good">Embedded into transformation journey</div>
+          </div>
+          <div class="gap-compare-row">
+            <div class="gap-compare-cell bad">No connection to strategy</div>
+            <div class="gap-compare-cell good">Aligned to CDO/CAiO roadmap</div>
+          </div>
+          <div class="gap-compare-row">
+            <div class="gap-compare-cell bad">Vendor measures attendance</div>
+            <div class="gap-compare-cell good">We measure adoption &amp; behaviour change</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROGRAMMES -->
+<section class="programmes" id="programmes">
+  <div class="section-label">Our Programmes</div>
+  <h2>Four programmes.<br>Every level of your organisation.</h2>
+  <p class="programmes-intro">
+    From C-suite strategy to hands-on implementation — each programme is designed for a specific audience, with specific outcomes, built around how that audience actually works.
+  </p>
+  <div class="programmes-grid">
+
+    <!-- Programme 1 -->
+    <div class="prog-card">
+      <div class="prog-card-top">
+        <span class="prog-cdo-badge">CDO / CAiO aligned</span>
+        <span class="prog-card-icon">🎯</span>
+        <div class="prog-card-audience">For C-Suite & Senior Leadership</div>
+        <h3>Executive AI Leadership</h3>
+        <p class="prog-card-tagline">Move leadership from AI-curious to AI-confident — with governance frameworks they can use immediately.</p>
+      </div>
+      <div class="prog-card-body">
+        <p class="prog-card-desc">
+          Designed for CEOs, COOs, and business unit heads who are being asked about AI but don't yet have the frameworks to lead it. This programme doesn't teach technology — it teaches <strong>how to govern AI, ask the right questions, and make confident investment decisions.</strong>
+        </p>
+        <div class="prog-outcomes">
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Able to evaluate AI proposals critically — not just approve them
+          </div>
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Governance framework to manage AI risk and accountability
+          </div>
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Aligned language with technical teams — no more translation loss
+          </div>
+        </div>
+        <div class="prog-delivery">
+          <span class="prog-mode">🏢 In-person</span>
+          <span class="prog-mode">💻 Virtual</span>
+          <span class="prog-mode">🔄 Hybrid</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Programme 2 -->
+    <div class="prog-card">
+      <div class="prog-card-top">
+        <span class="prog-card-icon">📊</span>
+        <div class="prog-card-audience">For Business Teams & Managers</div>
+        <h3>Data Literacy<br>for Teams</h3>
+        <p class="prog-card-tagline">Build a data-driven culture with practical analytics and decision-making skills — for people who run the business, not data scientists.</p>
+      </div>
+      <div class="prog-card-body">
+        <p class="prog-card-desc">
+          Most data literacy training is designed for analysts. This programme is designed for <strong>the managers and team leads who need to read dashboards, challenge reports, and make data-informed decisions</strong> every day — without a data team on speed dial.
+        </p>
+        <div class="prog-outcomes">
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Read and interpret data without relying on analysts
+          </div>
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Spot misleading metrics and ask better questions of data
+          </div>
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Build simple dashboards and reports independently
+          </div>
+        </div>
+        <div class="prog-delivery">
+          <span class="prog-mode">🏢 In-person</span>
+          <span class="prog-mode">💻 Virtual</span>
+          <span class="prog-mode">🔄 Hybrid</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Programme 3 -->
+    <div class="prog-card">
+      <div class="prog-card-top">
+        <span class="prog-cdo-badge">CDO / CAiO aligned</span>
+        <span class="prog-card-icon">⚙️</span>
+        <div class="prog-card-audience">For Transformation Leaders</div>
+        <h3>Digital Transformation<br>Bootcamp</h3>
+        <p class="prog-card-tagline">Hands-on training for the people who need to make transformation happen — not just understand it.</p>
+      </div>
+      <div class="prog-card-body">
+        <p class="prog-card-desc">
+          Built for project managers, heads of departments, and internal change champions who are responsible for <strong>delivering transformation on the ground</strong> — managing vendors, aligning teams, and keeping initiatives from dying in execution.
+        </p>
+        <div class="prog-outcomes">
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Run a transformation sprint from discovery to deployment
+          </div>
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Manage vendor relationships and hold them accountable
+          </div>
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Build change momentum without burning out the team
+          </div>
+        </div>
+        <div class="prog-delivery">
+          <span class="prog-mode">🏢 In-person</span>
+          <span class="prog-mode">🔄 Hybrid</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Programme 4 -->
+    <div class="prog-card">
+      <div class="prog-card-top">
+        <span class="prog-card-icon">🤖</span>
+        <div class="prog-card-audience">For Product & Engineering Teams</div>
+        <h3>AI/ML Implementation<br>Workshop</h3>
+        <p class="prog-card-tagline">Technical deep-dive for teams implementing AI solutions — practical, production-focused, and built for regulated environments.</p>
+      </div>
+      <div class="prog-card-body">
+        <p class="prog-card-desc">
+          Not a vendor certification. Not a theory lecture. This workshop is for <strong>engineers and product managers who are actually building AI into products or operations</strong> — covering architecture decisions, failure modes, and how to integrate AI into workflows that need to be reliable.
+        </p>
+        <div class="prog-outcomes">
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Architecture patterns for reliable, production-grade AI
+          </div>
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Human-in-the-loop design — when to automate, when not to
+          </div>
+          <div class="prog-outcome">
+            <div class="prog-outcome-dot"></div>
+            Testing, observability, and governance for AI systems
+          </div>
+        </div>
+        <div class="prog-delivery">
+          <span class="prog-mode">🏢 In-person</span>
+          <span class="prog-mode">💻 Virtual</span>
+          <span class="prog-mode">🔄 Hybrid</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- HOW WE DESIGN TRAINING -->
+<section class="design">
+  <div class="section-label">How We Design Training</div>
+  <div class="design-grid">
+    <div class="design-content">
+      <h2>Workflow-first.<br>Not <em>theory-first.</em></h2>
+      <p>
+        Generic training teaches concepts and hopes people figure out the application. We start from the other end — <strong>with how your people actually work today</strong> — and design learning that slots into that reality.
+      </p>
+      <p>
+        Every programme we deliver is customised. We interview your teams, understand your tools, and map your actual workflows before we design a single slide.
+      </p>
+      <div class="design-cdo-bridge">
+        <div class="design-cdo-bridge-label">The CDO / CAiO Connection</div>
+        <p>
+          When Vikuna is engaged as your Fractional CDO or CAiO,
+          training is <strong>designed in parallel with the transformation roadmap</strong> —
+          not added on at the end. The people who will operate the new systems
+          are trained as those systems are being designed.
+          <strong>Capability and strategy develop together.</strong>
+        </p>
+      </div>
+    </div>
+    <div class="design-steps">
+      <div class="design-step">
+        <div class="design-step-num">01</div>
+        <div class="design-step-text">
+          <h4>Workflow Discovery</h4>
+          <p>We interview your teams and observe how work actually happens — not how it's documented. Training is designed around real tasks, real tools, real friction points.</p>
+        </div>
+      </div>
+      <div class="design-step">
+        <div class="design-step-num">02</div>
+        <div class="design-step-text">
+          <h4>Audience Mapping</h4>
+          <p>Different roles need different outcomes. We map every learner group to the specific capabilities they need — not one message for the whole organisation.</p>
+        </div>
+      </div>
+      <div class="design-step">
+        <div class="design-step-num">03</div>
+        <div class="design-step-text">
+          <h4>Practical Programme Design</h4>
+          <p>Sessions are built around doing, not listening. Real scenarios from your industry, real tools your team uses, real decisions they'll face on Monday morning.</p>
+        </div>
+      </div>
+      <div class="design-step">
+        <div class="design-step-num">04</div>
+        <div class="design-step-text">
+          <h4>Adoption Measurement</h4>
+          <p>We don't measure attendance. We track behaviour change — are people using new skills? Has the workflow changed? Is AI actually being used for more than spell check?</p>
+        </div>
+      </div>
+      <div class="design-step">
+        <div class="design-step-num">05</div>
+        <div class="design-step-text">
+          <h4>Iterate & Reinforce</h4>
+          <p>Learning doesn't end when the session ends. We build in reinforcement touchpoints — check-ins, coaching, refreshers — until the new behaviour is habitual.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHO IT'S FOR -->
+<section class="audience">
+  <div class="section-label">Who It's For</div>
+  <h2>Every level of your organisation.</h2>
+  <p class="audience-intro">Transformation succeeds when everyone — from the C-suite to the frontline — understands their role in it.</p>
+  <div class="audience-grid">
+    <div class="audience-card">
+      <div class="audience-card-icon">👔</div>
+      <h4>C-Suite & Board</h4>
+      <p>AI governance, investment decisions, strategic framing. Lead confidently without needing to become technical.</p>
+    </div>
+    <div class="audience-card">
+      <div class="audience-card-icon">🏗️</div>
+      <h4>Transformation Leaders</h4>
+      <p>Internal champions who own delivery. Vendor management, change momentum, stakeholder alignment.</p>
+    </div>
+    <div class="audience-card">
+      <div class="audience-card-icon">👥</div>
+      <h4>Business Teams</h4>
+      <p>The people who use the systems every day. Practical skills that change Monday morning behaviour, not just Friday afternoon quiz scores.</p>
+    </div>
+    <div class="audience-card">
+      <div class="audience-card-icon">⚡</div>
+      <h4>Technical Teams</h4>
+      <p>Engineers and product managers building AI into operations. Architecture, observability, human-in-the-loop design.</p>
+    </div>
+  </div>
+  <div class="audience-cdo-row">
+    <p class="audience-cdo-text">
+      <strong>Already working with a Fractional CDO or CAiO?</strong>
+      Training is most effective when it's aligned to your transformation roadmap.
+      If Vikuna is leading your strategy, we design training in parallel —
+      so your team is ready for every phase before it arrives.
+    </p>
+    <a href="index.html#services" class="audience-cdo-link">Learn about CDO / CAiO →</a>
+  </div>
+</section>
+
+<!-- OUTCOMES -->
+<section class="outcomes">
+  <div class="section-label">What Changes</div>
+  <h2>What good training<br>actually looks like.</h2>
+  <p class="outcomes-intro">Not attendance certificates. Not satisfaction scores. These are the outcomes that matter.</p>
+  <div class="outcomes-grid">
+    <div class="outcome-card">
+      <div class="outcome-card-stat">85%</div>
+      <h4>Transformation Success Rate</h4>
+      <p>Across Vikuna engagements where training is part of the programme — not a separate add-on bolted on at the end.</p>
+    </div>
+    <div class="outcome-card">
+      <div class="outcome-card-stat">3×</div>
+      <h4>Faster Implementation</h4>
+      <p>Teams that understand what they're adopting — and why — move three times faster than teams where training came after go-live.</p>
+    </div>
+    <div class="outcome-card">
+      <div class="outcome-card-stat">Day 1</div>
+      <h4>Practical from the Start</h4>
+      <p>Every programme ends with participants completing a real task using new skills. Not a test. A real workflow they'll repeat next week.</p>
+    </div>
+  </div>
+  <div class="outcomes-cdo-note">
+    <div class="outcomes-cdo-note-text">
+      The goal of every CDO or CAiO engagement is an organisation that
+      <em>doesn't need us anymore.</em> Training is how that exit becomes possible.
+      <strong>Capability building isn't a nice-to-have in transformation — it's
+      the entire point of it.</strong> When we leave, your team should be stronger,
+      more confident, and more capable than when we arrived.
+    </div>
+    <div class="outcomes-cdo-quote">
+      <p>"We don't want to build dependency. We want to build capability. Training is how we make ourselves optional."</p>
+      <div class="outcomes-cdo-quote-attr">Vikuna Transformation Principle</div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final" id="contact">
+  <h2>Ready to build <em>capability</em>,<br>not just deploy tools?</h2>
+  <p>A Training Assessment starts with understanding your team — not selling you a programme. 30 minutes. No obligation.</p>
+  <div class="final-ctas">
+    <a href="https://calendly.com/connect-vikuna/30min" target="_blank" rel="noopener noreferrer" class="btn-gold">Book a Training Assessment</a>
+    <a href="index.html#services" class="btn-dark">Explore CDO / CAiO Services →</a>
+  </div>
+  <div class="final-trust">
+    <span>Workflow-first design</span>
+    <span>In-person, virtual or hybrid</span>
+    <span>Adoption measured, not just attendance</span>
+    <span>Aligned to your transformation roadmap</span>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">VIKU<span>NA</span> Technologies</div>
+  <div class="footer-copy">© 2026 Vikuna Technologies. All rights reserved.</div>
+  <div class="footer-links">
+    <a href="index.html">Home</a>
+    <a href="/vani">VaNi</a>
+    <a href="mailto:contact@vikuna.io">Contact</a>
+  </div>
+</footer>
+
+</body>
+</html>

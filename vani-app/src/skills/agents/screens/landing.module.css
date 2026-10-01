@@ -1,0 +1,89 @@
+/*
+ * Agent landings (Vara, GTM) — the reviewed journey prototypes
+ * (2026-10-01), in the console's own theme. One sheet for both so the two
+ * agents read as one product.
+ */
+
+.status { display: flex; align-items: center; gap: 10px; font-size: var(--fs-ui); color: var(--tx3); margin-bottom: 18px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal-light); flex-shrink: 0; }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 32px; align-items: center; margin-bottom: 26px; }
+.title { font-family: var(--display); font-size: clamp(34px, 4vw, 52px); line-height: 1.06; letter-spacing: -1.5px; margin: 12px 0 16px; color: var(--tx); }
+.title em { font-style: italic; color: var(--gold); font-weight: 400; }
+.lede { font-size: var(--fs-lg); line-height: 1.6; color: var(--tx2); max-width: 560px; margin: 0; }
+.micro { font-size: var(--fs-xs); line-height: 1.55; color: var(--tx3); margin: 10px 0 0; }
+
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
+.primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  height: var(--btn-height); padding: var(--btn-padding); border-radius: var(--btn-radius); border: none;
+  background: var(--gold); color: var(--color-primary-fg); text-decoration: none; cursor: pointer;
+  font-size: var(--btn-font-size); font-weight: var(--btn-font-weight); letter-spacing: var(--btn-letter-spacing);
+}
+.primary:disabled { opacity: 0.55; cursor: default; }
+.link { font-size: var(--fs-ui); color: var(--gold); text-decoration: none; border-bottom: 1px solid transparent; background: none; border-top: 0; border-left: 0; border-right: 0; padding: 0; cursor: pointer; }
+.link:hover { border-bottom-color: var(--gold); }
+
+/* The one recommended action (GTM) / what VaNi already knows (Vara). */
+.side { padding: 22px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surf); min-width: 0; }
+.side h3 { font-size: var(--fs-lg); margin: 8px 0 8px; color: var(--tx); }
+.side p { font-size: var(--fs-ui); line-height: 1.6; color: var(--tx2); margin: 0; }
+.kv { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: var(--fs-ui); }
+.kv:last-of-type { border-bottom: 0; }
+.kv span { color: var(--tx3); }
+.kv b { color: var(--tx); font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+
+.gate { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.gateInput { flex: 1 1 160px; min-width: 0; background: var(--bg); border: 1px solid var(--line2); border-radius: 8px; color: var(--tx); padding: 8px 10px; font-size: var(--fs-ui); }
+
+.band { display: flex; align-items: flex-start; gap: 16px; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surf); margin-bottom: 24px; }
+.bandIcon { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; background: var(--surf3); color: var(--gold); font-weight: 700; }
+.band h3 { font-size: var(--fs-md); margin: 0 0 4px; color: var(--tx); }
+.band p { font-size: var(--fs-ui); line-height: 1.55; color: var(--tx2); margin: 0; }
+.bandAction { margin-left: auto; align-self: center; white-space: nowrap; }
+
+.secHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid var(--line); padding-top: 18px; margin: 6px 0 4px; }
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin-bottom: 18px; }
+.feature h3 { font-size: var(--fs-md); margin: 8px 0 6px; color: var(--tx); }
+.feature p { font-size: var(--fs-ui); line-height: 1.55; color: var(--tx2); margin: 0; }
+.featureKey { font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); font-weight: var(--fw-label); text-transform: uppercase; color: var(--gold); }
+
+.callout { padding: 14px 16px; border-left: 3px solid var(--gold); background: var(--surf); border-radius: 0 var(--r) var(--r) 0; font-size: var(--fs-ui); line-height: 1.6; color: var(--tx2); margin: 18px 0; }
+.callout b { color: var(--tx); }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.card { padding: 22px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surf); min-width: 0; }
+.card h2 { font-size: var(--fs-lg); margin: 6px 0 8px; color: var(--tx); }
+.card p { font-size: var(--fs-ui); line-height: 1.6; color: var(--tx2); margin: 0 0 12px; }
+.wide { grid-column: 1 / -1; }
+.cardHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+
+.findings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0 6px; }
+.finding { padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); }
+.finding b { display: block; font-size: var(--fs-ui); color: var(--tx); margin: 8px 0 4px; }
+.finding span { font-size: var(--fs-xs); color: var(--tx3); line-height: 1.5; }
+
+.row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: var(--fs-ui); color: var(--tx); }
+.row:last-child { border-bottom: 0; }
+.row span:last-child { color: var(--tx3); }
+
+.milestone { display: flex; gap: 12px; align-items: flex-start; margin: 14px 0; }
+.mark { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line2); display: grid; place-items: center; flex-shrink: 0; font-size: var(--fs-xs); color: var(--tx3); }
+.markDone { background: var(--gold); border-color: var(--gold); color: var(--color-primary-fg); }
+.milestone h3 { font-size: var(--fs-ui); margin: 0 0 2px; color: var(--tx); }
+.milestone p { font-size: var(--fs-xs); margin: 0; color: var(--tx3); line-height: 1.5; }
+
+.progress { height: 5px; background: var(--line); border-radius: 10px; margin: 12px 0; overflow: hidden; }
+.progress span { display: block; height: 100%; background: var(--gold); }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; gap: 20px; }
+  .three, .findings { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .grid { grid-template-columns: 1fr; }
+  .wide { grid-column: auto; }
+  .band { flex-wrap: wrap; }
+  .bandAction { margin-left: 52px; }
+  .actions > .primary { flex-grow: 1; }
+}

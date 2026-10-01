@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BCL 2025 Exclusive Offer - Vikuna Technologies</title>
+    <meta name="description" content="Exclusive BCL 2025 offers on ContractNest AI and FamilyKnows. Limited to first 50 entrepreneurs.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --accent: #48BFA3;
+            --accent-light: #5FD4B5;
+            --gold: #FFD700;
+            --text-dark: #2D3748;
+            --text-light: #718096;
+            --bg-light: #F7FAFC;
+            --danger: #E53E3E;
+            --success: #38A169;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow-x: hidden;
+        }
+        
+        /* 3D Background Elements */
+        .bg-orbs {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.3;
+            animation: float 20s infinite ease-in-out;
+        }
+        
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.2);
+            top: -100px;
+            left: -100px;
+            animation-delay: 0s;
+        }
+        
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: rgba(72, 191, 163, 0.3);
+            bottom: -50px;
+            right: -50px;
+            animation-delay: 5s;
+        }
+        
+        .orb-3 {
+            width: 250px;
+            height: 250px;
+            background: rgba(255, 215, 0, 0.2);
+            top: 50%;
+            left: 50%;
+            animation-delay: 10s;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -50px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+        
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 60px 20px 40px;
+            color: white;
+        }
+        
+        .event-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 8px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .hero h1 {
+            font-size: clamp(32px, 6vw, 56px);
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .hero p {
+            font-size: clamp(16px, 3vw, 20px);
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto 30px;
+            font-weight: 500;
+        }
+        
+        .urgency-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 215, 0, 0.15);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 50px;
+            border: 2px solid var(--gold);
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 40px;
+            animation: glow 2s infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.6); }
+        }
+        
+        .urgency-bar .emoji {
+            font-size: 24px;
+            animation: bounce 1s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        /* Main Content Card */
+        .main-card {
+            background: white;
+            border-radius: 30px;
+            padding: 40px 20px;
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3);
+            margin-bottom: 40px;
+        }
+        
+        /* Product Showcase - 3D Cards */
+        .products-section {
+            padding: 40px 20px;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: clamp(24px, 4vw, 36px);
+            font-weight: 800;
+            margin-bottom: 40px;
+            color: var(--text-dark);
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+            perspective: 1000px;
+        }
+        
+        .product-card {
+            position: relative;
+            background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+            border-radius: 20px;
+            padding: 40px 30px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid transparent;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-10px) rotateX(5deg) rotateY(5deg);
+            border-color: var(--primary);
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+        }
+        
+        .product-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 0;
+        }
+        
+        .product-card:hover::before {
+            opacity: 0.05;
+        }
+        
+        .product-card * {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .product-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            transform: translateZ(20px);
+        }
+        
+        .product-card.familyknows .product-icon {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            box-shadow: 0 10px 30px rgba(72, 191, 163, 0.3);
+        }
+        
+        .product-title {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+        
+        .product-subtitle {
+            font-size: 16px;
+            color: var(--text-light);
+            margin-bottom: 20px;
+        }
+        
+        .product-features {
+            list-style: none;
+            margin-bottom: 25px;
+        }
+        
+        .product-features li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            font-size: 14px;
+            color: var(--text-dark);
+        }
+        
+        .product-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: 800;
+            font-size: 18px;
+        }
+        
+        .offer-price {
+            background: linear-gradient(135deg, var(--gold) 0%, #FFA500 100%);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(255, 165, 0, 0.3);
+        }
+        
+        .offer-price .old-price {
+            text-decoration: line-through;
+            opacity: 0.7;
+            font-size: 18px;
+            color: #744210;
+        }
+        
+        .offer-price .new-price {
+            font-size: 36px;
+            font-weight: 900;
+            color: #744210;
+            display: block;
+            margin: 5px 0;
+        }
+        
+        .offer-price .discount {
+            font-size: 14px;
+            font-weight: 700;
+            color: #744210;
+        }
+        
+        /* Form Section */
+        .form-section {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 30px;
+        }
+        
+        .form-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-header h2 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+        
+        .form-header p {
+            color: var(--text-light);
+            font-size: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+        
+        .form-group label .required {
+            color: var(--danger);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #E2E8F0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-input.error {
+            border-color: var(--danger);
+        }
+        
+        .error-message {
+            color: var(--danger);
+            font-size: 13px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        /* Checkbox Cards */
+        .checkbox-cards {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .checkbox-card {
+            position: relative;
+            border: 2px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .checkbox-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.15);
+        }
+        
+        .checkbox-card.checked {
+            border-color: var(--primary);
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .checkbox-card input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+        }
+        
+        .checkbox-card-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .checkbox-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .checkbox-card.familyknows-card .checkbox-icon {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+        }
+        
+        .checkbox-text h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+        
+        .checkbox-text p {
+            font-size: 13px;
+            color: var(--text-light);
+        }
+        
+        .checkbox-check {
+            margin-left: auto;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #E2E8F0;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .checkbox-card.checked .checkbox-check {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .checkbox-card.checked .checkbox-check::after {
+            content: '✓';
+            color: white;
+            font-weight: 800;
+        }
+        
+        .bonus-hint {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid var(--gold);
+            border-radius: 10px;
+            padding: 12px 15px;
+            font-size: 13px;
+            color: #744210;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 15px;
+        }
+        
+        .bonus-hint .emoji {
+            font-size: 16px;
+        }
+        
+        /* Simple Checkbox */
+        .simple-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 0;
+        }
+        
+        .simple-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .simple-checkbox label {
+            margin: 0;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        /* Submit Button */
+        .submit-btn {
+            width: 100%;
+            padding: 18px 40px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .submit-btn .btn-text {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .submit-btn .btn-loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .submit-btn.loading .btn-text {
+            opacity: 0;
+        }
+        
+        .submit-btn.loading .btn-loading {
+            display: block;
+        }
+        
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Success/Error Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            animation: modalSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 40px;
+        }
+        
+        .modal.success .modal-icon {
+            background: linear-gradient(135deg, var(--success) 0%, #48BB78 100%);
+        }
+        
+        .modal.error .modal-icon {
+            background: linear-gradient(135deg, var(--danger) 0%, #FC8181 100%);
+        }
+        
+        .modal-content h2 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+        
+        .modal-content p {
+            color: var(--text-light);
+            font-size: 16px;
+            margin-bottom: 25px;
+        }
+        
+        .modal-btn {
+            padding: 12px 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .modal-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        
+        /* Trust Signals */
+        .trust-signals {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            padding: 30px 20px;
+            flex-wrap: wrap;
+        }
+        
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-light);
+            font-size: 14px;
+        }
+        
+        .trust-item .icon {
+            font-size: 24px;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: white;
+        }
+        
+        .footer p {
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 40px 20px 30px;
+            }
+            
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .main-card {
+                padding: 30px 15px;
+            }
+            
+            .form-section {
+                padding: 30px 20px;
+            }
+            
+            .trust-signals {
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Orbs -->
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="event-badge">BCL 2025 EXCLUSIVE OFFER</div>
+            <h1>Your Business & Family<br>Deserve AI-Powered Solutions</h1>
+            <p>Limited-time founding member offers. Available only to the first 50 entrepreneurs at BCL 2025.</p>
+            <div class="urgency-bar">
+                <span class="emoji">⚡</span>
+                <span>Only available to BCL 2025 attendees</span>
+            </div>
+        </section>
+
+        <!-- Main Content Card -->
+        <div class="main-card">
+            <!-- Products Section -->
+            <section class="products-section">
+                <h2 class="section-title">Choose Your AI Partner</h2>
+                
+                <div class="products-grid">
+                    <!-- ContractNest Card -->
+                    <div class="product-card contractnest">
+                        <div class="product-icon">🤖</div>
+                        <h3 class="product-title">ContractNest</h3>
+                        <p class="product-subtitle">AI Contract Management for Your Business</p>
+                        
+                        <ul class="product-features">
+                            <li>Auto-schedules 100+ services/week</li>
+                            <li>Negotiates with providers via WhatsApp</li>
+                            <li>Generates & sends invoices automatically</li>
+                            <li>70% time saved on admin work</li>
+                            <li>98% SLA compliance guaranteed</li>
+                        </ul>
+                        
+                        <div class="offer-price">
+                            <div class="new-price">30% OFF</div>
+                            <div class="discount">LIFETIME DISCOUNT + FREE Consultation</div>
+                        </div>
+                    </div>
+                    
+                    <!-- FamilyKnows Card -->
+                    <div class="product-card familyknows">
+                        <div class="product-icon">🏠</div>
+                        <h3 class="product-title">FamilyKnows</h3>
+                        <p class="product-subtitle">Family Office Platform for Every Family</p>
+                        
+                        <ul class="product-features">
+                            <li>Multi-language support (Telugu, Hindi, English)</li>
+                            <li>Bank-grade AES-256 encryption</li>
+                            <li>Digital "In Case of Death" vault</li>
+                            <li>Generational wealth transfer tools</li>
+                            <li>3 family members included</li>
+                        </ul>
+                        
+                        <div class="offer-price">
+                            <div class="new-price">50% OFF</div>
+                            <div class="discount">LIFETIME DISCOUNT</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Form Section -->
+            <section class="form-section">
+                <div class="form-header">
+                    <h2>Get Both Exclusive Offers</h2>
+                    <p>Fill the form below and receive instant confirmation on WhatsApp</p>
+                </div>
+
+                <form id="leadForm">
+                    <!-- Name -->
+                    <div class="form-group">
+                        <label for="name">Full Name <span class="required">*</span></label>
+                        <input 
+                            type="text" 
+                            id="name" 
+                            name="name" 
+                            class="form-input" 
+                            placeholder="Enter your full name"
+                            required
+                        >
+                        <div class="error-message" id="nameError">Please enter your name</div>
+                    </div>
+
+                    <!-- Phone -->
+                    <div class="form-group">
+                        <label for="phone">WhatsApp Number <span class="required">*</span></label>
+                        <input 
+                            type="tel" 
+                            id="phone" 
+                            name="phone" 
+                            class="form-input" 
+                            placeholder="+91 98765 43210"
+                            required
+                        >
+                        <div class="error-message" id="phoneError">Please enter a valid phone number</div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="form-group">
+                        <label for="email">Email Address <span class="required">*</span></label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            class="form-input" 
+                            placeholder="you@example.com"
+                            required
+                        >
+                        <div class="error-message" id="emailError">Please enter a valid email</div>
+                    </div>
+
+                    <!-- Company -->
+                    <div class="form-group">
+                        <label for="company">Company/Business Name</label>
+                        <input 
+                            type="text" 
+                            id="company" 
+                            name="company" 
+                            class="form-input" 
+                            placeholder="Optional"
+                        >
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        <span class="btn-text">📲 Send Both Offer PDFs to My WhatsApp</span>
+                        <span class="btn-loading">
+                            <div class="spinner"></div>
+                        </span>
+                    </button>
+                </form>
+
+                <!-- Trust Signals -->
+                <div class="trust-signals">
+                    <div class="trust-item">
+                        <span class="icon">🔒</span>
+                        <span>100% Secure</span>
+                    </div>
+                    <div class="trust-item">
+                        <span class="icon">⚡</span>
+                        <span>Instant Confirmation</span>
+                    </div>
+                    <div class="trust-item">
+                        <span class="icon">🎁</span>
+                        <span>Exclusive Offer</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Proudly Powering 100+ Businesses | Made in India 🇮🇳</p>
+            <p>☕ Day 1 Breakfast Sponsor at BCL 2025</p>
+            <p>contact@vikuna.io | <a href="https://vikuna.io">vikuna.io</a></p>
+        </footer>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal success" id="successModal">
+        <div class="modal-content">
+            <div class="modal-icon">✅</div>
+            <h2>Thank You!</h2>
+            <p>Registration successful! Please check your WhatsApp for confirmation. We'll send the detailed brochures shortly.</p>
+            <button class="modal-btn" onclick="closeModal()">Got it!</button>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div class="modal error" id="errorModal">
+        <div class="modal-content">
+            <div class="modal-icon">❌</div>
+            <h2>Oops! Something Went Wrong</h2>
+            <p id="errorMessage">Please try again or contact us at contact@vikuna.io</p>
+            <button class="modal-btn" onclick="closeModal()">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - UPDATE THIS WITH YOUR N8N WEBHOOK URL
+        //const WEBHOOK_URL = 'https://n8n.srv1096269.hstgr.cloud/webhook/bcl2025-lead';
+const WEBHOOK_URL = 'https://n8n.srv1096269.hstgr.cloud/webhook/bcl2025-lead';
+        // Form elements
+        const form = document.getElementById('leadForm');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // Phone number formatting
+        const phoneInput = document.getElementById('phone');
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 0 && !value.startsWith('91')) {
+                value = '91' + value;
+            }
+            if (value.length > 12) {
+                value = value.substring(0, 12);
+            }
+            
+            if (value.length > 2) {
+                e.target.value = '+' + value.substring(0, 2) + ' ' + value.substring(2);
+            } else if (value.length > 0) {
+                e.target.value = '+' + value;
+            }
+        });
+
+        // Form validation
+        function validateForm() {
+            let isValid = true;
+
+            // Name
+            const name = document.getElementById('name').value.trim();
+            if (!name) {
+                showError('nameError', 'name');
+                isValid = false;
+            } else {
+                hideError('nameError', 'name');
+            }
+
+            // Phone
+            const phone = document.getElementById('phone').value.replace(/\D/g, '');
+            if (!phone || phone.length < 12) {
+                showError('phoneError', 'phone');
+                isValid = false;
+            } else {
+                hideError('phoneError', 'phone');
+            }
+
+            // Email
+            const email = document.getElementById('email').value.trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email || !emailRegex.test(email)) {
+                showError('emailError', 'email');
+                isValid = false;
+            } else {
+                hideError('emailError', 'email');
+            }
+
+            return isValid;
+        }
+
+        function showError(errorId, inputId) {
+            document.getElementById(errorId).classList.add('show');
+            if (inputId) {
+                document.getElementById(inputId).classList.add('error');
+            }
+        }
+
+        function hideError(errorId, inputId) {
+            document.getElementById(errorId).classList.remove('show');
+            if (inputId) {
+                document.getElementById(inputId).classList.remove('error');
+            }
+        }
+
+        // Form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (!validateForm()) {
+                return;
+            }
+
+            // Show loading
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+
+            // Prepare data - Both products automatically included
+            const formData = {
+                name: document.getElementById('name').value.trim(),
+                phone: '+' + document.getElementById('phone').value.replace(/\D/g, ''),
+                email: document.getElementById('email').value.trim(),
+                company: document.getElementById('company').value.trim(),
+                interested_contractnest: true,
+                interested_familyknows: true,
+                attending_breakfast: false,
+                referrer: 'qr_code',
+                utm_source: new URLSearchParams(window.location.search).get('utm_source') || 'direct',
+                utm_medium: new URLSearchParams(window.location.search).get('utm_medium') || 'qr',
+                utm_campaign: new URLSearchParams(window.location.search).get('utm_campaign') || 'bcl_2025'
+            };
+
+            try {
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // Success - Show modal and reset form
+                    showSuccessModal();
+                    form.reset();
+                } else {
+                    // Error
+                    showErrorModal(result.error || 'Something went wrong. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showErrorModal('Network error. Please check your connection and try again.');
+            } finally {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            }
+        });
+
+        function showSuccessModal() {
+            document.getElementById('successModal').classList.add('show');
+        }
+
+        function showErrorModal(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('successModal').classList.remove('show');
+            document.getElementById('errorModal').classList.remove('show');
+        }
+
+        // Close modal on background click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal();
+                }
+            });
+        });
+
+        // Smooth scroll for product cards
+        document.querySelectorAll('.product-card').forEach(card => {
+            card.addEventListener('click', function() {
+                // Smooth scroll to form
+                document.querySelector('.form-section').scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            });
+        });
+    </script>
+</body>
+</html>

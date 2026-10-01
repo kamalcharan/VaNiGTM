@@ -1,0 +1,61 @@
+/* AgentJourney — the read-only journey on a landing (full) or a dashboard card. */
+
+.full { display: flex; flex-direction: column; gap: 0; margin-top: 18px; }
+
+.step {
+  display: grid; grid-template-columns: 28px 1fr; gap: 12px;
+  padding: 10px 0; position: relative;
+}
+.step::before {
+  content: ''; position: absolute; left: 13px; top: 30px; bottom: -10px;
+  width: 1px; background: var(--line);
+}
+.step:last-child::before { display: none; }
+
+.dot {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid var(--line2); background: var(--surf);
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: var(--fs-xs); color: var(--tx3);
+  position: relative; z-index: 1;
+}
+.done .dot { background: rgba(18, 160, 144, 0.16); border-color: rgba(18, 160, 144, 0.5); color: var(--teal-light); }
+.current .dot { background: var(--ac-dim); border-color: var(--ac); color: var(--ac-light); }
+.locked .dot { border-style: dashed; }
+
+.body { min-width: 0; padding-top: 3px; }
+.label { font-family: var(--font-label); font-size: var(--fs-sm); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx3); font-weight: var(--fw-label); }
+.done .label { color: var(--tx2); }
+.current .label { color: var(--tx); font-weight: 600; }
+.locked .label { color: var(--tx3); }
+
+.open {
+  margin-top: 8px; padding: 14px 16px;
+  border: 1px solid var(--ac-line); border-radius: var(--r);
+  background: var(--surf);
+}
+.summary { font-size: var(--fs-lg); line-height: 1.6; color: var(--tx2); margin: 0; }
+.go {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+  padding: 8px 14px; border-radius: 8px; text-decoration: none;
+  background: var(--color-primary); color: var(--color-primary-fg);
+  font-size: var(--fs-ui); font-weight: 600;
+}
+.go:hover { background: var(--color-primary-hover); }
+.reason { font-size: var(--fs-md); line-height: 1.5; color: var(--tx3); margin: 4px 0 0; }
+.reason b { color: var(--warn); font-weight: 500; }
+
+/* card */
+.card { display: flex; flex-direction: column; gap: 8px; }
+.cardHead { display: flex; align-items: center; gap: 8px; }
+.cardName { font-family: var(--display); font-size: var(--fs-xl); font-weight: 700; }
+.cardPos { font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx3); margin-left: auto; font-weight: var(--fw-label); }
+.pips { display: flex; gap: 4px; }
+.pip { height: 6px; flex: 1; border-radius: 3px; background: var(--line); }
+.pipDone { background: var(--teal); }
+.pipCurrent { background: var(--ac); }
+.cardNote { font-size: var(--fs-ui); color: var(--tx2); line-height: 1.5; }
+.cardNext { font-size: var(--fs-ui); color: var(--tx); }
+.cardNext a { color: var(--ac); text-decoration: none; }
+.cardNext a:hover { text-decoration: underline; }
+.cardLocked { color: var(--tx3); }

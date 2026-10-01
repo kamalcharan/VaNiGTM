@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#f0f8ff" />
+  
+  <!-- Abstract shapes -->
+  <circle cx="400" cy="300" r="150" fill="#1E88E5" opacity="0.2" />
+  <path d="M200 150 L600 150 L500 450 L300 450 Z" fill="#26A69A" opacity="0.15" />
+  
+  <!-- Device frame -->
+  <rect x="250" y="100" width="300" height="400" rx="20" ry="20" fill="#FFFFFF" stroke="#CCCCCC" stroke-width="5" />
+  
+  <!-- Screen -->
+  <rect x="270" y="130" width="260" height="320" rx="5" ry="5" fill="#F5F5F5" />
+  
+  <!-- UI Elements -->
+  <!-- Header -->
+  <rect x="290" y="150" width="220" height="40" rx="5" ry="5" fill="#1E88E5" />
+  
+  <!-- Content blocks -->
+  <rect x="290" y="210" width="100" height="20" rx="3" ry="3" fill="#1E88E5" opacity="0.7" />
+  <rect x="290" y="240" width="220" height="10" rx="3" ry="3" fill="#AAAAAA" opacity="0.5" />
+  <rect x="290" y="260" width="180" height="10" rx="3" ry="3" fill="#AAAAAA" opacity="0.5" />
+  <rect x="290" y="280" width="200" height="10" rx="3" ry="3" fill="#AAAAAA" opacity="0.5" />
+  
+  <!-- Image placeholder -->
+  <rect x="290" y="310" width="220" height="100" rx="5" ry="5" fill="#26A69A" opacity="0.5" />
+  
+  <!-- Button -->
+  <rect x="290" y="430" width="100" height="30" rx="15" ry="15" fill="#1E88E5" />
+  
+  <!-- Home button -->
+  <circle cx="400" cy="480" r="15" fill="#EEEEEE" stroke="#CCCCCC" stroke-width="2" />
+  
+  <!-- Text -->
+  <text x="400" y="530" font-family="Arial" font-size="24" fill="#212121" text-anchor="middle">Vikuna Dashboard</text>
+</svg>

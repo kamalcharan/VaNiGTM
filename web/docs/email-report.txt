@@ -1,0 +1,27 @@
+Subject: {{name}}, your AI initiative assessment is ready — {{score}}/100 ({{band}})
+
+Hello {{name}},
+
+I finished assessing {{company}}'s AI initiatives against the ten
+failure modes of enterprise AI.
+
+Your AI Initiative Health Score: {{score}}/100 — Band: {{band}}
+
+Your top three exposures:
+  1. {{mode1_name}} — {{mode1_pct}}%
+  2. {{mode2_name}} — {{mode2_pct}}%
+  3. {{mode3_name}} — {{mode3_pct}}%
+
+Your full report — all ten modes scored, with the one next step
+I'd take first:
+
+  {{report_url}}
+
+Assessed by VaNi AI
+Reviewed by Charan Kamal Bommakanti, Founder & CEO, Vikuna Technologies
+
+--
+Vikuna Technologies, Hyderabad, India
+You received this because you completed an assessment at vani.vikuna.io.
+Your responses are stored securely in India and used only for this
+assessment. Reply to this email to reach us. Ref {{ref}}

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://vikuna.io/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://vikuna.io/assessment</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://vikuna.io/mvp</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://vikuna.io/training</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://vikuna.io/playbooks/why-ai-fails</loc>
+    <priority>0.7</priority>
+  </url>
+</urlset>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iceberg Visual | Vikuna</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,800;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #0A0F1E;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 60px 40px;
+  }
+
+  /* ── DIFFERENTIATOR SECTION WRAPPER ── */
+  .differentiator {
+    padding: 100px 60px;
+    background: #0A0F1E;
+    width: 100%;
+    max-width: 1200px;
+  }
+  .section-label {
+    font-family: 'Fraunces', serif;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 3px; text-transform: uppercase;
+    color: #C9973A; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-label::after {
+    content: ''; display: block;
+    width: 32px; height: 1px; background: #C9973A;
+  }
+  .diff-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+  }
+  .diff-content h2 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(26px, 2.8vw, 40px);
+    font-weight: 800;
+    letter-spacing: -1.2px;
+    line-height: 1.15;
+    color: #fff;
+    margin-bottom: 20px;
+  }
+  .diff-content h2 em {
+    font-style: italic;
+    color: #C9973A;
+  }
+  .diff-content p {
+    font-size: 15px;
+    line-height: 1.85;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 20px;
+  }
+  .diff-content p strong {
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+  }
+  .diff-note {
+    padding: 18px 22px;
+    border-left: 3px solid #C9973A;
+    background: rgba(201,151,58,0.07);
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.55);
+    font-style: italic;
+    margin-top: 8px;
+  }
+
+  /* ── ICEBERG VISUAL ── */
+  .iceberg-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    max-height: 520px;
+    overflow: visible;
+  }
+
+  /* SVG fills the wrap */
+  .iceberg-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Label overlays — positioned absolutely over SVG */
+  .iceberg-labels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* ABOVE WATER — surface label */
+  .label-surface {
+    position: absolute;
+    top: 6%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+  .label-surface-tag {
+    display: inline-block;
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 100px; padding: 4px 12px;
+    margin-bottom: 8px;
+  }
+  .label-surface-main {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(14px, 1.8vw, 20px);
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+    line-height: 1.2;
+  }
+  .label-surface-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 4px;
+  }
+
+  /* WATERLINE label */
+  .label-waterline {
+    position: absolute;
+    left: 0; right: 0;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .label-waterline-line {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(18,160,144,0.6), transparent);
+  }
+  .label-waterline-text {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: rgba(18,160,144,0.7);
+    white-space: nowrap;
+  }
+
+  /* BELOW WATER — deep items */
+  .label-deep {
+    position: absolute;
+  }
+  .label-deep-header {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: #C9973A;
+    margin-bottom: 12px;
+  }
+  .deep-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 10px;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .deep-item.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .deep-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 5px;
+    background: #12A090;
+  }
+  .deep-name {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(13px, 1.4vw, 16px);
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+    line-height: 1.2;
+  }
+  .deep-name span {
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; font-weight: 400;
+    color: rgba(255,255,255,0.35);
+    margin-top: 2px;
+  }
+
+  /* 20% / 80% annotation */
+  .pct-annotation {
+    position: absolute;
+    right: -8px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  }
+  .pct-num {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(24px, 2.5vw, 32px);
+    font-weight: 800;
+    line-height: 1;
+  }
+  .pct-label {
+    font-size: 11px; font-weight: 500;
+    line-height: 1.3;
+    text-align: right;
+    max-width: 120px;
+  }
+</style>
+</head>
+<body>
+
+<section class="differentiator">
+  <div class="section-label">Our Approach</div>
+  <div class="diff-grid">
+
+    <!-- LEFT: content -->
+    <div class="diff-content">
+      <h2>Most consultants work<br>on the <em>surface.</em><br>We work on what<br>actually moves.</h2>
+      <p>
+        Technology is <strong>20% of transformation.</strong>
+        The other 80% — culture, mindset, operations, capability — is where most initiatives succeed or fail.
+        That's where we focus.
+      </p>
+      <div class="diff-note">
+        We're not attached to who builds it. We're attached to whether it works — whether it's your team, your vendors, or ours.
+      </div>
+    </div>
+
+    <!-- RIGHT: iceberg visual -->
+    <div class="iceberg-wrap" id="icebergWrap">
+
+      <!-- SVG: the iceberg shape -->
+      <svg class="iceberg-svg" viewBox="0 0 440 520" fill="none" xmlns="http://www.w3.org/2000/svg" id="icebergSvg">
+        <defs>
+          <!-- Water gradient -->
+          <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0B2A35" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#050D18" stop-opacity="1"/>
+          </linearGradient>
+          <!-- Above-water gradient -->
+          <linearGradient id="aboveGrad" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="#1a2a3a"/>
+            <stop offset="100%" stop-color="#2a3d52"/>
+          </linearGradient>
+          <!-- Below-water gradient -->
+          <linearGradient id="belowGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0B3D4A"/>
+            <stop offset="100%" stop-color="#05181F"/>
+          </linearGradient>
+          <!-- Teal glow filter -->
+          <filter id="tealGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="6" result="blur"/>
+            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+          </filter>
+          <!-- Gold glow -->
+          <filter id="goldGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="8" result="blur"/>
+            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+          </filter>
+          <!-- Water ripple clip -->
+          <clipPath id="waterClip">
+            <rect x="0" y="195" width="440" height="325"/>
+          </clipPath>
+          <!-- Full clip -->
+          <clipPath id="aboveClip">
+            <rect x="0" y="0" width="440" height="198"/>
+          </clipPath>
+        </defs>
+
+        <!-- ── WATER BACKGROUND ── -->
+        <rect x="0" y="195" width="440" height="325" fill="url(#waterGrad)" rx="0"/>
+
+        <!-- Water shimmer lines -->
+        <line x1="0" y1="220" x2="440" y2="220" stroke="rgba(18,160,144,0.07)" stroke-width="1"/>
+        <line x1="0" y1="250" x2="440" y2="250" stroke="rgba(18,160,144,0.05)" stroke-width="1"/>
+        <line x1="0" y1="285" x2="440" y2="285" stroke="rgba(18,160,144,0.04)" stroke-width="1"/>
+        <line x1="0" y1="330" x2="440" y2="330" stroke="rgba(18,160,144,0.03)" stroke-width="1"/>
+
+        <!-- ── ICEBERG — BELOW WATER (large mass) ── -->
+        <!-- Main submerged body -->
+        <path d="M 110 198 L 60 280 L 30 370 L 20 460 L 50 510 L 390 510 L 420 460 L 415 370 L 390 280 L 330 198 Z"
+          fill="url(#belowGrad)"
+          stroke="rgba(18,160,144,0.25)"
+          stroke-width="1.5"
+        />
+
+        <!-- Submerged inner highlight -->
+        <path d="M 130 198 L 95 270 L 75 350 L 80 430 L 110 490 L 330 490 L 360 430 L 365 350 L 345 270 L 310 198 Z"
+          fill="rgba(18,160,144,0.06)"
+        />
+
+        <!-- Teal glow along submerged edges -->
+        <path d="M 110 198 L 60 280 L 30 370 L 20 460 L 50 510"
+          stroke="rgba(18,160,144,0.35)"
+          stroke-width="2"
+          fill="none"
+          filter="url(#tealGlow)"
+        />
+        <path d="M 330 198 L 390 280 L 415 370 L 420 460 L 390 510"
+          stroke="rgba(18,160,144,0.25)"
+          stroke-width="2"
+          fill="none"
+        />
+
+        <!-- ── WATERLINE ── -->
+        <!-- Glowing waterline -->
+        <rect x="0" y="192" width="440" height="8"
+          fill="rgba(18,160,144,0.08)"
+        />
+        <line x1="0" y1="196" x2="440" y2="196"
+          stroke="rgba(18,160,144,0.6)"
+          stroke-width="1.5"
+          stroke-dasharray="4 6"
+        />
+
+        <!-- ── ICEBERG — ABOVE WATER (small tip) ── -->
+        <path d="M 165 10 L 130 60 L 110 100 L 108 198 L 332 198 L 330 100 L 310 60 L 275 10 Z"
+          fill="url(#aboveGrad)"
+          stroke="rgba(255,255,255,0.12)"
+          stroke-width="1.5"
+        />
+
+        <!-- Above-water inner glint -->
+        <path d="M 185 20 L 160 65 L 150 110 L 152 190 L 290 190 L 288 110 L 270 65 L 245 20 Z"
+          fill="rgba(255,255,255,0.04)"
+        />
+
+        <!-- Apex highlight -->
+        <path d="M 200 18 L 185 45 L 220 40 Z"
+          fill="rgba(255,255,255,0.15)"
+        />
+
+        <!-- Gold accent — "surface" top edge glow -->
+        <path d="M 165 10 L 275 10"
+          stroke="rgba(201,151,58,0.6)"
+          stroke-width="2"
+          filter="url(#goldGlow)"
+        />
+
+        <!-- ── 20% bracket (above water) ── -->
+        <line x1="336" y1="10" x2="356" y2="10" stroke="rgba(201,151,58,0.4)" stroke-width="1"/>
+        <line x1="356" y1="10" x2="356" y2="196" stroke="rgba(201,151,58,0.4)" stroke-width="1" stroke-dasharray="3 4"/>
+        <line x1="336" y1="196" x2="356" y2="196" stroke="rgba(201,151,58,0.4)" stroke-width="1"/>
+        <!-- bracket arrow midpoint -->
+        <circle cx="356" cy="103" r="3" fill="rgba(201,151,58,0.5)"/>
+
+        <!-- ── 80% bracket (below water) ── -->
+        <line x1="425" y1="196" x2="436" y2="196" stroke="rgba(18,160,144,0.5)" stroke-width="1"/>
+        <line x1="436" y1="196" x2="436" y2="510" stroke="rgba(18,160,144,0.5)" stroke-width="1" stroke-dasharray="3 4"/>
+        <line x1="425" y1="510" x2="436" y2="510" stroke="rgba(18,160,144,0.5)" stroke-width="1"/>
+        <circle cx="436" cy="353" r="3" fill="rgba(18,160,144,0.6)"/>
+
+      </svg>
+
+      <!-- LABEL OVERLAYS -->
+      <div class="iceberg-labels">
+
+        <!-- Surface label (above water, centred on tip) -->
+        <div class="label-surface" style="top:2%; width:60%; left:20%;">
+          <div class="label-surface-tag">What most consultants deliver</div>
+          <div class="label-surface-main">Technology<br>&amp; Tools</div>
+          <div class="label-surface-sub">Visible · Deliverable · Easy to invoice</div>
+        </div>
+
+        <!-- Waterline -->
+        <div class="label-waterline" style="top: calc(38% - 10px);">
+          <div class="label-waterline-line"></div>
+          <div class="label-waterline-text">Surface Level</div>
+          <div class="label-waterline-line"></div>
+        </div>
+
+        <!-- Deep items — positioned over submerged body -->
+        <div class="label-deep" style="top:43%; left:8%; right:10%;">
+          <div class="label-deep-header">Where Vikuna works</div>
+          <div class="deep-item" id="di0">
+            <div class="deep-dot"></div>
+            <div class="deep-name">Operations Transformation
+              <span>How work actually gets done</span>
+            </div>
+          </div>
+          <div class="deep-item" id="di1">
+            <div class="deep-dot"></div>
+            <div class="deep-name">Skills &amp; Capability
+              <span>Building teams that can sustain it</span>
+            </div>
+          </div>
+          <div class="deep-item" id="di2">
+            <div class="deep-dot"></div>
+            <div class="deep-name">Mindset &amp; Culture
+              <span>The reason most AI fails at scale</span>
+            </div>
+          </div>
+          <div class="deep-item" id="di3">
+            <div class="deep-dot"></div>
+            <div class="deep-name">Leadership Alignment
+              <span>Strategy that survives Monday morning</span>
+            </div>
+          </div>
+          <div class="deep-item" id="di4">
+            <div class="deep-dot"></div>
+            <div class="deep-name">Process Intelligence
+              <span>Automation that actually sticks</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 20% annotation -->
+        <div class="pct-annotation" style="top:10%; right:3%;">
+          <div class="pct-num" style="color:rgba(201,151,58,0.9)">20%</div>
+          <div class="pct-label" style="color:rgba(201,151,58,0.55)">Where most<br>engagements stop</div>
+        </div>
+
+        <!-- 80% annotation -->
+        <div class="pct-annotation" style="top:55%; right:0%;">
+          <div class="pct-num" style="color:rgba(18,160,144,0.9)">80%</div>
+          <div class="pct-label" style="color:rgba(18,160,144,0.55)">Where transformation<br>actually happens</div>
+        </div>
+
+      </div>
+    </div><!-- /iceberg-wrap -->
+
+  </div>
+</section>
+
+<script>
+// Animate deep items on scroll / load
+function animateItems() {
+  const items = document.querySelectorAll('.deep-item');
+  items.forEach((item, i) => {
+    setTimeout(() => item.classList.add('visible'), 300 + i * 150);
+  });
+}
+
+// IntersectionObserver for scroll trigger
+const wrap = document.getElementById('icebergWrap');
+const observer = new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting) {
+    animateItems();
+    observer.disconnect();
+  }
+}, { threshold: 0.3 });
+
+observer.observe(wrap);
+
+// Fallback: animate immediately if already visible
+setTimeout(() => {
+  const items = document.querySelectorAll('.deep-item');
+  items.forEach(item => {
+    if (!item.classList.contains('visible')) item.classList.add('visible');
+  });
+}, 1200);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,370 @@
+/* Smart Profile — the record. Reads top-down; every section states whether it
+   is captured and how to change it. Token names are VaNi's own (globals.css),
+   not the ported VaNiGTM aliases, because this screen is ours. */
+
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 20px 96px;
+}
+
+.head { margin-bottom: 36px; }
+
+.eyebrow {
+  display: block;
+  font-family: var(--font-label);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 10px; font-weight: var(--fw-label); }
+
+.title {
+  font-family: var(--display);
+  font-size: clamp(1.7rem, 4vw, 2.3rem);
+  font-weight: 600;
+  color: var(--tx);
+  line-height: 1.15;
+  margin-bottom: 10px;
+}
+
+.lede {
+  font-size: var(--fs-xl);
+  line-height: 1.6;
+  color: var(--tx2);
+  max-width: 56ch;
+}
+
+.scoreRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.scoreValue {
+  font-family: var(--display);
+  font-size: 1.9rem;
+  font-weight: 600;
+  color: var(--gold);
+  line-height: 1;
+}
+
+.scoreMax { font-size: var(--fs-xl); color: var(--tx3); }
+
+.scoreLabel {
+  font-size: var(--fs-ui);
+  letter-spacing: 0.04em;
+  color: var(--tx2);
+}
+
+.headAction {
+  margin-left: auto;
+  font-size: var(--fs-ui);
+  color: var(--gold);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+.headAction:hover { border-bottom-color: var(--gold); }
+
+/* ── Sections ─────────────────────────────────────────────────────────── */
+
+.section {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surf);
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.sectionNum {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--line2);
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: var(--fs-md);
+  color: var(--tx3);
+}
+
+.sectionTitles { flex: 1; min-width: 0; }
+
+.sectionTitle {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--tx);
+  margin-bottom: 3px;
+}
+
+.sectionWhat {
+  font-size: var(--fs-ui);
+  line-height: 1.5;
+  color: var(--tx3);
+}
+
+.sectionEdit {
+  flex: none;
+  font-size: var(--fs-md);
+  letter-spacing: 0.03em;
+  color: var(--gold);
+  text-decoration: none;
+  padding: 5px 11px;
+  border: 1px solid var(--ac-line);
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+.sectionEdit:hover { background: rgba(201, 151, 58, 0.1); }
+
+.sectionSoon {
+  flex: none;
+  font-family: var(--font-label);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--tx3);
+  padding: 5px 10px;
+  border: 1px dashed var(--line2);
+  border-radius: 6px; font-weight: var(--fw-label); }
+
+.sectionLocked { opacity: 0.62; }
+
+.sectionBody {
+  padding: 0 20px 18px 60px;
+}
+
+/* ── Content primitives ───────────────────────────────────────────────── */
+
+.field { margin-bottom: 12px; }
+
+.fieldLabel {
+  display: block;
+  font-family: var(--font-label);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--tx3);
+  margin-bottom: 4px; font-weight: var(--fw-label); }
+
+.fieldValue {
+  display: block;
+  font-size: var(--fs-lg);
+  line-height: 1.55;
+  color: var(--tx);
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+
+.chip {
+  font-size: var(--fs-md);
+  color: var(--tx2);
+  background: var(--surf2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 11px;
+}
+
+.rows { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+
+.row { display: flex; flex-direction: column; gap: 2px; }
+
+.rowName { font-size: var(--fs-lg); color: var(--tx); }
+
+.rowDetail { font-size: var(--fs-ui); line-height: 1.5; color: var(--tx3); }
+.rowLink { color: var(--gold); text-decoration: none; border-bottom: 1px solid transparent; }
+.rowLink:hover { border-bottom-color: var(--gold); }
+
+.list { margin-top: 12px; }
+
+.listLabel {
+  display: block;
+  font-family: var(--font-label);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--tx3);
+  margin-bottom: 5px; font-weight: var(--fw-label); }
+
+.listItem {
+  font-size: var(--fs-lg);
+  line-height: 1.55;
+  color: var(--tx2);
+  padding-left: 12px;
+  border-left: 2px solid var(--line2);
+  margin-bottom: 5px;
+}
+
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+.swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: var(--fs-md);
+  color: var(--tx2);
+}
+
+.swatchDot {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--line2);
+}
+
+@media (max-width: 640px) {
+  .sectionBody { padding-left: 20px; }
+  .sectionHead { flex-wrap: wrap; }
+  .sectionEdit, .sectionSoon { margin-left: 40px; }
+}
+
+/* ── People: invite row ───────────────────────────────────────────────── */
+
+.inviteRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.inviteInput {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  font-size: var(--fs-lg);
+  color: var(--tx);
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 7px;
+}
+.inviteInput::placeholder { color: var(--tx3); }
+.inviteInput:focus { outline: none; border-color: var(--gold); }
+
+.inviteRole {
+  height: 38px;
+  padding: 0 10px;
+  font-size: var(--fs-ui);
+  color: var(--tx);
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 7px;
+}
+
+.inviteSend {
+  height: 38px;
+  padding: 0 16px;
+  font-size: var(--fs-ui);
+  letter-spacing: 0.04em;
+  color: var(--bg);
+  background: var(--gold);
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.inviteSend:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.inviteLink {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--ac-line);
+  border-radius: 9px;
+  background: var(--bg2);
+}
+.inviteLink .inviteRow { margin-bottom: 0; }
+.inviteLink .inviteInput { font-family: var(--font-mono); font-size: var(--fs-ui); }
+.inviteLink .sectionEdit { align-self: flex-start; margin-left: 0; }
+
+.rowLinkBtn {
+  padding: 0;
+  font: inherit;
+  color: var(--gold);
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+}
+.rowLinkBtn:hover { border-bottom-color: var(--gold); }
+.rowLinkBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.rowTag, .rowTagMuted {
+  margin-left: 8px;
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px; font-weight: var(--fw-label); }
+.rowTag { color: var(--gold); border: 1px solid var(--ac-line); }
+.rowTagMuted { color: var(--tx3); border: 1px dashed var(--line2); }
+
+/* ── Model: the provider in force ─────────────────────────────────────── */
+
+.modelNote {
+  font-size: var(--fs-lg);
+  line-height: 1.6;
+  color: var(--tx2);
+}
+
+.modelTag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: var(--fs-md);
+  color: var(--tx);
+  background: var(--surf2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 3px 9px;
+  margin-top: 8px;
+}
+
+/* ── Knowledge: what VaNi has read ────────────────────────────────────── */
+
+.teach { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+
+.teachSeg { display: inline-flex; border: 1px solid var(--line2); border-radius: 7px; overflow: hidden; align-self: flex-start; }
+.teachSeg button {
+  font: inherit; font-size: var(--fs-ui); letter-spacing: 0.03em;
+  color: var(--tx3); background: transparent; border: 0; padding: 6px 13px; cursor: pointer;
+}
+.teachSeg button + button { border-left: 1px solid var(--line2); }
+.teachSeg button[aria-pressed="true"] { color: var(--gold); background: rgba(201, 151, 58, 0.1); }
+
+.teachText { display: flex; flex-direction: column; gap: 8px; }
+.teachArea {
+  width: 100%; padding: 10px 12px; font: inherit; font-size: var(--fs-lg); line-height: 1.55;
+  color: var(--tx); background: var(--bg2); border: 1px solid var(--line2); border-radius: 7px; resize: vertical;
+}
+.teachArea::placeholder { color: var(--tx3); }
+.teachArea:focus { outline: none; border-color: var(--gold); }
+.teachFoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.teachCount { font-family: var(--mono); font-size: var(--fs-sm); letter-spacing: 0.06em; color: var(--tx3); }
+.teachNote { font-size: var(--fs-ui); line-height: 1.55; color: var(--tx3); }
+
+.srcRow { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.srcReading { color: var(--gold); }
+.srcBad { color: var(--color-danger); }
+.srcRemove {
+  flex: none; font: inherit; font-size: var(--fs-md); letter-spacing: 0.03em;
+  color: var(--tx3); background: transparent; border: 1px solid transparent; border-radius: 6px;
+  padding: 3px 8px; cursor: pointer;
+}
+.srcRemove:hover { color: var(--tx); border-color: var(--line2); }
+.srcRemove:disabled { opacity: 0.5; cursor: not-allowed; }

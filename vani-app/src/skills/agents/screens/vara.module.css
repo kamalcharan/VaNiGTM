@@ -1,0 +1,171 @@
+/* Vara landing — console theme (one theme across the product), Vara's UX. */
+
+.hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.heroText {
+  flex: 1 1 480px;
+  min-width: 0;
+}
+
+.activateBox {
+  flex: 0 0 auto;
+  padding: 14px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--glass);
+  max-width: 320px;
+}
+
+.gateForm {
+  display: flex;
+  gap: 8px;
+}
+
+.gateInput {
+  background: var(--color-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--color-fg);
+  padding: 8px 10px;
+  font-size: var(--fs-ui);
+  width: 170px;
+}
+
+.stubNote {
+  font-size: var(--fs-ui);
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.stubNote p {
+  margin: 8px 0 0;
+}
+
+.demoWrap {
+  margin: 22px 0;
+}
+
+.demoFrame {
+  width: 100%;
+  height: 840px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: var(--bg); /* the demo document's own ground, so no white flash */
+}
+
+.demoCaption {
+  font-size: var(--fs-md);
+  color: var(--color-muted);
+  margin-top: 8px;
+  text-align: center;
+}
+
+.principle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 22px;
+  padding: 8px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.principle b {
+  color: var(--color-fg);
+  font-weight: 600;
+}
+
+.does {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.doesItem {
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--glass);
+}
+
+.doesTitle {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.doesWhat {
+  font-size: var(--fs-ui);
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+.stateRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.activate {
+  height: var(--btn-height);
+  padding: var(--btn-padding);
+  border-radius: var(--btn-radius);
+  border: none;
+  cursor: pointer;
+  background: var(--gold);
+  color: var(--color-primary-fg);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-font-weight);
+  letter-spacing: var(--btn-letter-spacing);
+}
+
+.activate:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.checklist {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.check {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--glass-border);
+  font-size: var(--fs-ui);
+}
+
+.checkMark {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+}
+
+.checkPass {
+  color: var(--color-success);
+}
+
+.checkFail {
+  color: var(--color-warning);
+}
+
+.note {
+  font-size: var(--fs-md);
+  color: var(--color-muted);
+  margin-top: 10px;
+  line-height: 1.5;
+}
