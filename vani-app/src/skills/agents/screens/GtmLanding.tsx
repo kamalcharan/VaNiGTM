@@ -13,10 +13,9 @@
  *   - knowledge: the sources VaNi has read
  *
  * What the prototype shows that does not exist yet is said plainly rather than
- * simulated: outreach channels (sending stays off until consent and opt-out
- * exist), and activation with the DPDP acknowledgement (its table exists,
- * migration 260; the notice wording awaits legal review, and "activated" is
- * decision D17). Website fixes belong to Nova (decision D15): the findings are
+ * simulated: outreach channels (no channel can be connected yet). The DPDP
+ * acknowledgement is real (gtm.outreach_notice, decided under Settings →
+ * Outreach consent); "activated" as a whole is decision D17. Website fixes belong to Nova (decision D15): the findings are
  * shown here, the fixing is not.
  */
 import Link from 'next/link';
@@ -28,6 +27,7 @@ import { useProfileRead } from '@/skills/smart-profile/useSmartProfile';
 import { useOffers } from '@/skills/smart-profile/useOffers';
 import { FINDING_TAGS, SITE_HEALTH_ADVICE, parseSiteHealth } from '@/skills/onboarding/site-health';
 import { formatDate } from '@/lib/format';
+import { OUTREACH_HREF, useOutreachNotice, type OutreachStatus } from '@/skills/settings/useOutreachNotice';
 import s from './landing.module.css';
 
 interface Journey {
@@ -86,11 +86,35 @@ function useSiteRead() {
   });
 }
 
+/** The DPDP acknowledgement, in the landing's words. Decided in Settings → Outreach consent. */
+const ACK_TAG: Record<OutreachStatus, { label: string; cls: string }> = {
+  accepted:        { label: 'DPDP accepted',     cls: u.tagOk },
+  accepted_older:  { label: 'New notice version', cls: u.tagWarn },
+  not_accepted:    { label: 'Not accepted',      cls: u.tagDim },
+  revoked:         { label: 'Switched off',      cls: u.tagDim },
+  no_notice:       { label: 'Notice not published', cls: u.tagDim },
+  not_provisioned: { label: 'Domain step first', cls: u.tagWarn },
+};
+
+function ackLine(status: OutreachStatus | undefined, at: string | undefined): string {
+  switch (status) {
+    case 'accepted': return `Your workspace accepted the DPDP outreach notice${at ? ` on ${formatDate(at)}` : ''}. Once a channel is connected, GTM may contact people who have not opted out.`;
+    case 'accepted_older': return 'A new version of the DPDP outreach notice is published. Your earlier acceptance stays in force until an owner or admin reviews it.';
+    case 'revoked': return 'Outreach was switched off in Settings. Nothing can be sent until an owner or admin accepts the notice again.';
+    case 'no_notice': return 'The DPDP outreach notice is in review and not published yet. Until it is, GTM works without activation and nothing can be sent.';
+    case 'not_provisioned': return 'Finish the Domain step of the Smart Profile first — the acknowledgement is recorded against it.';
+    case 'not_accepted': return 'Before GTM contacts anyone, an owner or admin reads the DPDP outreach notice and accepts it for this workspace.';
+    default: return 'Before GTM contacts anyone, this workspace accepts the DPDP outreach notice.';
+  }
+}
+
 export default function GtmLanding() {
   const profile = useProfileRead();
   const offers = useOffers();
   const journey = useSkillQuery<Journey>('gtm', 'journey');
   const site = useSiteRead();
+  const outreach = useOutreachNotice();
+  const ack = outreach.data?.success ? outreach.data.data : undefined;
 
   const p = profile.data?.success ? profile.data.data : undefined;
   const o = offers.data?.success ? offers.data.data : undefined;
@@ -187,7 +211,7 @@ export default function GtmLanding() {
             <span className={`${u.tag} ${u.tagDim}`}>Not available yet</span>
           </div>
           <h2>Your outreach channels</h2>
-          <p>Email and WhatsApp will send under your own business identity. Nothing can be sent until consent and opt-out are in place.</p>
+          <p>Email and WhatsApp will send under your own business identity. Nothing is sent until your workspace accepts the DPDP notice and a channel is connected; opt-outs are always honoured.</p>
           <div className={s.row}><span>Email</span><span>Not connected</span></div>
           <div className={s.row}><span>WhatsApp Business</span><span>Not connected</span></div>
           <div className={s.row}><span>LinkedIn</span><span>Assisted — you send it yourself</span></div>
@@ -239,14 +263,17 @@ export default function GtmLanding() {
         <section className={`${s.card} ${s.wide}`}>
           <div className={s.cardHead}>
             <div className={u.eyebrow}>06 · Activate GTM</div>
-            <span className={`${u.tag} ${u.tagDim}`}>Not yet</span>
+            {ack
+              ? <span className={`${u.tag} ${ACK_TAG[ack.status].cls}`}>{ACK_TAG[ack.status].label}</span>
+              : outreach.isError || (outreach.data && !outreach.data.success)
+                ? <span className={`${u.tag} ${u.tagBad}`}>Could not read</span>
+                : null}
           </div>
           <h2>A clear starting point, with your data use acknowledged</h2>
-          <p>
-            Activation will confirm your offer and record your acknowledgement of how contact data is used
-            (DPDP). The notice is in legal review; until it is published, GTM works without activation and
-            nothing can be sent.
-          </p>
+          {outreach.isLoading ? <SkeletonRows rows={1} /> : <p>{ackLine(ack?.status, ack?.current?.at)}</p>}
+          <Link href={OUTREACH_HREF} className={s.link}>
+            {ack?.status === 'accepted' ? 'Review the DPDP notice →' : ack?.status === 'no_notice' ? 'See where this stands →' : 'Read and accept the DPDP notice →'}
+          </Link>
         </section>
       </div>
 

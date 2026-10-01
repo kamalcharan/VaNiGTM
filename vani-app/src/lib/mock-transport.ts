@@ -12,6 +12,7 @@
 import type { SkillResult, SkillTransport } from './useSkill';
 import { GTM_MOCK_READS, GTM_MOCK_WRITES } from '@/skills/gtm-shell/mock';
 import { EDGE_MOCK_READS } from '@/skills/edge/mock';
+import { OUTREACH_MOCK_READS, OUTREACH_MOCK_WRITES } from '@/skills/settings/outreach-mock';
 import { OFFERS_MOCK_READS, OFFERS_MOCK_WRITES } from '@/skills/smart-profile/offers-mock';
 import { KNOWLEDGE_MOCK_READS, KNOWLEDGE_MOCK_WRITES } from '@/skills/smart-profile/knowledge-mock';
 import { FUNNEL_MOCK_READS, FUNNEL_MOCK_WRITES } from '@/site/funnel-mock';
@@ -350,6 +351,7 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   ...FUNNEL_MOCK_READS,
   ...CONSOLE_PREVIEW_READS,
   ...EDGE_MOCK_READS,
+  ...OUTREACH_MOCK_READS,
   'onboarding.status': () => onboardingStatus(),
   'llm-provider-skill.get_provider': () => ({
     provider: MOCK_PROVIDER,
@@ -462,6 +464,7 @@ const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = 
   ...GTM_MOCK_WRITES,
   ...OFFERS_MOCK_WRITES,
   ...KNOWLEDGE_MOCK_WRITES,
+  ...OUTREACH_MOCK_WRITES,
   ...FUNNEL_MOCK_WRITES,
   'onboarding.complete_step': (p) => {
     const stepId = String(p.step_id ?? '');

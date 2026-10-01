@@ -159,6 +159,7 @@ async function main() {
       is_live: auth.is_live,
       user_id: auth.user_id,
       is_admin: auth.is_admin,
+      role: auth.role,
       db,
     };
 

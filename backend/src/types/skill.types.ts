@@ -49,6 +49,14 @@ export interface SkillContext {
    * is_live drifted.
    */
   is_admin: boolean;
+  /**
+   * The user's workspace role (owner, admin, planner…) from the JWT, via
+   * auth/auth-context.ts. Optional because contexts built outside the
+   * executor (tests, cohort.ts) have none — and absent means NOT privileged:
+   * a check reads `ctx.role === 'owner' || ctx.role === 'admin'`, never the
+   * reverse.
+   */
+  role?: string;
 }
 
 /* ── Skill layer types ────────────────────────────────── */

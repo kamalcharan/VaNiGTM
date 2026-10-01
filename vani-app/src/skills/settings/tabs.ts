@@ -22,12 +22,13 @@ export interface SettingsTab {
 export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'appearance', label: 'Appearance', href: '/settings/appearance', status: 'live' },
   { id: 'model',      label: 'Model',      href: '/settings/model',      status: 'live' },
+  { id: 'consent',    label: 'Outreach consent', href: '/settings/consent', status: 'live' },
   { id: 'data',       label: 'Data',       href: '/settings/data',       status: 'planned',
     summary: 'Your own data provider — Apollo, Clay, anything with an API. Same shape as Model: platform or yours, the key never comes back. '
       + 'What it pulls stays in your workspace and never enters the shared pool. Nothing behind this tab is built yet — no table, no connector.' },
   { id: 'channels',   label: 'Channels',   href: '/settings/channels',   status: 'planned',
     summary: 'The identity you send as, and the channels connected to it — email, WhatsApp, LinkedIn, X. '
-      + 'Arrives with the GTM agent. Nothing sends until a consent and suppression model exists, and none does yet.' },
+      + 'Arrives with the GTM agent. Nothing sends until this workspace accepts the DPDP notice (Outreach consent) and a channel is connected here — and none can be yet.' },
 ];
 
 export const SETTINGS_HOME = SETTINGS_TABS[0].href;

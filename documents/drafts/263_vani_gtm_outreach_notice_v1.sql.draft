@@ -1,0 +1,68 @@
+-- ============================================================================
+-- Migration 263: the DPDP outreach notice, version 1 (POA D9-e, GTM activation step 1)
+--
+-- ⚠️ DRAFT — kept in documents/drafts/, NOT in backend/migrations/, so that no
+-- routine migrate run can apply it. When the wording is approved: move it to
+-- backend/migrations/263_vani_gtm_outreach_notice_v1.sql (renumber if 263 is
+-- taken by then), drop the .draft suffix, and apply it with the runner.
+--
+-- DRAFT WORDING — NOT FOR APPLYING until Charan (and, as the design asks,
+-- a lawyer) has approved the text below. design-notes-consent.md §6b: "the
+-- notice text should be reviewed by a lawyer before it is shown to a real
+-- tenant". vani_consent_text is APPEND-ONLY: once applied, a correction is a
+-- version 2, and every workspace that accepted version 1 has accepted THESE
+-- words. Edit this file freely until it is applied; never after.
+--
+-- DATA ONLY — no table, column, index or policy changes. One platform row
+-- (tenant_id NULL) in vani_consent_text (migration 260), which tenants can
+-- read and none can write. The console shows it under Settings → Outreach
+-- consent; an owner or admin accepts it there (gtm.accept_outreach_notice),
+-- and comms/may-contact.ts lets GTM contact anyone only while that
+-- acceptance is in force.
+--
+-- Guarded and idempotent: inserts version 1 only if no platform GTM notice
+-- version 1 exists. Apply on the VPS with
+-- `docker exec vani-backend node dist/migrate.js` (DEPLOY.md §4).
+-- ============================================================================
+
+DO $$
+BEGIN
+  IF to_regclass('public.vani_consent_text') IS NULL THEN
+    RAISE EXCEPTION '[263] vani_consent_text is missing — apply migration 260 first';
+  END IF;
+END $$;
+
+INSERT INTO vani_consent_text (tenant_id, agent_code, kind, version, body)
+SELECT NULL, 'gtm', 'outreach_notice', 1, btrim($notice$
+Before VaNi contacts anyone on your behalf
+
+India's Digital Personal Data Protection Act, 2023 (DPDP Act) applies to the people you import into VaNi and contact through it. A name, a work email address or a phone number is personal data, even when it belongs to someone at a company.
+
+Who is responsible for what
+
+Your organisation decides whom to contact and why, so for this data your organisation is the Data Fiduciary under the DPDP Act. Vikuna processes the data on your instructions, as your Data Processor. Accepting this notice records that your organisation takes that responsibility; it does not transfer it to Vikuna.
+
+What your organisation confirms by accepting
+
+1. You have a lawful basis under the DPDP Act for contacting each person you import or add — in most cases their consent — and you can show it if asked.
+2. You obtained the data lawfully and use it only for the purpose for which you hold it.
+3. You do not import data of children (persons under 18) or any data you are not entitled to use.
+4. You keep the data accurate, and you correct or delete it when a person asks you to.
+5. You respond to requests from the people concerned — to access, correct or erase their data, or to withdraw consent — and you tell them how to reach you.
+
+What VaNi does regardless
+
+- Every message carries a way to opt out. An opt-out is honoured immediately and cannot be undone by anyone but the person, by opting in again.
+- People who opted out, whose address bounced, who complained, or who asked for their data to be erased are not contacted, whatever this notice says.
+- A record of every acceptance and withdrawal of this notice is kept, with who made it and when.
+
+Switching it off
+
+An owner or admin can withdraw this acceptance at any time under Settings. Outreach stops at once; anything already sent is not recalled.
+
+This notice is a record of your organisation's responsibility. It is not legal advice, and it does not by itself make any particular message lawful.
+$notice$, E'\n ')
+WHERE NOT EXISTS (
+  SELECT 1 FROM vani_consent_text
+   WHERE tenant_id IS NULL AND agent_code = 'gtm' AND kind = 'outreach_notice' AND version = 1
+);

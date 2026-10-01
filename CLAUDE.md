@@ -1289,10 +1289,15 @@ the product's differentiator and is being built. Read
 
 **Sending is still gated, and the gate is now harder.** It used to be quality
 — ICP confirmed, brand captured, one offer defined. It is now ALSO consent:
-**there is no suppression or opt-out model anywhere in this repo**, so no
-channel may send until one exists. Vara has `vara_consent`; GTM, which is the
-side that contacts strangers, has nothing. That gap is the blocker, not a
-nice-to-have (design note §5).
+no channel may send to a person `comms/may-contact.ts` refuses. The model
+exists since 2026-10-01: suppression and consent text (migration 260), the
+gate, and the workspace's DPDP acknowledgement — `gtm.outreach_notice` /
+`accept_outreach_notice` / `revoke_outreach_notice`, decided by an owner or
+admin under console Settings → Outreach consent. **The notice wording itself is
+a DRAFT** (`documents/drafts/263_vani_gtm_outreach_notice_v1.sql.draft`),
+kept out of `migrations/` so no routine migrate run publishes it; until it is
+approved and applied, every workspace reads "not published" and GTM sends
+nothing. What is still missing is a sender (POA Pending 3–4).
 
 Three rulings from the same conversation, so nobody re-derives them:
 

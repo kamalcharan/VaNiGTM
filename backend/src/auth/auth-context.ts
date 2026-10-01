@@ -30,6 +30,13 @@ export interface AuthContext {
   is_live: boolean;
   /** vn_tenants.is_admin, carried in the token. NEVER read from a body. */
   is_admin: boolean;
+  /**
+   * The user's role IN THEIR WORKSPACE (vn_roles.code: owner, admin, planner…),
+   * from the token. Distinct from is_admin, which is a TENANT flag (Vikuna's
+   * own workspace). Read where an act is the workspace's to take, such as
+   * accepting the DPDP outreach notice.
+   */
+  role: string;
 }
 
 /**
@@ -48,6 +55,7 @@ export function resolveAuth(authHeader: string | undefined): AuthContext | null 
       // `undefined` reaching SQL becomes NULL, which equals nothing.
       is_live: jwt.is_live !== false,
       is_admin: jwt.is_admin === true,
+      role: typeof jwt.role === 'string' ? jwt.role : '',
     };
   } catch {
     return null;

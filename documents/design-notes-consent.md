@@ -286,7 +286,18 @@ Each step is small and ends in something testable; nothing sends until step 5.
    with an unsubscribe link and its public route (which goes on the public
    list in the nginx config header).
 6. **GTM** — the acknowledgement step and Settings switch (§6b), then GTM
-   sends pass the same gate.
+   sends pass the same gate. ✅ acknowledgement BUILT 2026-10-01: `gtm`
+   skill `outreach_notice` / `accept_outreach_notice` / `revoke_outreach_notice`
+   (owner/admin only — `ctx.role`, newly carried from the JWT; replay-safe;
+   per-workspace advisory lock; accept names the notice shown and is refused
+   if a newer version exists), console Settings → Outreach consent, GTM
+   landing card 06. 10 DB tests as the restricted role, including the gate's
+   answer after each decision. Placed in Settings rather than as an
+   onboarding step: a `vani:` lane step needs vani-app's own catalog to match
+   (CLAUDE.md, BYOK), and the decision belongs to an owner/admin, who may not
+   be the person onboarding. The notice v1 wording is a draft in
+   `documents/drafts/` until approved. No `vani_agent` row for GTM was needed
+   — agent scope here is a checked code (migration 260 header).
 
 Console screens (consent text editor, suppression list) are vani-app work and
 follow Track H's rule for console work.
