@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VaNi GTM · P1 Sources, staging and the industry master</title>
+<style>
+:root{--bg:#f5f5ef;--paper:#fffef9;--ink:#213e34;--muted:#68766f;--line:#dce1d6;--green:#244f3d;--lime:#deeca8;--amber:#9a601d;--soft:#f6edda;--red:#a33a2b;--rsoft:#f6e1dc;font:15px 'Segoe UI',Arial,sans-serif;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg)}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+.eyebrow{font:600 11px/1.4 'Segoe UI',Arial;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 28px/1.15 Georgia,serif;margin:6px 0 4px}h1 em{color:var(--amber)}
+h2{font:600 18px/1.3 Georgia,serif;margin:0 0 6px}h3{font-size:15px;margin:0 0 4px}
+p{line-height:1.6;color:#3d5249;margin:0 0 10px}.muted{color:var(--muted);font-size:13px}
+.note{font-size:12px;color:var(--muted);background:var(--soft);border-radius:8px;padding:8px 10px;margin-top:10px}
+.tabs{display:flex;gap:4px;overflow-x:auto;margin:16px 0 18px;border-bottom:1px solid var(--line)}
+.tab{border:0;background:none;padding:10px 14px;font:600 12px 'Segoe UI';letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.tab[aria-selected=true]{color:var(--green);border-bottom-color:var(--green)}
+.screen{display:none}.screen.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.wide{grid-column:1/-1}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}.row:last-child{border:0}
+.row span:last-child{color:var(--muted);text-align:right}
+.tag{display:inline-block;font:600 11px 'Segoe UI';letter-spacing:.05em;padding:3px 8px;border-radius:20px;background:#eef0e8;color:var(--muted);white-space:nowrap}
+.ok{background:var(--lime);color:var(--green)}.warn{background:var(--soft);color:var(--amber)}.bad{background:var(--rsoft);color:var(--red)}
+.btn{border:1px solid var(--green);background:var(--paper);color:var(--green);border-radius:8px;padding:7px 12px;font:600 13px 'Segoe UI';cursor:pointer}
+.btn.primary{background:var(--green);color:#fff}.btn.sm{padding:4px 9px;font-size:12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.agent{display:flex;gap:12px;align-items:flex-start;background:#eef3e4;border:1px solid #cfdcb7;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.agent .av{width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:700;flex-shrink:0}
+.bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin:8px 0}.bar span{display:block;height:100%;background:var(--green)}
+.stack{display:flex;height:10px;border-radius:6px;overflow:hidden;margin:8px 0}.stack i{display:block}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.legend b{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}.chip{border:1px solid var(--line);background:var(--paper);border-radius:20px;padding:5px 11px;font-size:13px;cursor:pointer}.chip.on{background:var(--green);color:#fff;border-color:var(--green)}
+.check{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
+.tree{font-size:14px}.tree .n{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}.tree .c{padding-left:22px}
+.mono{font:12px Consolas,monospace;color:var(--muted)}
+.decision{border:1px solid #e3c68f;background:#fffaf0;border-radius:12px;padding:14px;margin-top:10px}
+.track{font-size:12px;color:var(--amber);margin-top:4px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}h1{font-size:23px}}
+</style></head><body><div class="wrap">
+
+<div class="eyebrow">P1 · sprint A prototype · for review · GTM → Pool (admin only)</div>
+<h1>Every row has a <em>state</em> and a reason</h1>
+<p class="muted">Three screens P1 builds. Numbers are illustrative unless marked measured. Junk is a state, never a deletion; duplicates are flagged, never merged; a company reaches the pool only when it passes Complete.</p>
+
+<div class="tabs" role="tablist">
+  <button class="tab" role="tab" aria-selected="true" data-s="a">1 · Sources & deliveries</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="b">2 · A delivery's rows</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="c">3 · Industry master</button>
+</div>
+
+<!-- A: SOURCES -->
+<section class="screen on" id="a">
+  <div class="agent"><div class="av">V</div><div>
+    <h3>VaNi: "The Telangana MCA file is 412 MB — I'll load it in the background in chunks. You can leave this page."</h3>
+    <div class="bar"><span style="width:38%"></span></div>
+    <p class="muted" style="margin:0">Staged 61,200 of ~160,000 rows · 0 failed · resumes from row 61,201 if the worker restarts</p>
+  </div></div>
+  <div class="grid">
+    <div class="card wide">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">Sources</h2><button class="btn primary">Add a delivery</button>
+      </div>
+      <div class="tablewrap" style="margin-top:10px"><table>
+        <tr><th>Source</th><th>Kind</th><th>Licence</th><th>May enter pool</th><th>Tier</th><th>Deliveries</th><th>Rows staged</th><th>In pool</th></tr>
+        <tr><td><b>FTCCI</b></td><td>directory</td><td><span class="tag">licensed_private</span></td><td><span class="tag ok">yes</span></td><td>55</td><td>1</td><td>2,913 <span class="tag ok">measured</span></td><td>0 <span class="muted">(Complete runs in sprint B)</span></td></tr>
+        <tr><td><b>MCA</b></td><td>registry</td><td><span class="tag">open_gov</span></td><td><span class="tag ok">yes</span></td><td>90</td><td>1 · loading</td><td>61,200</td><td>—</td></tr>
+        <tr><td><b>analytica</b></td><td>listing</td><td><span class="tag">public_listing</span></td><td><span class="tag ok">yes</span></td><td>45</td><td>2</td><td>327 + 229 <span class="tag ok">measured</span></td><td>0</td></tr>
+        <tr><td><b>Prospector</b></td><td>provider</td><td><span class="tag warn">licensed_shareable</span></td><td><span class="tag bad">no — clause pending</span></td><td>75</td><td>0</td><td colspan="2" class="muted">Rows would land in Vikuna's own copy only until the vendor clause is confirmed.</td></tr>
+        <tr><td><b>Upload</b></td><td>upload</td><td><span class="tag">unknown_provenance</span></td><td><span class="tag bad">no</span></td><td>40</td><td colspan="3" class="muted">Generic upload can no longer feed the pool — pick the real source when adding a delivery.</td></tr>
+      </table></div>
+      <p class="note">Licence and "may enter pool" are set per source by the admin. Changing a source to "no" stops new admissions; rows already in the pool stay until their delivery is retired.</p>
+    </div>
+    <div class="card wide">
+      <h2>FTCCI · Members, Oct-2023</h2>
+      <div class="stack"><i style="width:72%;background:#9dbb6b"></i><i style="width:4%;background:#e3c68f"></i><i style="width:5%;background:#c9a9a2"></i><i style="width:19%;background:#d6dbd0"></i></div>
+      <div class="legend"><span><b style="background:#9dbb6b"></b>Matched, waiting for Complete 2,098</span><span><b style="background:#e3c68f"></b>Held 21</span><span><b style="background:#c9a9a2"></b>Duplicate candidates 137 <span class="tag ok">measured</span></span><span><b style="background:#d6dbd0"></b>Not yet matched 640</span><span>Junk 17</span></div>
+      <div class="actions"><button class="btn primary">Open rows →</button><button class="btn">Retire this delivery</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- B: ROWS -->
+<section class="screen" id="b">
+  <div class="chips">
+    <span class="chip">All 2,913</span><span class="chip">Matched 2,098</span><span class="chip on">Held 21</span><span class="chip">Duplicate 137</span><span class="chip">Junk 17</span><span class="chip">In pool 0</span>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <div class="eyebrow">Held · needs a person</div>
+      <h2>Sri Venkateswara Agencies</h2>
+      <p class="muted">Row 1,204 · raw industry "Advocates &amp; Notaries" · no domain · PIN 500004</p>
+      <div class="decision">
+        <h3>Company, or an individual practitioner?</h3>
+        <p>The name reads like a trading firm; the industry is legal practice and the representative is listed as "Advocate". Individual practitioners don't enter a companies pool.</p>
+        <div class="actions"><button class="btn primary">Individual — junk: out of scope</button><button class="btn">Company — keep</button><button class="btn">Skip</button></div>
+      </div>
+      <p class="note">Every decision here is recorded with who and when, and becomes a candidate test case for the classifier.</p>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Why it is not in the pool yet · Complete 5 of 8</div>
+      <div class="check"><span>Clean name</span><span class="tag ok">pass</span></div>
+      <div class="check"><span>Identity anchor (domain / CIN / name + PIN)</span><span class="tag ok">name + PIN</span></div>
+      <div class="check"><span>Location</span><span class="tag ok">Hyderabad</span></div>
+      <div class="check"><span>Industry</span><span class="tag warn">raw only — not mapped</span></div>
+      <div class="check"><span>Domain lookup attempted</span><span class="tag warn">not tried</span></div>
+      <div class="check"><span>Match decided</span><span class="tag ok">new</span></div>
+      <div class="check"><span>Type: company or individual</span><span class="tag bad">held</span></div>
+      <div class="check"><span>Legal status</span><span class="tag">no source gives one</span></div>
+      <p class="note">The two amber checks are what enrichment (P2–P3) fills. The red one is this decision.</p>
+    </div>
+    <div class="card wide">
+      <div class="eyebrow">Junk · 17 · reversible</div>
+      <div class="tablewrap"><table>
+        <tr><th>Row</th><th>Name as delivered</th><th>Reason</th><th>Marked by</th><th></th></tr>
+        <tr><td>88</td><td>TEST ENTRY</td><td><span class="tag">placeholder</span></td><td class="muted">rule · 01-Oct-2026</td><td><button class="btn sm">Restore</button></td></tr>
+        <tr><td>412</td><td>—</td><td><span class="tag">unreadable</span></td><td class="muted">rule · 01-Oct-2026</td><td><button class="btn sm">Restore</button></td></tr>
+        <tr><td>2,750</td><td>Mr. K. Ramesh</td><td><span class="tag">consumer</span></td><td class="muted">Charan · 01-Oct-2026</td><td><button class="btn sm">Restore</button></td></tr>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<!-- C: INDUSTRY MASTER -->
+<section class="screen" id="c">
+  <div class="agent"><div class="av">V</div><div>
+    <h3>VaNi: "312 FTCCI industry strings aren't mapped yet. I grouped them into 4 proposals — the biggest: 'Bulk drugs and APIs' (48 strings) as a sub-segment of Pharma."</h3>
+    <div class="actions"><button class="btn primary">Review proposals →</button></div>
+  </div></div>
+  <div class="grid">
+    <div class="card">
+      <h2>The master</h2>
+      <p class="muted">One list. Onboarding, Vara's domain packs and the pool all read it.</p>
+      <div class="tree">
+        <div class="n"><span><b>Manufacturing</b> <span class="mono">NIC 10–33</span></span><span class="muted">2,104 companies</span></div>
+        <div class="c">
+          <div class="n"><span>Pharma and life sciences <span class="mono">21</span></span><span class="muted">186</span></div>
+          <div class="n"><span>Food, agri and beverages <span class="mono">10–12</span></span><span class="muted">142</span></div>
+          <div class="n"><span>Engineering, metals and machinery <span class="mono">24,25,28–30,33</span></span><span class="muted">301</span></div>
+          <div class="n"><span class="muted">+ 5 more sub-segments</span><span></span></div>
+        </div>
+        <div class="n"><span><b>Technology, media and telecom</b> <span class="mono">NIC 58–63</span></span><span class="muted">96</span></div>
+        <div class="n"><span><b>Professional services</b> <span class="mono">NIC 69–75</span></span><span class="muted">210</span></div>
+        <div class="n"><span><b>Healthcare</b> <span class="mono">NIC 86–88</span></span><span class="muted">74</span></div>
+        <div class="n"><span class="muted">+ 15 more sectors</span><span></span></div>
+      </div>
+      <p class="note">Registry rows (MCA, Udyam) are placed by their NIC code — free, no model. Prose from directories goes through aliases.</p>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Proposal 1 of 4 · from 48 unmapped strings</div>
+      <h2>New sub-segment: Bulk drugs and APIs</h2>
+      <div class="row"><span>Under</span><span>Manufacturing → Pharma and life sciences</span></div>
+      <div class="row"><span>NIC</span><span>2100 (shared with formulations — split by description)</span></div>
+      <div class="row"><span>Examples</span><span>"Bulk Drugs Mfrs", "API &amp; Intermediates", "Manufacturers of Bulk Drug Intermediates"</span></div>
+      <div class="row"><span>Companies affected</span><span>48</span></div>
+      <div class="track">Grouped by the model at confidence 0.88 · VaNi's taxonomy proposals: none decided yet in this workspace</div>
+      <div class="actions"><button class="btn primary">Approve sub-segment</button><button class="btn">Map to Pharma instead</button><button class="btn">Reject</button></div>
+      <p class="note">A model proposes; only an admin creates a node. Approving writes the node and its 48 aliases in one step; the strings stay as delivered.</p>
+    </div>
+    <div class="card wide">
+      <div class="eyebrow">Onboarding's 10 choices → the master</div>
+      <div class="tablewrap"><table>
+        <tr><th>Onboarding shows</th><th>Master node</th><th>Tenants on it</th></tr>
+        <tr><td>Manufacturing</td><td>manufacturing</td><td>3</td></tr>
+        <tr><td>Technology &amp; SaaS</td><td>technology</td><td>2</td></tr>
+        <tr><td>Retail &amp; e-commerce</td><td>trade</td><td>0</td></tr>
+        <tr><td colspan="3" class="muted">+ 7 more — every existing tenant's industry resolves to a node; nothing was renamed.</td></tr>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+</div>
+<script>
+document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){
+  document.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected','false')});
+  document.querySelectorAll('.screen').forEach(function(x){x.classList.remove('on')});
+  t.setAttribute('aria-selected','true');document.getElementById(t.dataset.s).classList.add('on');});});
+</script>
+</body></html>
