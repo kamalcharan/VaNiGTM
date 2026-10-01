@@ -183,6 +183,65 @@ function extractRoleColors(css: string): RoleColors {
   return { primary: ranked[0], secondary: ranked[1], accent: ranked[2] };
 }
 
+/**
+ * What the browser painted, from documents/n8n/brand-collector.js run inside
+ * the rendered page: each colour with where it appeared (button background,
+ * link, heading, surface…) and how much screen it covered.
+ */
+export interface ComputedBrand {
+  version: number;
+  colors: Array<{ hex: string } & Partial<Record<'cta_bg' | 'cta_border' | 'cta_text' | 'link' | 'heading' | 'surface', number>>>;
+  heading_font?: string | null;
+  body_font?: string | null;
+  logo_url?: string | null;
+  theme_color?: string | null;
+}
+
+/** Accepts the renderer's `brand` only when it has the expected shape — anything else is ignored, never trusted. */
+export function asComputedBrand(v: unknown): ComputedBrand | null {
+  const b = v as ComputedBrand;
+  if (!b || typeof b !== 'object' || !Array.isArray(b.colors)) return null;
+  const colors = b.colors.filter((c) => c && typeof c.hex === 'string' && /^#[0-9a-f]{6}$/i.test(c.hex));
+  return { ...b, colors };
+}
+
+const dist = (a: string, b: string): number => {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  if (!x || !y) return Infinity;
+  return Math.hypot(x.r - y.r, x.g - y.g, x.b - y.b);
+};
+
+/**
+ * Brand roles from what the browser painted — works whatever the site's CSS
+ * is made of. Primary is the colour of the buttons people are asked to
+ * press; failing that, links and headings; failing those, surfaces. Then
+ * the next two distinct colours. Near shades (hover states, gradients) are
+ * merged; neutrals are never a brand colour. Still a reading of the site,
+ * shown for the tenant to confirm — never stated as fact.
+ */
+export function rolesFromComputed(b: ComputedBrand): RoleColors {
+  type Kind = 'cta_bg' | 'cta_border' | 'cta_text' | 'link' | 'heading' | 'surface';
+  const groups: { hex: string; w: Record<Kind, number> }[] = [];
+  for (const c of b.colors) {
+    const hex = c.hex.toLowerCase();
+    if (isNearNeutral(hex)) continue;
+    let g = groups.find((x) => dist(x.hex, hex) < 30);
+    if (!g) { g = { hex, w: { cta_bg: 0, cta_border: 0, cta_text: 0, link: 0, heading: 0, surface: 0 } }; groups.push(g); }
+    for (const k of Object.keys(g.w) as Kind[]) g.w[k] += Number(c[k] ?? 0);
+  }
+  const pick = (from: typeof groups, score: (g: (typeof groups)[number]) => number) =>
+    from.filter((g) => score(g) > 0).sort((x, y) => score(y) - score(x))[0];
+
+  const primary = pick(groups, (g) => g.w.cta_bg + g.w.cta_border)
+    ?? pick(groups, (g) => g.w.link + g.w.heading)
+    ?? pick(groups, (g) => g.w.surface);
+  const rest = groups.filter((g) => g !== primary);
+  const total = (g: (typeof groups)[number]) => g.w.heading + g.w.link + g.w.surface + g.w.cta_bg + g.w.cta_border;
+  const secondary = pick(rest, total);
+  const accent = pick(rest.filter((g) => g !== secondary), total);
+  return { primary: primary?.hex, secondary: secondary?.hex, accent: accent?.hex };
+}
+
 const FONT_CDN_HOSTS = /fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net/i;
 
 function extractStylesheetLinks(html: string, baseUrl: string, limit = 2): string[] {
@@ -355,9 +414,22 @@ export async function generateBrand(
         status: 'ok',
       });
       try {
-        const renderedHtml = await IngestionAgent.renderPageViaN8n(siteUrl);
+        const { html: renderedHtml, brand: computedRaw } = await IngestionAgent.renderPageWithBrand(siteUrl);
         const renderedText = IngestionAgent.extractFromHtml(renderedHtml).text;
         const renderedVisual = await extractVisualHints(renderedHtml, siteUrl, 'rendered');
+        // The browser's own reading of the page wins over scanning its source
+        // (documents/n8n/brand-collector.js). An older renderer that sends
+        // no `brand` leaves the source scan in charge, as before.
+        const computed = asComputedBrand(computedRaw);
+        if (computed) {
+          const roles = rolesFromComputed(computed);
+          if (roles.primary) renderedVisual.primary_color = roles.primary;
+          if (roles.secondary) renderedVisual.secondary_color = roles.secondary;
+          if (roles.accent) renderedVisual.accent_color = roles.accent;
+          if (computed.logo_url) renderedVisual.logo_url = computed.logo_url;
+          if (computed.heading_font || computed.body_font) renderedVisual.typography = (computed.heading_font || computed.body_font)!;
+        }
+        console.log(`[Brand:generateBrand] renderer sent ${computed ? `computed colours (${computed.colors.length})` : 'no computed colours — source scan only'}`);
         if (renderedText.length > siteText.length) siteText = renderedText;
         // From a shell, the static page's icon and font are the framework's,
         // not the company's — the rendered page's win. Otherwise the static

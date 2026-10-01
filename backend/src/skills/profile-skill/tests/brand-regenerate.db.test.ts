@@ -110,7 +110,7 @@ d('a JS-only site (an empty Vite shell until rendered) — the vikuna.io case', 
       INSERT INTO gt_kb_sources (tenant_id, source_type, display_name, url, status) VALUES ('${U}','url','vikuna.test','https://vikuna.test/','complete');`);
     jest.spyOn(IngestionAgent, 'fetchUrlText').mockResolvedValue({ ...IngestionAgent.extractFromHtml(SHELL), html: SHELL } as never);
     jest.spyOn(IngestionAgent, 'renderConfigured').mockReturnValue(true);
-    jest.spyOn(IngestionAgent, 'renderPageViaN8n').mockResolvedValue(RENDERED);
+    jest.spyOn(IngestionAgent, 'renderPageWithBrand').mockResolvedValue({ html: RENDERED, brand: null });
   });
 
   it('renders once, drafts from the RENDERED text, and takes the rendered logo and colours over the shell\'s', async () => {
@@ -119,9 +119,21 @@ d('a JS-only site (an empty Vite shell until rendered) — the vikuna.io case', 
     const b = await generateBrand(app, U, String(await createRun(app, U, 'brand-skill.generate')));
     expect(sentToModel[0]).toContain('measured on ROI before scale');    // the model saw the real page
     expect(b.visual).toMatchObject({ logo_url: 'https://vikuna.test/brand-mark.png', primary_color: '#e8420a', secondary_color: '#c9973a' });
-    expect(IngestionAgent.renderPageViaN8n).toHaveBeenCalledTimes(1);
+    expect(IngestionAgent.renderPageWithBrand).toHaveBeenCalledTimes(1);
     const steps = (await owner.query(`SELECT steps FROM gt_agent_runs WHERE tenant_id = $1 ORDER BY id DESC LIMIT 1`, [U])).rows[0].steps;
     expect(steps.map((x: { step_name: string }) => x.step_name)).toEqual(expect.arrayContaining(['render_escalation', 'render_escalation_complete']));
+  });
+
+  it('when the renderer sends what the browser painted, those colours win over the source scan', async () => {
+    (IngestionAgent.renderPageWithBrand as jest.Mock).mockResolvedValueOnce({
+      html: RENDERED,
+      brand: { version: 1, heading_font: 'Fraunces', logo_url: 'https://vikuna.test/logo-from-browser.svg',
+        colors: [{ hex: '#1d4ed8', cta_bg: 90000 }, { hex: '#0a0f1e', surface: 900000 }, { hex: '#c9973a', heading: 20000 }] },
+    });
+    await owner.query(`DELETE FROM gt_tenant_brand WHERE tenant_id = $1`, [U]);
+    const b = await generateBrand(app, U, String(await createRun(app, U, 'brand-skill.generate')));
+    expect(b.visual).toMatchObject({ primary_color: '#1d4ed8', secondary_color: '#0a0f1e', accent_color: '#c9973a',
+      logo_url: 'https://vikuna.test/logo-from-browser.svg', typography: 'Fraunces' });
   });
 
   it('a shell with no renderer configured says so in the run, instead of an unexplained empty draft', async () => {

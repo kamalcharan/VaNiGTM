@@ -1,0 +1,183 @@
+{
+ "css-in-js.html": {
+  "version": 1,
+  "colors": [
+   {
+    "hex": "#1d4ed8",
+    "heading": 49950,
+    "link": 634
+   },
+   {
+    "hex": "#e8420a",
+    "cta_bg": 3619
+   },
+   {
+    "hex": "#ffffff",
+    "cta_text": 905
+   }
+  ],
+  "heading_font": "Times New Roman",
+  "body_font": "Times New Roman",
+  "logo_url": null,
+  "theme_color": null,
+  "viewport": {
+   "width": 1366,
+   "height": 900
+  }
+ },
+ "css-variables.html": {
+  "version": 1,
+  "colors": [
+   {
+    "hex": "#1d4ed8",
+    "heading": 49950,
+    "link": 559
+   },
+   {
+    "hex": "#e8420a",
+    "cta_bg": 3619
+   },
+   {
+    "hex": "#ffffff",
+    "cta_text": 905
+   }
+  ],
+  "heading_font": "Times New Roman",
+  "body_font": "Times New Roman",
+  "logo_url": null,
+  "theme_color": null,
+  "viewport": {
+   "width": 1366,
+   "height": 900
+  }
+ },
+ "inline-js-theme.html": {
+  "version": 1,
+  "colors": [
+   {
+    "hex": "#0a0f1e",
+    "surface": 513000
+   },
+   {
+    "hex": "#1d4ed8",
+    "heading": 46990,
+    "link": 1186
+   },
+   {
+    "hex": "#e8420a",
+    "cta_bg": 8830
+   },
+   {
+    "hex": "#ffffff",
+    "cta_text": 2208
+   }
+  ],
+  "heading_font": "Times New Roman",
+  "body_font": "Times New Roman",
+  "logo_url": null,
+  "theme_color": null,
+  "viewport": {
+   "width": 1366,
+   "height": 900
+  }
+ },
+ "neutral-only.html": {
+  "version": 1,
+  "colors": [
+   {
+    "hex": "#ffffff",
+    "surface": 142341,
+    "cta_text": 585
+   },
+   {
+    "hex": "#222222",
+    "heading": 49950
+   },
+   {
+    "hex": "#111111",
+    "cta_bg": 2340
+   },
+   {
+    "hex": "#000000",
+    "cta_border": 585
+   },
+   {
+    "hex": "#555555",
+    "link": 400
+   }
+  ],
+  "heading_font": "Times New Roman",
+  "body_font": "Times New Roman",
+  "logo_url": null,
+  "theme_color": null,
+  "viewport": {
+   "width": 1366,
+   "height": 900
+  }
+ },
+ "plain-css.html": {
+  "version": 1,
+  "colors": [
+   {
+    "hex": "#ffffff",
+    "surface": 244343,
+    "cta_text": 2518
+   },
+   {
+    "hex": "#1d4ed8",
+    "heading": 50542,
+    "link": 612
+   },
+   {
+    "hex": "#e8420a",
+    "cta_bg": 10072
+   },
+   {
+    "hex": "#000000",
+    "cta_border": 1036
+   }
+  ],
+  "heading_font": "Georgia",
+  "body_font": "Times New Roman",
+  "logo_url": "file:///logo.png",
+  "theme_color": null,
+  "viewport": {
+   "width": 1366,
+   "height": 900
+  }
+ },
+ "tailwind-compiled.html": {
+  "version": 1,
+  "colors": [
+   {
+    "hex": "#ffffff",
+    "surface": 142341
+   },
+   {
+    "hex": "#1d4ed8",
+    "heading": 49950
+   },
+   {
+    "hex": "#e8420a",
+    "cta_bg": 8314
+   },
+   {
+    "hex": "#000000",
+    "cta_border": 1036,
+    "cta_text": 1036
+   },
+   {
+    "hex": "#0000ee",
+    "cta_text": 1043
+   }
+  ],
+  "heading_font": "Times New Roman",
+  "body_font": "Times New Roman",
+  "logo_url": null,
+  "theme_color": null,
+  "viewport": {
+   "width": 1366,
+   "height": 900
+  }
+ }
+}

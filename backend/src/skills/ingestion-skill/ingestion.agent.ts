@@ -836,6 +836,16 @@ export class IngestionAgent {
    */
   /** Public for the same reason as extractFromHtml — see its comment. */
   static async renderPageViaN8n(url: string): Promise<string> {
+    return (await IngestionAgent.renderPageWithBrand(url)).html;
+  }
+
+  /**
+   * The same render, plus what the browser painted (`brand`, from
+   * documents/n8n/brand-collector.js) when the n8n workflow sends it — null
+   * from an older workflow. One call, one page load; ingestion uses only the
+   * HTML, the brand step uses both.
+   */
+  static async renderPageWithBrand(url: string): Promise<{ html: string; brand: unknown }> {
     // n8n fetches whatever we hand it — the same guard applies before we do.
     try { await assertPublicUrl(url); }
     catch (err) {
@@ -870,7 +880,7 @@ export class IngestionAgent {
       throw new Error(`RENDER_FAILED: n8n responded ${res.status} — ${detail.slice(0, 300)}`);
     }
 
-    let data: { success?: boolean; html?: string; message?: string };
+    let data: { success?: boolean; html?: string; message?: string; brand?: unknown };
     try {
       data = await res.json() as typeof data;
     } catch {
@@ -879,7 +889,7 @@ export class IngestionAgent {
     if (!data.success || !data.html) {
       throw new Error(`RENDER_FAILED: ${data.message || 'renderer returned no HTML'}`);
     }
-    return String(data.html);
+    return { html: String(data.html), brand: data.brand ?? null };
   }
 
   /**

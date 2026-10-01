@@ -1,0 +1,9 @@
+<!doctype html><html><head><style>@tailwind base;@tailwind utilities;body{@apply antialiased;}</style></head>
+<body><div id="root"></div><script>
+const theme={primary:'#E8420A',ink:'#0A0F1E',link:'#1D4ED8'};
+const r=document.getElementById('root');
+r.innerHTML='<section><h1>Uncompiled Tailwind, theme in JS</h1><a href="#">Read more</a><button>Book a call</button><button>Start</button></section>';
+r.querySelector('section').style.cssText='background:'+theme.ink+';color:#fff;padding:40px;min-height:300px';
+r.querySelector('h1').style.color=theme.link; r.querySelector('a').style.color=theme.link;
+r.querySelectorAll('button').forEach(b=>{b.style.background=theme.primary;b.style.color='#fff';b.style.padding='14px 28px';b.style.border='0'});
+</script></body></html>

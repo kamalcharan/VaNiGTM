@@ -101,3 +101,42 @@ If your installed n8n-nodes-puppeteer version names the operation
 differently (e.g. "Get Page Content" resource/operation split), adjust
 the "Render Page (Puppeteer)" node parameters after import — the rest
 of the workflow is version-independent.
+
+## 2026-10-01 — brand colours from what the browser painted
+
+The browserless variant now calls browserless **`/function`** instead of
+`/content`. One page load returns the HTML exactly as before **plus**
+`brand`: the colours the browser actually painted on buttons, links,
+headings and surfaces (weighted by screen area), the displayed font, the
+header logo and `theme-color`. The collector is `brand-collector.js`; the
+workflow's "Build Render Request" node is generated from it (edit the .js,
+regenerate — never the node by hand).
+
+Why: reading colours from a site's source breaks differently per site —
+compiled Tailwind (`rgb()`), CSS-in-JS injected at runtime, CSS variables,
+inline styles set by JavaScript, or CSS that never compiled (vikuna.io). The
+browser has resolved all of those already. Tested on one fixture page per
+case (`backend/src/skills/profile-skill/tests/fixtures/brand-pages/`).
+
+Same webhook path, same auth, same response shape; `brand` is an added
+field. Ingestion ignores it. The backend falls back to the source scan when
+`brand` is absent, so an older workflow (or the puppeteer variant) keeps
+working — it just gets no browser colours.
+
+### Switch over
+1. In n8n open the current **vani-render-page** workflow and copy the URL in
+   its "Render Page (browserless)" node (your browserless host, port, token).
+2. **Deactivate** it (two active workflows on one webhook path collide).
+3. **Import** `vani-render-page.browserless.workflow.json`. On the Webhook
+   node select the `VaNi Render Secret` credential. In "Render Page
+   (browserless)" paste your URL from step 1 with **`/content` changed to
+   `/function`**. **Activate**.
+4. Smoke test from the VPS — through the backend container, so it uses the
+   same URL, secret and environment the API does, and prints no secret:
+
+   ```bash
+   docker exec -i vani-backend node -e "const p=process.env.N8N_ENV==='live'?'/webhook':'/webhook-test';fetch(process.env.N8N_RENDER_URL.replace(/\/$/,'')+p+'/vani-render-page',{method:'POST',headers:{'Content-Type':'application/json','x-vani-secret':process.env.N8N_RENDER_SECRET},body:JSON.stringify({url:'https://vikuna.io/'})}).then(r=>r.json()).then(d=>console.log({success:d.success,chars:d.chars,brand_colours:d.brand&&d.brand.colors.length,top:d.brand&&d.brand.colors.slice(0,5).map(c=>c.hex),font:d.brand&&d.brand.heading_font,message:d.message,details:d.details}))"
+   ```
+   Expect `success: true`, `chars` in the thousands, and `brand_colours`
+   above 0 with vikuna.io's orange `#e8420a` among `top`. `brand_colours:
+   undefined` means the old workflow is still the one answering.
