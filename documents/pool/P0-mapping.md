@@ -341,7 +341,7 @@ clean at checkout. Pool tables keep RLS **off by design** (no tenant_id, as
 | S12 | Model enrichment may run as an Anthropic batch (`llm_mode`, `provider_batch_ids`); the daily LLM limit counts records per day either way — see §8 for what that means at 50,000 | yes |
 | S13 | The rotation policy of §9, including its rule-12 exception (free → Haiku escalation, declared and capped per run) | yes |
 | S14 | `model` on source rows; `provider/model/escalated_from/cost_inr/confidence` on enrichment items; `last_enriched_at` on `gt_prospects`; re-enrichment cadences in `.env` | yes |
-| S15 | Budgets as §10: tenant = tokens per day + per month (all intelligence, every lane); admin = records per run; BYOK uncapped (2026-09-15 ruling); + `gt_tenant_context.monthly_token_limit` | yes — once the daily number is checked against measured usage (§10.3) |
+| S15 | Budgets as §10: tenant = 100,000 tokens/day + 2,000,000/month (all intelligence, every lane); admin = records per run; BYOK uncapped; + `gt_tenant_context.monthly_token_limit` | **values DECIDED 2026-10-01**; the column is part of this approval |
 | — | P7–P9 tables (§2.8) | approved at their own phase |
 
 Approving S1–S15 lets P1 start. Sprint 0 (the agentic foundation) needs no
@@ -556,6 +556,16 @@ will enter the number of records."
   tenant's own prospect list is that tenant's targeting (rule 13's reasoning),
   so tenant runs use `no_training` providers, Vikuna's own model, Haiku, or
   the tenant's BYOK.
+
+**Decided (Charan, 2026-10-01):** daily **100,000** tokens
+(`TENANT_LLM_DAILY_TOKENS`), monthly **2,000,000 (20 lakh)**
+(`TENANT_LLM_MONTHLY_TOKENS`) — "we can always update when needed." No
+onboarding allowance for now; revisit if the measured usage (§10.3) shows an
+onboarding day near the cap. **Top-ups** come with the business model: a
+purchased top-up adds to the month's allowance. That is a ledger (who bought
+how many tokens, when, against which month), so it is a schema decision of its
+own — it lands with `vani_entitlement` (POA D4), not here; until then a top-up
+is an operator raising that tenant's monthly limit.
 
 ### 10.2 Admin (Vikuna, the pool)
 
