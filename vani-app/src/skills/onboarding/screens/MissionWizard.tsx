@@ -38,6 +38,8 @@ import { API } from '@/lib/serviceURLs';
 import { callSkill } from '@/lib/useSkill';
 import { useToast, VaniLoader } from '@/platform/feedback';
 import { useMissionOnboarding } from '../useOnboarding';
+import { INDUSTRIES, INDUSTRY_NOTE } from '../industries';
+import { PRODUCT_LANE_ID } from '../lane';
 import { useMissionHandoff } from '../useMissionHandoff';
 import { useAuth } from '@/context/auth-provider';
 import {
@@ -375,6 +377,13 @@ export default function MissionWizardPage() {
 
   const [finishing, setFinishing] = useState(false);
 
+  // The company's industry — part of the Smart Profile's first card. Stored in
+  // vn_tenant_profiles.industry through the business_profile lane step, which
+  // also starts the industry research (see ../industries.ts).
+  const [industry, setIndustry] = useState('');
+  const [savedIndustry, setSavedIndustry] = useState('');
+  const [savingIndustry, setSavingIndustry] = useState(false);
+
   /* ── Boot: resume from wherever the tenant already is ─────────────── */
 
   useEffect(() => {
@@ -383,6 +392,19 @@ export default function MissionWizardPage() {
       try {
         const domainHint = typeof window !== 'undefined' ? sessionStorage.getItem('gtm-domain-hint') : null;
         if (domainHint) setDomain(domainHint);
+
+        // The industry decides whether step 1 is really done: a company read
+        // from the landing preview fills the profile, but nobody has said what
+        // industry it is in until they say so on the company card.
+        let knownIndustry = '';
+        try {
+          const org = await apiFetch<{ profile?: { industry?: string | null } }>(API.tenant.profile);
+          const v = (org.profile?.industry ?? '').trim();
+          knownIndustry = INDUSTRIES.includes(v) ? v : '';
+        } catch { /* unreadable: treated as not set, so the card asks */ }
+        if (cancelled) return;
+        setIndustry(knownIndustry);
+        setSavedIndustry(knownIndustry);
 
         // Existing profile? → research is done. Approved profile means ICP
         // is done and step 5 (brand) is next — flow order guarantees
@@ -401,7 +423,12 @@ export default function MissionWizardPage() {
           const res = await apiFetch<{ profile: GtmProfile }>(API.gtmProfile.get);
           if (cancelled) return;
           setProfile(res.profile);
-          if (res.profile.product_name) {
+          if (res.profile.product_name && !knownIndustry && !res.profile.approved_at) {
+            // Researched, but the industry was never chosen: stay on the
+            // company card, which asks for it.
+            setResearch('done');
+            void restoreResearchSteps();
+          } else if (res.profile.product_name) {
             setResearch('done');
             setConfirmed((prev) => new Set(prev).add('company'));
             setStepIndex(1);
@@ -719,6 +746,33 @@ export default function MissionWizardPage() {
       setStepIndex(nextIndex);
     });
   }, [flyTo]);
+
+  /** Step 1's confirm: the industry is saved first (it starts the research). */
+  const confirmCompany = useCallback(async () => {
+    if (!industry) {
+      showToast({ message: 'Pick your industry first — it decides the playbooks every agent starts from.', type: 'error' });
+      return;
+    }
+    if (industry !== savedIndustry) {
+      setSavingIndustry(true);
+      try {
+        await apiFetch(API.onboarding.completeStep, {
+          body: {
+            lane: PRODUCT_LANE_ID, step_id: 'business_profile', status: 'completed',
+            data: { industry }, metadata: { via: 'mission-wizard' },
+          },
+        });
+        setSavedIndustry(industry);
+        void onboardingStatus.refetch();
+      } catch (err) {
+        showToast({ message: (err as ApiError).message || 'Could not save your industry', type: 'error' });
+        return;
+      } finally {
+        setSavingIndustry(false);
+      }
+    }
+    handoff('company', 1);
+  }, [industry, savedIndustry, handoff, onboardingStatus, showToast]);
 
   // Recording mode (?record=1) — the landing loop plays the SAME real flow
   // with no countdown chrome and a tighter dwell. Read from location rather
@@ -1530,11 +1584,27 @@ export default function MissionWizardPage() {
               title="Here's what I learned"
               subtitle="Rough edges are normal — you'll refine everything in the next step."
               status={confirmed.has('company') ? 'confirmed' : 'draft'}
-              autoConfirmMs={autoMs}
+              // Never confirms itself without an industry: it is the one thing
+              // on this card the person has to choose.
+              autoConfirmMs={savedIndustry ? autoMs : undefined}
               autoConfirmSilent={recording}
-              onConfirm={() => { handoff('company', 1); }}
-              confirmLabel="Looks right — continue"
+              onConfirm={() => { void confirmCompany(); }}
+              confirmLabel={savingIndustry ? 'Saving…' : 'Looks right — continue'}
             >
+              <div className={s.industryField}>
+                <label className={s.fieldLabel} htmlFor="wizard-industry">Your industry</label>
+                <select
+                  id="wizard-industry"
+                  className={s.input}
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                  disabled={savingIndustry}
+                >
+                  <option value="">Select your industry…</option>
+                  {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
+                </select>
+                <span className={s.industryNote}>{INDUSTRY_NOTE}</span>
+              </div>
               {parseSiteHealth(researchSteps) && (
                 <div className={s.healthInline}>
                   Heads-up: your site is missing{' '}

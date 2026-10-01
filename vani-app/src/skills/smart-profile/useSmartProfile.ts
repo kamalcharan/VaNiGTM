@@ -107,5 +107,15 @@ export interface TenantDomain {
   created_at: string;
 }
 
+/** The organisation as registered: its name and the industry (vn_tenant_profiles). */
+export interface Organisation {
+  name?: string | null;
+  display_name?: string | null;
+  industry?: string | null;
+}
+
+export const useOrganisationRead = () =>
+  useWrappedRead<Organisation | undefined>('organisation', API.tenant.profile, (r) => r?.profile);
+
 export const useDomainsRead = () =>
   useWrappedRead<TenantDomain[]>('domains', API.tenant.domains, (r) => r?.domains ?? []);

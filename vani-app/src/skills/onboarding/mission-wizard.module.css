@@ -136,6 +136,20 @@
   color: var(--color-fg);
 }
 
+/* The industry choice on the company card: set apart from the read-only
+   summary below it, its note quieter than a value. */
+.industryField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.industryNote {
+  font-size: var(--fs-ui);
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
 .fieldEmpty {
   font-size: var(--fs-lg);
   font-style: italic;

@@ -29,6 +29,7 @@ import {
   useCompetitorsRead,
   useBrandRead,
   useDomainsRead,
+  useOrganisationRead,
   type GtmProfile,
   type SemanticCluster,
   type Competitor,
@@ -105,6 +106,28 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
+/**
+ * The industry, in the Company section: it is a fact about the company, and
+ * the one Vara's playbooks and the industry research key on. Changed through
+ * the organisation step (one editor), which restarts the research.
+ */
+function IndustryField() {
+  const org = useOrganisationRead();
+  const industry = org.data?.success ? org.data.data?.industry : null;
+  if (org.isLoading) return null;
+  return (
+    <div className={s.field}>
+      <span className={s.fieldLabel}>Industry</span>
+      <span className={s.fieldValue}>
+        {industry || 'Not chosen yet — agents start without an industry playbook.'}{' '}
+        <Link className={s.rowLink} href="/onboarding/declare?step=business_profile&next=/smart-profile">
+          {industry ? 'Change' : 'Choose your industry →'}
+        </Link>
+      </span>
+    </div>
+  );
+}
+
 function Chips({ items }: { items: string[] }) {
   if (!items.length) return null;
   return (
@@ -171,6 +194,7 @@ export default function SmartProfileView() {
         {(d: GtmProfile) => (
           <>
             <Field label="Product" value={d.product_name} />
+            <IndustryField />
             <Field label="What it does" value={d.product_description} />
             <Field label="Core problem" value={d.core_problem} />
             <Chips items={d.key_differentiators ?? []} />

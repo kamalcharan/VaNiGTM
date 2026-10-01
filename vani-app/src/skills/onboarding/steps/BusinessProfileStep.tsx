@@ -17,16 +17,11 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { StepArtefactProps, StepScreenProps } from '../lane';
 import { apiFetch } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
+import { INDUSTRIES, INDUSTRY_NOTE } from '../industries';
 import { ArtefactCard, ArtefactSection } from '@/platform/pathway';
 import { InlineLoader } from '@/platform/feedback';
 import s from '../onboarding.module.css';
 
-/** Kept short on purpose. A list nobody's business is on teaches nothing. */
-const INDUSTRIES = [
-  'Financial services', 'Manufacturing', 'Healthcare', 'Retail & e-commerce',
-  'Technology & SaaS', 'Logistics', 'Education', 'Professional services',
-  'Real estate', 'Other',
-];
 
 export default function BusinessProfileStep({ initial, save, isSaving }: StepScreenProps) {
   const [name, setName] = useState((initial.display_name as string) ?? (initial.name as string) ?? '');
@@ -89,8 +84,7 @@ export default function BusinessProfileStep({ initial, save, isSaving }: StepScr
           {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
         </select>
         <div className={s.note} style={{ marginTop: 6 }}>
-          Declared once. Every agent inherits it and never asks again. Saving it
-          starts VaNi researching how your industry hires, in the background.
+          {INDUSTRY_NOTE}
         </div>
       </div>
 
