@@ -30,6 +30,7 @@ import { chunkText } from './pipeline/chunker';
 import { extractFromChunks, EXTRACT_CHUNK_CAP, EXTRACTION_PROMPT, extractMaxTokens, type SourcedChunk } from './pipeline/extractor';
 import { charBudgetFor } from '../../agent-core/llm.gate';
 import { draftProfileFromText } from '../profile-skill/profile.drafter';
+import { findOwnPoolCompany, seedTenantFromPool } from '../../etl/pool-graph';
 
 /* ── Parser registry (text.parser is the fallback, registered LAST) ─────── */
 
@@ -151,6 +152,39 @@ export class IngestionAgent {
       const sections: { url: string | null; text: string }[] = [];
 
       if (source.source_type === 'url' && source.url) {
+        // Already known? When this URL is the tenant's own website and the
+        // common pool has read that company, its graph is copied in first, so
+        // the Knowledge screens fill at once; the read below is then the
+        // refresh (S16 revised, 2026-10-02). Visible either way, and a seed
+        // that fails is reported and the read goes on — the read is the real
+        // path, the seed only gets there sooner.
+        try {
+          const own = await findOwnPoolCompany(pool, tenantId, source.url);
+          if (own.found) {
+            const s = await seedTenantFromPool(pool, tenantId, own.company_id, runId);
+            await appendStep(pool, runId, {
+              step_name:      'seed_from_pool',
+              action:         s.nodes_added + s.nodes_already_known > 0
+                ? `Already known: ${own.name} from the common pool — reading the site again to refresh`
+                : `${own.name} is in the common pool but has not been read yet`,
+              output_summary: `${s.nodes_added} facts and ${s.edges_added} links added, ${s.nodes_already_known} already held`
+                + (s.read_at ? `; pool read on ${String(s.read_at).slice(0, 10)}` : ''),
+              status:         'ok',
+            });
+          } else if ('reason' in own && own.reason === 'ambiguous') {
+            await appendStep(pool, runId, {
+              step_name: 'seed_from_pool', action: 'Not seeded from the common pool', output_summary: own.detail, status: 'ok',
+            });
+          }
+        } catch (seedErr) {
+          await appendStep(pool, runId, {
+            step_name:      'seed_from_pool',
+            action:         'Could not copy what the common pool knows — reading the site in full',
+            output_summary: (seedErr instanceof Error ? seedErr.message : String(seedErr)).slice(0, 300),
+            status:         'error',
+          });
+        }
+
         // URL source — fetch the page server-side and strip to text.
         const fetched = await IngestionAgent.fetchUrlText(source.url);
         rawText = fetched.text;

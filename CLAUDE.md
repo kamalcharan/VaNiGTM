@@ -367,7 +367,7 @@ stay here, because they are worth not re-deciding:
   were first run on production by pasting SQL (2026-09-30) and so were NOT
   recorded; all three are idempotent, and the fix is to let the runner re-apply
   them (`docker exec vani-backend node dist/migrate.js`) — rehearsed on a copy
-  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); **268–271 are reserved** for P2–P5 (P0 §6); **272 written 2026-10-02** (the model router: `gt_llm_calls`, `gt_llm_provider_switch` — S19/S20), **273** (the router counts tokens: `gt_llm_route_state()` gains tokens per minute/day), **274** (scoring profiles S17 + token top-ups S18); next free is **275**. The
+  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); **268–271 are reserved** for P2–P5 (P0 §6); **272 written 2026-10-02** (the model router: `gt_llm_calls`, `gt_llm_provider_switch` — S19/S20), **273** (the router counts tokens: `gt_llm_route_state()` gains tokens per minute/day), **274** (scoring profiles S17 + token top-ups S18), **271** written 2026-10-02 (S16 revised: the pool graph as rows in the existing `gt_kg_nodes`/`_edges`, D-Q20); 268–270 stay reserved; next free is **275**. The
   runner uses `DB_MIGRATE` when set (the owner, once the runtime is the app
   role), else `DB_PRIMARY`. **Two files
   share the number 249** (`249_ki_import_sessions_needs_review.sql` and
@@ -509,6 +509,24 @@ stay here, because they are worth not re-deciding:
       unchanged. Data gate: tenant data only to `no_training` providers;
       people data never to an outside provider (DPDP review pending). BYOK
       tenants never enter a route.
+
+## The pool graph lives in the Brain's tables (S16 revised, 2026-10-02)
+
+- `gt_kg_nodes` / `gt_kg_edges` hold BOTH a tenant's Brain (tenant_id set) and
+  pool company graphs (`universe_company_id` set, tenant_id NULL) — exactly one,
+  enforced (migration 271). The isolation policy and every reader's
+  `WHERE tenant_id = $1` keep pool rows out of a tenant's Brain; **never write a
+  KG read without that filter**, or a deck starts pitching pool companies.
+- Pool rows go only through `gt_pool_kg_upsert_node/_edge`, `gt_pool_kg_read`,
+  `gt_pool_kg_withdraw_run` (SECURITY DEFINER) — `src/etl/pool-graph.ts`. The app
+  role cannot insert a tenant-less row directly (the policy refuses it).
+- A tenant whose own website (`vn_tenant_profiles.website`) is a pool company is
+  seeded by COPY when its site is read (`seed_from_pool` step); what it already
+  holds wins; copies carry `properties.from_pool`. One-way: nothing a tenant
+  holds is ever written to the pool. Several live pool companies on one domain
+  → not seeded, said so.
+- Known limit: withdrawing a pool run does not reach copies already seeded into
+  tenants (they are the tenant's rows); they still carry `from_pool.runs`.
 
 ## The model router (release 2, P2-R — built 2026-10-02)
 
