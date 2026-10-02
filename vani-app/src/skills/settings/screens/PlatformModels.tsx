@@ -138,17 +138,22 @@ function Overview({ data }: { data: RouterOverview }) {
                   </td>
                   <td>
                     <div className={s.actions}>
-                      <button type="button" className={p.enabled ? `${s.btn} ${s.btnDanger}` : `${s.btn} ${s.btnPrimary}`}
-                        disabled={toggle.isPending} onClick={() => flip(p, !p.enabled)}
-                        aria-label={`${p.enabled ? 'Switch off' : 'Switch on'} ${p.code} for enrichment`}>
-                        {p.enabled ? 'Switch off' : 'Switch on'}
-                      </button>
+                      {/* The lit side IS the state. A single button labelled with its action
+                          ("Switch off" on a model that is on) was read as the state, and models
+                          were switched on that were meant to be off (2026-10-02). */}
+                      <div className={m.seg} role="group" aria-label={`${p.code} for enrichment: ${p.enabled ? 'on' : 'off'}`}>
+                        <button type="button" className={`${m.segBtn} ${p.enabled ? m.segOn : ''}`} aria-pressed={p.enabled}
+                          disabled={toggle.isPending || p.enabled} onClick={() => flip(p, true)}>On</button>
+                        <button type="button" className={`${m.segBtn} ${!p.enabled ? m.segOff : ''}`} aria-pressed={!p.enabled}
+                          disabled={toggle.isPending || !p.enabled} onClick={() => flip(p, false)}>Off</button>
+                      </div>
                       {!p.paid && (
                         <button type="button" className={s.btn} disabled={test.isPending} onClick={() => runTest(p.code)}>
                           {test.isPending ? <InlineLoader size="sm" message="Testing…" /> : 'Test'}
                         </button>
                       )}
                     </div>
+                    <span className={m.sub}><strong>{p.enabled ? `ON — enrichment uses ${p.code}${p.paid ? ', and it is paid' : ''}` : `OFF — enrichment never calls ${p.code}`}</strong></span>
                     {p.switched_at && <span className={m.sub}>{p.enabled ? 'on' : 'off'} since {formatDateTime(p.switched_at)}{p.switched_by ? ` · ${p.switched_by}` : ''}</span>}
                   </td>
                 </tr>
