@@ -12,7 +12,7 @@ export type ProviderStateName = 'off' | 'serving' | 'cooling_down' | 'quota_spen
 
 export interface RouterProvider {
   code: string; kind: 'external' | 'platform' | 'haiku'; model: string; host: string;
-  ctx: number; rpm: number; daily: number; data_terms: 'no_training' | 'may_train' | 'unknown'; paid: boolean;
+  ctx: number; rpm: number; daily: number; tpm: number; tpd: number; tokens_minute: number; tokens_today: number; data_terms: 'no_training' | 'may_train' | 'unknown'; paid: boolean;
   enabled: boolean; switched_by: string | null; switched_at: string | null;
   calls_minute: number; calls_today: number; cooldown_until: string | null; state: ProviderStateName;
 }

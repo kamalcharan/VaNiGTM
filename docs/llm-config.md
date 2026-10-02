@@ -71,9 +71,10 @@ switch on Settings → Platform models (`gt_llm_provider_switch`; no row = off).
 | `LLM_ROUTER_COOLDOWN_SECONDS` | 60 | A provider that answered 429 without `Retry-After` is skipped this long |
 | `LLM_<CODE>_URL` | `https://api.groq.com/openai/v1` | OpenAI-compatible base URL |
 | `LLM_<CODE>_KEY` | — | Declared even when empty (an endpoint with no auth). Never logged, never returned |
-| `LLM_<CODE>_MODEL` | `llama-3.3-70b-versatile` | |
+| `LLM_<CODE>_MODEL` | `openai/gpt-oss-120b` | Read the ids your key may call off the provider's console |
 | `LLM_<CODE>_CTX` | 8000 | Window in tokens; 0 = unknown, not judged. A prompt that does not fit is NOT trimmed — that provider is skipped |
 | `LLM_<CODE>_RPM` / `_DAILY` | 30 / 1000 | Requests per minute / per UTC day, counted across every process from `gt_llm_calls`; 0 = no limit declared |
+| `LLM_<CODE>_TPM` / `_TPD` | 8000 / 200000 | Tokens (prompt + answer) per minute / per UTC day, counted the same way; a call is planned with its own estimate, so a provider is skipped BEFORE it would run out. Free tiers usually bind here first; 0 = no limit declared |
 | `LLM_<CODE>_DATA_TERMS` | `no_training` · `may_train` · `unknown` | Read from the provider's current terms. Tenant data goes only to `no_training`; people data never to an outside provider |
 
 `qwen` takes its URL, model, key and window from `LLM_PRIMARY_*` and

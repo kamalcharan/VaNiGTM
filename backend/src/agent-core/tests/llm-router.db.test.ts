@@ -86,9 +86,9 @@ beforeAll(async () => {
     LLM_ROUTE_HIGH: 'groq,openrouter,qwen', LLM_ROUTE_MEDIUM: 'qwen', LLM_ROUTE_LOW: 'qwen',
     LLM_ROUTER_COOLDOWN_SECONDS: '60',
     LLM_GROQ_URL: groq.url(), LLM_GROQ_KEY: 'secret-groq-key', LLM_GROQ_MODEL: 'llama-groq', LLM_GROQ_CTX: '8000',
-    LLM_GROQ_RPM: '0', LLM_GROQ_DAILY: '0', LLM_GROQ_DATA_TERMS: 'no_training',
+    LLM_GROQ_RPM: '0', LLM_GROQ_DAILY: '0', LLM_GROQ_TPM: '0', LLM_GROQ_TPD: '0', LLM_GROQ_DATA_TERMS: 'no_training',
     LLM_OPENROUTER_URL: openrouter.url(), LLM_OPENROUTER_KEY: 'secret-or-key', LLM_OPENROUTER_MODEL: 'llama-free', LLM_OPENROUTER_CTX: '8000',
-    LLM_OPENROUTER_RPM: '0', LLM_OPENROUTER_DAILY: '3', LLM_OPENROUTER_DATA_TERMS: 'may_train',
+    LLM_OPENROUTER_RPM: '0', LLM_OPENROUTER_DAILY: '3', LLM_OPENROUTER_TPM: '0', LLM_OPENROUTER_TPD: '0', LLM_OPENROUTER_DATA_TERMS: 'may_train',
   });
   invalidateAllProviders();
 }, 180000);
@@ -164,6 +164,18 @@ d('the model router', () => {
     for (let i = 0; i < 3; i++) expect((await ask()).provider).toBe('openrouter');
     expect((await ask()).provider).toBe('qwen');
     expect(openrouter.hits.length).toBe(3);
+  });
+
+  it("obeys a provider's daily TOKEN limit, counted from the calls table", async () => {
+    process.env.LLM_GROQ_TPD = '120';   // each fake call uses 45; each plan reserves ~60 (prompt + 50 answer)
+    try {
+      await turnOn('groq', 'qwen');
+      expect((await ask()).provider).toBe('groq');
+      expect((await ask()).provider).toBe('groq');   // 45 used + ~60 for this call ≤ 120
+      const third = await ask();
+      expect(third.provider).toBe('qwen');
+      expect(groq.hits.length).toBe(2);
+    } finally { process.env.LLM_GROQ_TPD = '0'; }
   });
 
   it('writes the moves into the run, where a person reads them', async () => {

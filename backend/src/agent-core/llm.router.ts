@@ -10,8 +10,9 @@
  * order; this file walks it:
  *
  *   PLAN    per provider, now: switched on by the admin? its terms allow this
- *           data? quota left this minute and today? not cooling down after a
- *           429? the prompt fits its window? Skips are reasons, not silence.
+ *           data? requests AND tokens left this minute and today? not cooling
+ *           down after a 429? the prompt fits its window? Skips are reasons,
+ *           not silence.
  *   CALL    the first eligible provider. One row in gt_llm_calls per call.
  *   MOVE    a 429, a timeout, an error → the next provider, as a visible step
  *           in the run ("groq answered 429 — cooling down 60s; trying qwen").
@@ -58,6 +59,8 @@ export interface ProviderState {
   callsMinute: number;
   callsToday: number;
   cooldownUntil: Date | null;
+  tokensMinute: number;
+  tokensToday: number;
 }
 
 export interface Skip { code: string; reason: string }
@@ -76,6 +79,8 @@ export function dataGate(p: RouterProvider, dataClass: DataClass): string | null
   return p.dataTerms === 'no_training' ? null : `${p.dataTerms.replace('_', ' ')} on prompts — this is tenant data`;
 }
 
+const EMPTY: ProviderState = { enabled: false, callsMinute: 0, callsToday: 0, cooldownUntil: null, tokensMinute: 0, tokensToday: 0 };
+const fmt = (n: number) => n.toLocaleString('en-US');
 const hhmmss = (d: Date) => d.toISOString().slice(11, 19) + ' UTC';
 
 /**
@@ -97,19 +102,30 @@ export function planRoute(
   for (const code of cfg.routes[route]) {
     const p = cfg.providers[code];
     if (!p) { skipped.push({ code, reason: 'not configured' }); continue; }
-    const st = state[code] ?? { enabled: false, callsMinute: 0, callsToday: 0, cooldownUntil: null };
+    const st = state[code] ?? EMPTY;
     if (!st.enabled) { skipped.push({ code, reason: 'switched off' }); continue; }
     const gate = dataGate(p, dataClass);
     if (gate) { skipped.push({ code, reason: gate }); continue; }
     if (st.cooldownUntil && st.cooldownUntil > now) { skipped.push({ code, reason: `cooling down until ${hhmmss(st.cooldownUntil)}` }); continue; }
     if (p.daily > 0 && st.callsToday >= p.daily) { skipped.push({ code, reason: `today's quota spent (${st.callsToday}/${p.daily})` }); continue; }
     if (p.rpm > 0 && st.callsMinute >= p.rpm) { skipped.push({ code, reason: `per-minute limit reached (${st.callsMinute}/${p.rpm})` }); continue; }
-    if (fit && p.ctx > 0) {
-      const need = Math.ceil(fit.promptChars / charsFor(p)) + fit.maxTokens;
-      if (need > p.ctx - fit.overheadTokens) {
-        skipped.push({ code, reason: `prompt too large for its ${p.ctx.toLocaleString('en-US')}-token window (~${need.toLocaleString('en-US')} needed)` });
-        continue;
-      }
+    // This call's size in this provider's tokens, when the caller said how big it is.
+    const need = fit ? Math.ceil(fit.promptChars / charsFor(p)) + fit.maxTokens : 0;
+    if (p.tpd > 0 && st.tokensToday + need > p.tpd) {
+      skipped.push({ code, reason: `today's tokens spent (${fmt(st.tokensToday)}/${fmt(p.tpd)}${need ? `, this call ~${fmt(need)}` : ''})` });
+      continue;
+    }
+    if (p.tpm > 0 && need > p.tpm) {
+      skipped.push({ code, reason: `a call this size (~${fmt(need)} tokens) is larger than its ${fmt(p.tpm)} tokens a minute` });
+      continue;
+    }
+    if (p.tpm > 0 && st.tokensMinute + need > p.tpm) {
+      skipped.push({ code, reason: `per-minute token limit reached (${fmt(st.tokensMinute)}/${fmt(p.tpm)}${need ? `, this call ~${fmt(need)}` : ''})` });
+      continue;
+    }
+    if (fit && p.ctx > 0 && need > p.ctx - fit.overheadTokens) {
+      skipped.push({ code, reason: `prompt too large for its ${fmt(p.ctx)}-token window (~${fmt(need)} needed)` });
+      continue;
     }
     eligible.push(p);
   }
@@ -130,12 +146,17 @@ export async function readRouteState(pool: Pool, purpose: Purpose): Promise<Reco
        FROM gt_llm_provider_switch
       WHERE purpose = $1
       ORDER BY provider_code, changed_at DESC, id DESC`, [purpose]);
-  for (const r of sw.rows) out[r.provider_code] = { enabled: r.enabled, callsMinute: 0, callsToday: 0, cooldownUntil: null };
-  const st = await pool.query<{ provider_code: string; calls_minute: number; calls_today: number; cooldown_until: Date | null }>(
-    'SELECT * FROM gt_llm_route_state()');
+  for (const r of sw.rows) out[r.provider_code] = { ...EMPTY, enabled: r.enabled };
+  const st = await pool.query<{
+    provider_code: string; calls_minute: number; calls_today: number; cooldown_until: Date | null;
+    tokens_minute: string; tokens_today: string;
+  }>('SELECT * FROM gt_llm_route_state()');
   for (const r of st.rows) {
-    const cur = out[r.provider_code] ?? { enabled: false, callsMinute: 0, callsToday: 0, cooldownUntil: null };
-    out[r.provider_code] = { ...cur, callsMinute: Number(r.calls_minute), callsToday: Number(r.calls_today), cooldownUntil: r.cooldown_until };
+    const cur = out[r.provider_code] ?? EMPTY;
+    out[r.provider_code] = {
+      ...cur, callsMinute: Number(r.calls_minute), callsToday: Number(r.calls_today), cooldownUntil: r.cooldown_until,
+      tokensMinute: Number(r.tokens_minute), tokensToday: Number(r.tokens_today),
+    };
   }
   return out;
 }

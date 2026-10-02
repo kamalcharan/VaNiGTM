@@ -316,6 +316,7 @@ its phase lands.
 | 269 | `269_pool_company_signals.sql` | P4 | `gt_company_signals` |
 | 270 | `270_gt_cleanup_gap.sql` | P5 | `gt_cleanup_gap` |
 | 272 | `272_llm_router.sql` | P2-R (S19, S20 — approved 2026-10-02) | `gt_llm_calls`, `gt_llm_provider_switch`, `gt_llm_route_state()`, `gt_llm_usage_today()`, append-only triggers — **written** |
+| 273 | `273_llm_router_token_limits.sql` | P2-R | `gt_llm_route_state()` also returns tokens per minute and per day (no table or column) — **written** |
 | 271 | `271_ontology_pool_graph.sql` | before P3 (S16) | `gt_universe_kg_nodes` / `_edges`, `gt_concepts`, `gt_concept_aliases` — written only once S16 is approved |
 
 Each guarded and idempotent, applied with the runner on the VPS, `--status`

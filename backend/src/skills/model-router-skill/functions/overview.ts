@@ -27,11 +27,12 @@ export async function overview(_params: Record<string, unknown>, ctx: SkillConte
   const by = new Map(latest.rows.map((r) => [r.provider_code, r]));
 
   const providers = Object.values(cfg.providers).map((p) => {
-    const st = state[p.code] ?? { enabled: false, callsMinute: 0, callsToday: 0, cooldownUntil: null };
+    const st = state[p.code] ?? { enabled: false, callsMinute: 0, callsToday: 0, cooldownUntil: null, tokensMinute: 0, tokensToday: 0 };
     const cooling = st.cooldownUntil && st.cooldownUntil > now;
-    const spent = p.daily > 0 && st.callsToday >= p.daily;
+    const spent = (p.daily > 0 && st.callsToday >= p.daily) || (p.tpd > 0 && st.tokensToday >= p.tpd);
     return {
       code: p.code, kind: p.kind, model: p.model, host: host(p.url), ctx: p.ctx, rpm: p.rpm, daily: p.daily,
+      tpm: p.tpm, tpd: p.tpd, tokens_minute: st.tokensMinute, tokens_today: st.tokensToday,
       data_terms: p.dataTerms, paid: p.paid, enabled: st.enabled,
       switched_by: by.get(p.code)?.changed_by_name ?? null, switched_at: by.get(p.code)?.changed_at ?? null,
       calls_minute: st.callsMinute, calls_today: st.callsToday,

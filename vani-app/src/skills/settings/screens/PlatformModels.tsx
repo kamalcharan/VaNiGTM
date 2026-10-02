@@ -125,8 +125,11 @@ function Overview({ data }: { data: RouterOverview }) {
                   <td className={m.num}>{p.ctx ? n(p.ctx) : '—'}</td>
                   <td><span className={`${u.tag} ${TERMS[p.data_terms].cls}`}>{TERMS[p.data_terms].label}</span></td>
                   <td className={m.num}>
-                    {n(p.calls_today)}{p.daily ? ` / ${n(p.daily)}` : ''}
-                    <span className={m.sub}>{p.rpm ? `${p.calls_minute}/${p.rpm} this minute` : 'no limit declared'}</span>
+                    {n(p.calls_today)}{p.daily ? ` / ${n(p.daily)}` : ''} calls
+                    <span className={m.sub}>{n(p.tokens_today)}{p.tpd ? ` / ${n(p.tpd)}` : ''} tokens</span>
+                    <span className={m.sub}>
+                      this minute: {p.calls_minute}{p.rpm ? `/${p.rpm}` : ''} calls · {n(p.tokens_minute)}{p.tpm ? `/${n(p.tpm)}` : ''} tokens
+                    </span>
                   </td>
                   <td>
                     <span className={`${u.tag} ${STATE[p.state].cls}`}>{STATE[p.state].label}</span>

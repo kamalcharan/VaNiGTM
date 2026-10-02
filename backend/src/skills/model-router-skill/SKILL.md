@@ -34,7 +34,7 @@ platform behaviour for every tenant's enrichment (R2) — reversible, attributed
 Every model the router knows, its switch, its quota and cooldown now, the three routes as they would run right now for each kind of data, and today's calls by route and provider.
 - Risk: R0
 - Parameters: none
-- Returns: { providers: [{ code, kind, model, host, ctx, rpm, daily, data_terms, paid, enabled, switched_by, switched_at, calls_minute, calls_today, cooldown_until, state }], routes: [{ route, order, plan: { public_company, tenant, people }: { serves, skipped: [{ code, reason }] } }], usage: [{ route, provider_code, calls, ok, moved_on, bad, tokens }], history: [{ provider_code, enabled, note, changed_at, changed_by_name }] }
+- Returns: { providers: [{ code, kind, model, host, ctx, rpm, daily, tpm, tpd, tokens_minute, tokens_today, data_terms, paid, enabled, switched_by, switched_at, calls_minute, calls_today, cooldown_until, state }], routes: [{ route, order, plan: { public_company, tenant, people }: { serves, skipped: [{ code, reason }] } }], usage: [{ route, provider_code, calls, ok, moved_on, bad, tokens }], history: [{ provider_code, enabled, note, changed_at, changed_by_name }] }
 
 ### switch_provider
 Switch one model on or off for enrichment. Applies to the next call; a call already running finishes.

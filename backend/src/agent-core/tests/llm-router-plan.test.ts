@@ -8,7 +8,7 @@ import type { RouterConfig, RouterProvider } from '../llm.router.config';
 
 const prov = (code: string, o: Partial<RouterProvider> = {}): RouterProvider => ({
   code, kind: 'external', url: `https://${code}.test/v1`, model: `${code}-model`, key: 'k',
-  ctx: 8000, rpm: 30, daily: 1000, dataTerms: 'no_training', paid: false, ...o,
+  ctx: 8000, rpm: 30, daily: 1000, tpm: 0, tpd: 0, dataTerms: 'no_training', paid: false, ...o,
 });
 const cfg: RouterConfig = {
   providers: {
@@ -22,7 +22,7 @@ const cfg: RouterConfig = {
   cooldownSeconds: 60,
 };
 const on = (codes: string[], extra: Record<string, Partial<ProviderState>> = {}) =>
-  Object.fromEntries(codes.map((c) => [c, { enabled: true, callsMinute: 0, callsToday: 0, cooldownUntil: null, ...extra[c] }]));
+  Object.fromEntries(codes.map((c) => [c, { enabled: true, callsMinute: 0, callsToday: 0, cooldownUntil: null, tokensMinute: 0, tokensToday: 0, ...extra[c] }]));
 const now = new Date('2026-10-02T10:00:00Z');
 const all = ['groq', 'openrouter', 'clean', 'qwen', 'haiku'];
 const serves = (p: ReturnType<typeof planRoute>) => p.eligible.map((x) => x.code);
@@ -79,5 +79,21 @@ describe('planRoute', () => {
     const p = planRoute(cfg, 'high', 'public_company', on(all), now, { promptChars: 9000, maxTokens: 6000, overheadTokens: 200 });
     expect(serves(p)).toEqual(['qwen', 'haiku']);       // 16k fits; haiku's window is not judged
     expect(why(p, 'groq')).toMatch(/too large for its 8,000-token window/);
+  });
+
+  it('counts tokens as well as requests: a day spent, a minute spent, a call bigger than a minute', () => {
+    const tok = { ...cfg, providers: { ...cfg.providers,
+      groq: prov('groq', { tpm: 8000, tpd: 200000 }), clean: prov('clean', { tpm: 8000, tpd: 0 }),
+      openrouter: prov('openrouter', { tpm: 2000, tpd: 0 }) } };
+    const fit = { promptChars: 6000, maxTokens: 1000, overheadTokens: 200 };   // ~3,000 tokens at 3 chars/token
+    const p = planRoute(tok, 'high', 'public_company', on(all, {
+      groq: { tokensToday: 198500 }, clean: { tokensMinute: 6000 },
+    }), now, fit);
+    expect(why(p, 'groq')).toBe("today's tokens spent (198,500/200,000, this call ~3,000)");
+    expect(why(p, 'clean')).toBe('per-minute token limit reached (6,000/8,000, this call ~3,000)');
+    expect(why(p, 'openrouter')).toBe('a call this size (~3,000 tokens) is larger than its 2,000 tokens a minute');
+    expect(serves(p)).toEqual(['qwen', 'haiku']);
+    // The same providers with room left serve it.
+    expect(serves(planRoute(tok, 'high', 'public_company', on(all, { groq: { tokensToday: 1000 } }), now, fit))).toContain('groq');
   });
 });

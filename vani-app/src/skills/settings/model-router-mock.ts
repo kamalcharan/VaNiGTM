@@ -7,13 +7,13 @@
 import type { DataClass, RouterOverview, RouterProvider, SwitchEvent } from './useModelRouter';
 
 const base: RouterProvider[] = [
-  { code: 'groq', kind: 'external', model: 'llama-3.3-70b-versatile', host: 'api.groq.com', ctx: 8000, rpm: 30, daily: 1000, data_terms: 'unknown', paid: false,
+  { code: 'groq', kind: 'external', model: 'openai/gpt-oss-120b', host: 'api.groq.com', ctx: 8000, rpm: 30, daily: 1000, tpm: 8000, tpd: 200000, tokens_minute: 3600, tokens_today: 143200, data_terms: 'unknown', paid: false,
     enabled: true, switched_by: 'You (mock)', switched_at: '2026-10-02T09:00:00.000Z', calls_minute: 4, calls_today: 812, cooldown_until: null, state: 'serving' },
-  { code: 'openrouter', kind: 'external', model: 'meta-llama/llama-3.3-70b-instruct:free', host: 'openrouter.ai', ctx: 8000, rpm: 20, daily: 50, data_terms: 'may_train', paid: false,
+  { code: 'openrouter', kind: 'external', model: 'meta-llama/llama-3.3-70b-instruct:free', host: 'openrouter.ai', ctx: 8000, rpm: 20, daily: 50, tpm: 0, tpd: 0, tokens_minute: 0, tokens_today: 170000, data_terms: 'may_train', paid: false,
     enabled: true, switched_by: 'You (mock)', switched_at: '2026-10-02T09:00:00.000Z', calls_minute: 0, calls_today: 50, cooldown_until: null, state: 'quota_spent' },
-  { code: 'qwen', kind: 'platform', model: 'qwen3', host: 'llm.vikuna.internal', ctx: 16384, rpm: 0, daily: 0, data_terms: 'no_training', paid: false,
+  { code: 'qwen', kind: 'platform', model: 'qwen3', host: 'llm.vikuna.internal', ctx: 16384, rpm: 0, daily: 0, tpm: 0, tpd: 0, tokens_minute: 0, tokens_today: 150000, data_terms: 'no_training', paid: false,
     enabled: true, switched_by: 'You (mock)', switched_at: '2026-10-02T09:00:00.000Z', calls_minute: 1, calls_today: 146, cooldown_until: null, state: 'serving' },
-  { code: 'haiku', kind: 'haiku', model: 'claude-haiku-4-5', host: 'Anthropic API', ctx: 0, rpm: 0, daily: 0, data_terms: 'no_training', paid: true,
+  { code: 'haiku', kind: 'haiku', model: 'claude-haiku-4-5', host: 'Anthropic API', ctx: 0, rpm: 0, daily: 0, tpm: 0, tpd: 0, tokens_minute: 0, tokens_today: 0, data_terms: 'no_training', paid: true,
     enabled: false, switched_by: null, switched_at: null, calls_minute: 0, calls_today: 0, cooldown_until: null, state: 'off' },
 ];
 const ROUTES = { high: ['groq', 'openrouter', 'qwen', 'haiku'], medium: ['qwen'], low: ['qwen'] } as const;
@@ -33,6 +33,7 @@ function plan(order: readonly string[], dc: DataClass) {
     if (!p.enabled) skipped.push({ code, reason: 'switched off' });
     else if (g) skipped.push({ code, reason: g });
     else if (p.daily > 0 && p.calls_today >= p.daily) skipped.push({ code, reason: `today's quota spent (${p.calls_today}/${p.daily})` });
+    else if (p.tpd > 0 && p.tokens_today >= p.tpd) skipped.push({ code, reason: `today's tokens spent (${p.tokens_today}/${p.tpd})` });
     else serves.push(code);
   }
   return { serves, skipped };

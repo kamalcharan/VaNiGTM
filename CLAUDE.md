@@ -358,7 +358,7 @@ stay here, because they are worth not re-deciding:
   were first run on production by pasting SQL (2026-09-30) and so were NOT
   recorded; all three are idempotent, and the fix is to let the runner re-apply
   them (`docker exec vani-backend node dist/migrate.js`) — rehearsed on a copy
-  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); **268–271 are reserved** for P2–P5 (P0 §6); **272 written 2026-10-02** (the model router: `gt_llm_calls`, `gt_llm_provider_switch` — S19/S20); next free is **273**. The
+  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); **268–271 are reserved** for P2–P5 (P0 §6); **272 written 2026-10-02** (the model router: `gt_llm_calls`, `gt_llm_provider_switch` — S19/S20), **273** (the router counts tokens: `gt_llm_route_state()` gains tokens per minute/day); next free is **274**. The
   runner uses `DB_MIGRATE` when set (the owner, once the runtime is the app
   role), else `DB_PRIMARY`. **Two files
   share the number 249** (`249_ki_import_sessions_needs_review.sql` and
@@ -504,7 +504,7 @@ stay here, because they are worth not re-deciding:
 ## The model router (release 2, P2-R — built 2026-10-02)
 
 - `.env` says what a provider IS (`LLM_PROVIDERS`, `LLM_<CODE>_URL/KEY/MODEL/
-  CTX/RPM/DAILY/DATA_TERMS`, `LLM_ROUTE_*`, `LLM_ROUTER_COOLDOWN_SECONDS` —
+  CTX/RPM/DAILY/TPM/TPD/DATA_TERMS`, `LLM_ROUTE_*`, `LLM_ROUTER_COOLDOWN_SECONDS` —
   `docs/llm-config.md`). `qwen` (= `LLM_PRIMARY_*`) and `haiku` (= the Claude
   settings) are reserved codes, never declared twice.
 - Whether enrichment may USE one is `gt_llm_provider_switch` (append-only),

@@ -88,9 +88,9 @@ ls -la /opt/vikuna/data/vani-uploads
 
 # =============================================================================
 # RELEASE 2 (P2-R) — the model router: several models serve enrichment, the
-# admin switches each on or off (Settings → Platform models). Migration 272.
+# admin switches each on or off (Settings → Platform models). Migrations 272, 273.
 # Ships TOGETHER with 2026-10-02b above (neither is deployed yet):
-#   02b's A  →  this A  →  1 (deploy)  →  2 (migrations: 272 pending)  →  3
+#   02b's A  →  this A  →  1 (deploy)  →  2 (migrations: 272, 273 pending)  →  3
 #   →  02b's B  →  this B  →  4.
 # The API and the worker REFUSE TO START without this A — do it before step 1.
 # =============================================================================
@@ -107,17 +107,21 @@ add LLM_ROUTE_LOW qwen
 add LLM_ROUTER_COOLDOWN_SECONDS 60
 add LLM_GROQ_URL https://api.groq.com/openai/v1
 add LLM_GROQ_KEY ''
-add LLM_GROQ_MODEL llama-3.3-70b-versatile
+add LLM_GROQ_MODEL openai/gpt-oss-120b
 add LLM_GROQ_CTX 8000
 add LLM_GROQ_RPM 30
 add LLM_GROQ_DAILY 1000
+add LLM_GROQ_TPM 8000
+add LLM_GROQ_TPD 200000
 add LLM_GROQ_DATA_TERMS unknown
 add LLM_OPENROUTER_URL https://openrouter.ai/api/v1
 add LLM_OPENROUTER_KEY ''
-add LLM_OPENROUTER_MODEL meta-llama/llama-3.3-70b-instruct:free
+add LLM_OPENROUTER_MODEL ''
 add LLM_OPENROUTER_CTX 8000
 add LLM_OPENROUTER_RPM 20
 add LLM_OPENROUTER_DAILY 50
+add LLM_OPENROUTER_TPM 0
+add LLM_OPENROUTER_TPD 0
 add LLM_OPENROUTER_DATA_TERMS may_train
 # Haiku is the last rung of HIGH only when the Claude key is there to call it:
 grep -q '^ANTHROPIC_API_KEY=.\+' "$E" && add LLM_ROUTE_HIGH groq,openrouter,qwen,haiku || add LLM_ROUTE_HIGH groq,openrouter,qwen
@@ -127,9 +131,11 @@ grep -E '^LLM_(PROVIDERS|ROUTE_|ROUTER_|GROQ_|OPENROUTER_)' "$E" | sed -E 's/(_K
 #     pasted in a chat — VPS task 4). Open the file, find LLM_GROQ_KEY= and
 #     LLM_OPENROUTER_KEY=, paste each key after the =, save:
 nano "$COMPOSE_DIR/.env"
-#     While there: LLM_GROQ_RPM / _DAILY and LLM_OPENROUTER_RPM / _DAILY are
-#     what the free tiers allowed when this was written — check each
-#     provider's console and correct them. LLM_GROQ_DATA_TERMS stays
+#     Also fill LLM_OPENROUTER_MODEL= with a current free model id (it must
+#     end in :free — the free Llama 3.3 was withdrawn); the API refuses to
+#     start while it is empty. The Groq figures are gpt-oss-120b's free tier
+#     as read off the console on 2026-10-02 (30/min, 1,000/day, 8K tokens/min,
+#     200K tokens/day); set OpenRouter's from its model page (0 = no limit). LLM_GROQ_DATA_TERMS stays
 #     "unknown" (tenant data skips it) until Groq's terms are read and say
 #     no_training.
 

@@ -6,7 +6,7 @@
  *   LLM_ROUTE_HIGH=groq,openrouter,qwen,haiku
  *   LLM_ROUTE_MEDIUM=qwen
  *   LLM_ROUTE_LOW=qwen
- *   LLM_GROQ_URL / _KEY / _MODEL / _CTX / _RPM / _DAILY / _DATA_TERMS
+ *   LLM_GROQ_URL / _KEY / _MODEL / _CTX / _RPM / _DAILY / _TPM / _TPD / _DATA_TERMS
  *
  * `.env` declares what a provider IS. Whether enrichment may USE it is the
  * admin's on/off switch (gt_llm_provider_switch, D-Q17) — not here.
@@ -18,8 +18,10 @@
  *
  * No defaults, as llm.config.ts: a missing or malformed value stops the API and
  * the worker at start with the whole list. The one value that is a number
- * meaning "none" is declared, not missing: _RPM / _DAILY = 0 means the
- * provider sets no such limit, _CTX = 0 means the window is unknown.
+ * meaning "none" is declared, not missing: _RPM / _DAILY / _TPM / _TPD = 0
+ * means the provider sets no such limit, _CTX = 0 means the window is unknown.
+ * Free tiers usually bind on TOKENS first (Groq gpt-oss-120b: 8K a minute,
+ * 200K a day, against 1,000 requests) — so both are counted.
  */
 import { readLlmConfig } from './llm.config';
 
@@ -46,6 +48,10 @@ export interface RouterProvider {
   rpm: number;
   /** Requests per UTC day; 0 = no limit declared. */
   daily: number;
+  /** Tokens (prompt + answer) per minute; 0 = no limit declared. */
+  tpm: number;
+  /** Tokens per UTC day; 0 = no limit declared. */
+  tpd: number;
   dataTerms: DataTerms;
   /** Vikuna pays per token. */
   paid: boolean;
@@ -117,6 +123,8 @@ export function readRouterConfig(env: NodeJS.ProcessEnv = process.env): RouterCo
       ctx: int(envName(code, 'CTX'), 0),
       rpm: int(envName(code, 'RPM'), 0),
       daily: int(envName(code, 'DAILY'), 0),
+      tpm: int(envName(code, 'TPM'), 0),
+      tpd: int(envName(code, 'TPD'), 0),
       dataTerms: (terms || 'unknown') as DataTerms,
       paid: false,
     };
@@ -148,12 +156,12 @@ export function readRouterConfig(env: NodeJS.ProcessEnv = process.env): RouterCo
   if (llm) {
     providers.qwen = {
       code: 'qwen', kind: 'platform', url: llm.primaryUrl, model: llm.primaryModel, key: llm.primaryKey,
-      ctx: llm.contextTokens, rpm: 0, daily: 0, dataTerms: 'no_training', paid: false,
+      ctx: llm.contextTokens, rpm: 0, daily: 0, tpm: 0, tpd: 0, dataTerms: 'no_training', paid: false,
     };
     if (llm.failoverModel) {
       providers.haiku = {
         code: 'haiku', kind: 'haiku', url: '', model: llm.failoverModel, key: '',
-        ctx: 0, rpm: 0, daily: 0, dataTerms: 'no_training', paid: true,
+        ctx: 0, rpm: 0, daily: 0, tpm: 0, tpd: 0, dataTerms: 'no_training', paid: true,
       };
     } else if (wantsHaiku) {
       problems.push('a route names "haiku" but ANTHROPIC_API_KEY is not set, so there is no Claude to call');
@@ -168,7 +176,7 @@ export function readRouterConfig(env: NodeJS.ProcessEnv = process.env): RouterCo
 export function assertRouterConfig(scope: string): RouterConfig {
   const c = readRouterConfig();
   const ext = Object.values(c.providers).filter((p) => p.kind === 'external')
-    .map((p) => `${p.code}=${p.model} (${p.dataTerms}, ${p.rpm || '∞'}/min, ${p.daily || '∞'}/day)`);
+    .map((p) => `${p.code}=${p.model} (${p.dataTerms}, ${p.rpm || '∞'} req + ${p.tpm || '∞'} tok/min, ${p.daily || '∞'} req + ${p.tpd || '∞'} tok/day)`);
   console.log(`[${scope}] LLM router: providers ${ext.length ? ext.join(', ') : 'none declared'}; `
     + ROUTE_CLASSES.map((r) => `${r}=${c.routes[r].join('→')}`).join(' ')
     + ` · a provider is used only once the admin switches it on (Settings → Models)`);
