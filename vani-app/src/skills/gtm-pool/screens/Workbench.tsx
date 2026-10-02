@@ -40,6 +40,23 @@ function Suggestion({ d }: { d: Wb }) {
   );
 }
 
+/** A run that is queued or running is the first thing on the page — the way back to it, not "Set up a run" again. */
+function InProgress({ runs }: { runs: RunSummary[] }) {
+  const live = runs.filter((r) => r.status === 'queued' || r.status === 'running');
+  if (!live.length) return null;
+  return (
+    <div className={e.card}>
+      <div className={e.headRow}><h2 className={e.h2} style={{ margin: 0 }}>{live.length === 1 ? 'A run is in progress' : `${live.length} runs are in progress`}</h2><span className={e.muted}>it carries on while you are elsewhere</span></div>
+      {live.map((r) => (
+        <div key={r.event_id} className={e.row} style={{ alignItems: 'center' }}>
+          <span><b>Run #{r.run_no}</b> · {r.delivery_label} · {r.status === 'queued' ? 'queued — waiting for the worker' : `${fmt(r.attempted)} of ${fmt(r.records)} companies`}</span>
+          <span><Link className={`${e.btn} ${e.btnPrimary} ${e.btnSm}`} href={runHref(r.event_id)}>Open the run →</Link></span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Runs({ runs }: { runs: RunSummary[] }) {
   const router = useRouter();
   if (!runs.length) {
@@ -74,6 +91,7 @@ export function Workbench() {
     <DataBoundary query={q} label="the enrichment workbench" skeleton={<SkeletonRows rows={4} lines={2} />}>
       {(d) => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <InProgress runs={d.runs} />
           <Suggestion d={d} />
           <div className={e.grid}>
             <div className={`${e.card} ${e.wide}`}>

@@ -24,7 +24,7 @@ const WORKBENCH: Workbench = {
     { id: '12', label: 'FTCCI · Members', source_code: 'ftcci', companies: 2912, qualified_plus: 233, qualified_pct: 8, as_of: '2023-10-01', loaded_at: '2026-10-01T10:00:00Z', eligible: 1410 },
     { id: '14', label: 'analytica · Exhibitors', source_code: 'analytica', companies: 327, qualified_plus: 39, qualified_pct: 12, as_of: '2026-10-01', loaded_at: '2026-10-02T08:00:00Z', eligible: 0 },
   ],
-  runs: [],
+  runs: [{ event_id: 'mock-live-run', run_no: 1, delivery_label: 'FTCCI · Members', records: 100, status: 'running', created_at: '2026-10-02T06:00:00Z', attempted: 46, before_avg: 24, after_avg: null }],
   suggestion: { delivery: '12', delivery_label: 'FTCCI · Members', eligible: 1410, records: 100 },
 };
 
