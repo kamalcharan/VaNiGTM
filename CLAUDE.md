@@ -762,7 +762,7 @@ silently kept only the first, which PowerShell made easy to hit.
 
 Commands for 1 are in `deploy.txt`; DEPLOY.md explains them. Tick here when done.
 
-1. [ ] **Deploy P1-A** — `deploy.txt` release block: A (three `ETL_*` lines in
+1. [x] **Deploy P1-A** — DONE 2026-10-02: release check All OK, 264–267 applied, nginx reloaded, an analytica import landed (229 rows → 64 companies). — `deploy.txt` release block: A (three `ETL_*` lines in
    the compose `.env`) → 1 deploy → 2 migrations (expect 264–267 pending, and
    262 if it never ran) → 3 nginx (upload location 200m) → B release check
    (every line OK) → 4 verify. Then in the console: import a small CSV, and
@@ -779,8 +779,16 @@ Commands for 1 are in `deploy.txt`; DEPLOY.md explains them. Tick here when done
    Fragments of both were pasted into a chat on 2026-10-02 — not usable as
    shown, but rotation is cheap. Update the compose `.env` and every laptop
    `.env` that holds them, then recreate both containers.
-5. [ ] **Confirm 262 is recorded** (`migrate.js --status`) — written
-   2026-09-30 with "apply with the runner"; release check B reports it.
+5. [x] **Confirm 262 is recorded** — DONE 2026-10-02 (release check).
+6. [ ] **Uploaded files are not persisted** (found 2026-10-02). Multer writes
+   to `/app/uploads` inside `vani-backend` with no volume: every deploy deletes
+   the originals (staged rows survive — `raw_data` is in Postgres), and
+   `vani-worker` has its own empty `/app/uploads`, so the large-CSV worker path
+   (`IMPORT_STAGE_REQUESTED`) cannot read the file. Latent only because
+   `ETL_SYNC_MAX_BYTES` = `ETL_UPLOAD_MAX_BYTES`. **Fix before P1-B raises the
+   limit:** `ETL_UPLOAD_DIR` from `.env`, one host folder mounted in BOTH
+   containers, and a retention rule for originals (they hold personal data —
+   DPDP) — pending Charan's retention period.
 
 ## Main VPS — known broken, DEFERRED (recorded 2026-08-17)
 
