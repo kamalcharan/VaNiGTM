@@ -83,6 +83,9 @@ function sliceWhere(slice: Slice): { where: string; params: unknown[] } {
     `NOT EXISTS (SELECT 1 FROM gt_universe_company_sources s
                    JOIN gt_source_loads l ON l.id = s.load_id AND l.status = 'active' AND l.load_kind = 'enrichment'
                   WHERE s.company_id = c.id AND s.raw ? 'run_event')`,
+    // Not already promised to a run that is queued or still reading.
+    `NOT EXISTS (SELECT 1 FROM gt_events e WHERE e.event_type = 'POOL_ENRICH_REQUESTED' AND e.status IN ('pending', 'processing')
+                  AND e.payload->'company_ids' ? c.id::text)`,
   ];
   if (slice.delivery && slice.delivery !== 'all') {
     params.push(Number(slice.delivery));

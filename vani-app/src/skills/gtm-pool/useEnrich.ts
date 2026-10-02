@@ -46,7 +46,13 @@ export interface RunView {
   withdrawn_at: string | null; touched: number; abstained: Array<{ company_id: string; name: string }>;
 }
 
-export const useWorkbench = (enabled = true) => useSkillQuery<Workbench>('pool-skill', 'workbench', {}, { enabled });
+export const useWorkbench = (enabled = true) => useSkillQuery<Workbench>('pool-skill', 'workbench', {}, {
+  enabled,
+  refetchInterval: (q) => {
+    const runs = (q.state.data as { data?: Workbench } | undefined)?.data?.runs ?? [];
+    return runs.some((r) => r.status === 'queued' || r.status === 'running') ? 5000 : false;
+  },
+});
 export const useEnrichEstimate = (slice: Slice, records: number, enabled = true) =>
   useSkillQuery<EstimateResult>('pool-skill', 'enrich_estimate', { ...slice, records }, { enabled });
 /** Polls while the run is queued or running; still once it has finished. */

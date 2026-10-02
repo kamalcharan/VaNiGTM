@@ -110,6 +110,7 @@ async function runEvent(eventId: string) {
   const payload = (await app.query(`SELECT payload FROM gt_events WHERE id = $1`, [eventId])).rows[0].payload;
   await runPoolEnrichJob(app, ADMIN_T, payload, runId);
   await app.query(`UPDATE gt_agent_runs SET status = 'completed', completed_at = now(), duration_ms = 1000 WHERE id = $1`, [runId]);
+  await app.query(`UPDATE gt_events SET status = 'done', processed_at = now() WHERE id = $1`, [eventId]);   // as the worker resolves it
   return runId;
 }
 
@@ -209,6 +210,8 @@ d('enriching the common pool', () => {
     expect(r).toMatchObject({ run_no: 1, records: 5 });
     eventId = r.event_id;
     expect(await recordsUsedToday(app)).toBe(5);
+    // Promised to this run: no second run may take the same companies while it waits or reads.
+    expect(await countSlice(app, { delivery, raw_or_identified: false, industry_missing: false })).toBe(1);
   });
 
   it('reads each company and names what it could not read (tabs 3, 4)', async () => {
@@ -301,6 +304,7 @@ d('enriching the common pool', () => {
     expect(await stop_enrich_run({ event_id: r.event_id }, ctx())).toMatchObject({ stopped: 'requested' });
     await runPoolEnrichJob(app, ADMIN_T, payload, runId);
     await app.query(`UPDATE gt_agent_runs SET status = 'completed', completed_at = now() WHERE id = $1`, [runId]);
+    await app.query(`UPDATE gt_events SET status = 'done', processed_at = now() WHERE id = $1`, [r.event_id]);
     const { run }: any = await enrich_run({ event_id: r.event_id }, ctx());
     expect(run).toMatchObject({ status: 'stopped', progress: { done: 0, total: 1 } });
     expect(run.stopped).toMatch(/STOPPED_BY_PERSON/);

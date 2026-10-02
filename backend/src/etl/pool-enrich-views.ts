@@ -21,6 +21,9 @@ const READ_BY_A_RUN = `EXISTS (SELECT 1 FROM gt_universe_company_sources s
                          JOIN gt_source_loads l ON l.id = s.load_id AND l.status = 'active' AND l.load_kind = 'enrichment'
                         WHERE s.company_id = c.id AND s.raw ? 'run_event')`;
 
+const IN_A_RUN = `EXISTS (SELECT 1 FROM gt_events e WHERE e.event_type = 'POOL_ENRICH_REQUESTED' AND e.status IN ('pending', 'processing')
+                      AND e.payload->'company_ids' ? c.id::text)`;
+
 /* ── Runs ──────────────────────────────────────────────────────────────── */
 
 export interface RunSummary {
@@ -77,7 +80,7 @@ export async function workbench(pool: Pool) {
             count(DISTINCT c.id) FILTER (WHERE ${QUALIFIED_PLUS})::int AS qualified_plus,
             count(DISTINCT c.id) FILTER (WHERE c.domain_normalized IS NOT NULL
                                            AND coalesce(c.coverage_parts->>'level', 'raw') IN ('raw', 'identified')
-                                           AND NOT ${READ_BY_A_RUN})::int AS eligible
+                                           AND NOT ${READ_BY_A_RUN} AND NOT ${IN_A_RUN})::int AS eligible
        FROM gt_source_loads l
        JOIN gt_data_sources d ON d.id = l.source_id
        LEFT JOIN gt_universe_company_sources s ON s.load_id = l.id
