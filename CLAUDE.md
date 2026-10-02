@@ -296,6 +296,7 @@ Each skill in `backend/src/skills/<name>/`:
 | model-router-skill | the admin's view of the model router: models, on/off switch per model for enrichment, quotas, routes as they run now, today by route, test a free model (P2-R) | ✅ built 2026-10-02 — admin only |
 | scoring | the 0–100 readiness score: profile in force (own or platform default), save own part weights, platform default (admin), companies by level, re-score, explain one company (release 3) | ✅ built 2026-10-02 |
 | tenant | the tenant context (one read: status, tokens, agents, model, scoring, brand, industry, consent, domains), token budget, top-ups (admin) (release 3) | ✅ built 2026-10-02 |
+| pool-skill (enrichment) | release 4: workbench, enrich_estimate, start_enrich, enrich_run, withdraw_enrich_run; company provenance — the agent is `src/etl/pool-enrich.ts` (`POOL_ENRICH_REQUESTED`) | ✅ built 2026-10-02 — admin only |
 
 ## nginx on api.vikuna.io — the whole API, not an allowlist (2026-09-30)
 
@@ -509,6 +510,27 @@ stay here, because they are worth not re-deciding:
       unchanged. Data gate: tenant data only to `no_training` providers;
       people data never to an outside provider (DPDP review pending). BYOK
       tenants never enter a route.
+
+## Enriching the common pool (release 4, P2-C — built 2026-10-02)
+
+Prototype `documents/prototypes/p2c-pool-enrich.html` (approved), built to it:
+workbench on `/agents/gtm/pool`, `/agents/gtm/pool/enrich`, `/agents/gtm/pool/runs/<event id>`,
+the company panel's "Where each value came from".
+
+- A run reads each company's own site: live/parked check and About/Contact/Products
+  by code (`lib/site-reader.ts`), route LOW decides which contacts are the
+  company's own, route HIGH reads what it does, industry (must be on the master),
+  company or individual, B2B/B2C, size and a small graph. `meter: 'pool'`.
+- It writes two ENRICHMENT source rows per company (`crawl` = code, `llm_pass` =
+  model) under two loads per run (`load_kind 'enrichment'`), each value with its
+  page, model and confidence in `raw`. **`rederive` ranks enrichment rows below
+  every delivery whatever the tiers** (E1), and only delivery rows count as a
+  company's linked sources. Only role mailboxes (sales@, info@) on the company's
+  own domain are ever candidates — a person's address is never a pool fact.
+- A run is keyed by its EVENT: a worker restart resumes from the last run's
+  checkpoint. No model left (`LLM_ROUTE_EXHAUSTED`) stops the run and releases
+  the records it did not reach. Withdraw retires both loads, re-derives and
+  re-scores, and takes the run's graph facts back.
 
 ## The pool graph lives in the Brain's tables (S16 revised, 2026-10-02)
 
