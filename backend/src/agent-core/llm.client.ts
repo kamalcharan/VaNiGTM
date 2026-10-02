@@ -430,10 +430,10 @@ export async function callEndpoint(
         + `${charsPerTokenLabel(provider.model)} chars/token, so the next call is smaller. `
         + `If the estimate fits the configured window, LLM_CONTEXT_TOKENS is larger than the server's real window]`
       : '';
-    const retryAfter = Number(response.headers?.get?.('retry-after'));
     throw new LlmCallError(
       `${errored}: ${who} returned ${response.status} ${response.statusText} — ${detail.slice(0, 300)}${ours}`,
-      'http', response.status, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+      'http', response.status,
+      response.status === 429 ? retryAfterSeconds((n) => response.headers?.get?.(n) ?? null, detail) : undefined,
     );
   }
 
@@ -470,6 +470,48 @@ export async function callEndpoint(
   });
 
   return { text, inputTokens, outputTokens, source: 'vps', truncated, provider: provider.providerCode, model: provider.model };
+}
+
+/* ── When a rate limit lifts ─────────────────────────────────────────────── */
+
+/**
+ * How long a 429 says to stay away, in seconds, from whatever the provider
+ * sent. Without it the router cools a provider down for
+ * LLM_ROUTER_COOLDOWN_SECONDS and asks again — fine for a per-minute limit,
+ * and a 429 every minute until midnight for a daily one. Seen 2026-10-02:
+ * OpenRouter's free tier (50 a day) answers with no Retry-After, and the reset
+ * as an epoch in X-RateLimit-Reset — also echoed in the body's metadata.
+ *
+ *   Retry-After: 30                 seconds
+ *   X-RateLimit-Reset: 1790985600000  epoch ms (OpenRouter) or epoch s
+ *   x-ratelimit-reset-requests: 2m59.5s, x-ratelimit-reset-tokens: 7.66s (Groq, OpenAI)
+ *
+ * The longest wait any of them names wins: being skipped a little long is a
+ * visible skip; coming back early is another 429.
+ */
+export function retryAfterSeconds(header: (name: string) => string | null, body = '', now = Date.now()): number | undefined {
+  const waits: number[] = [];
+  const ra = Number(header('retry-after'));
+  if (Number.isFinite(ra) && ra > 0) waits.push(ra);
+  const epoch = (v: string | null | undefined) => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return;
+    const ms = n > 1e12 ? n : n > 1e9 ? n * 1000 : NaN;     // epoch ms, epoch s; anything smaller is not an epoch
+    if (Number.isFinite(ms) && ms > now) waits.push((ms - now) / 1000);
+  };
+  epoch(header('x-ratelimit-reset'));
+  const inBody = body.match(/"X-RateLimit-Reset"\s*:\s*"?(\d{10,13})/i);
+  if (inBody) epoch(inBody[1]);
+  const dur = (v: string | null) => {                        // 1h2m3.5s · 59.9s · 120ms
+    if (!v) return;
+    const m = v.trim().match(/^(?:(\d+)h)?(?:(\d+)m(?!s))?(?:([\d.]+)s)?(?:([\d.]+)ms)?$/);
+    if (!m || !m[0]) return;
+    const s = (Number(m[1] ?? 0) * 3600) + (Number(m[2] ?? 0) * 60) + Number(m[3] ?? 0) + (Number(m[4] ?? 0) / 1000);
+    if (s > 0) waits.push(s);
+  };
+  dur(header('x-ratelimit-reset-requests'));
+  dur(header('x-ratelimit-reset-tokens'));
+  return waits.length ? Math.ceil(Math.max(...waits)) : undefined;
 }
 
 /* ── The context report: one step per model call (AGENTS.md §4b) ─────────── */
