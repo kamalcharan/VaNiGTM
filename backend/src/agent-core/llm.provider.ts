@@ -51,10 +51,15 @@ import { decryptSecret } from './secret.crypto';
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 
-export type LLMPosture = 'platform' | 'byok';
+/**
+ * 'external' is a router rung (llm.router.ts): a free or paid provider Vikuna
+ * declared in .env. It is never a tenant's resolution — resolveProvider only
+ * ever answers platform or byok — and it never fails over.
+ */
+export type LLMPosture = 'platform' | 'byok' | 'external';
 
 export interface ResolvedProvider {
-  /** 'platform' = Vikuna pays. 'byok' = the tenant pays. */
+  /** 'platform' = Vikuna pays. 'byok' = the tenant pays. 'external' = a router rung. */
   posture: LLMPosture;
   /** Base URL of an OpenAI-compatible endpoint (no trailing slash). */
   url: string;
@@ -64,6 +69,8 @@ export interface ResolvedProvider {
   timeoutMs: number;
   /** For diagnostics — 'platform' or e.g. 'openai', 'anthropic', 'groq'. */
   providerCode: string;
+  /** A router rung's window (LLM_<CODE>_CTX), for the run's context report. */
+  contextTokens?: number;
 }
 
 /**
@@ -81,7 +88,7 @@ export interface ProviderSummary {
 
 /* ── Platform defaults (what every tenant used before BYOK) ──────────────── */
 
-function platformProvider(): ResolvedProvider {
+export function platformProvider(): ResolvedProvider {
   // From .env, no fallbacks (llm.config.ts). This used to default to
   // localhost:11434 / qwen2.5 — the default the Main VPS silently ran on.
   const c = readLlmConfig();

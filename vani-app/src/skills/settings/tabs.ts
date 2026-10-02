@@ -17,12 +17,15 @@ export interface SettingsTab {
   status: SettingsTabStatus;
   /** One line under the label on a planned tab: what it will be, and what does not exist yet. */
   summary?: string;
+  /** Only an admin tenant (vn_tenants.is_admin) sees this tab; the server enforces it too. */
+  adminOnly?: boolean;
 }
 
 export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'appearance', label: 'Appearance', href: '/settings/appearance', status: 'live' },
   { id: 'model',      label: 'Model',      href: '/settings/model',      status: 'live' },
   { id: 'consent',    label: 'Outreach consent', href: '/settings/consent', status: 'live' },
+  { id: 'platform-models', label: 'Platform models', href: '/settings/platform-models', status: 'live', adminOnly: true },
   { id: 'data',       label: 'Data',       href: '/settings/data',       status: 'planned',
     summary: 'Your own data provider — Apollo, Clay, anything with an API. Same shape as Model: platform or yours, the key never comes back. '
       + 'What it pulls stays in your workspace and never enters the shared pool. Nothing behind this tab is built yet — no table, no connector.' },

@@ -56,6 +56,31 @@ All required; the API and worker refuse to start without them.
 | `WORKER_STALE_CLAIM_SECONDS` | "2 minutes" (was `WORKER_STALE_CLAIM`) | A claim with no heartbeat this long is orphaned. Now a number, passed to SQL as a parameter |
 | `WORKER_MAX_ATTEMPTS` | 3 | Claims before an event is failed as poison |
 
+## The model router — from .env, required (release 2, 2026-10-02)
+
+Read by `agent-core/llm.router.config.ts`; the API and the worker refuse to
+start with any of these missing or malformed, and list every problem at once.
+`.env` says what a provider IS; whether enrichment may USE it is the admin's
+switch on Settings → Platform models (`gt_llm_provider_switch`; no row = off).
+
+| Variable | Example | What it does |
+|---|---|---|
+| `LLM_PROVIDERS` | `groq,openrouter` | Outside providers by code. May be empty. `qwen` and `haiku` are reserved and never listed |
+| `LLM_ROUTE_HIGH` | `groq,openrouter,qwen,haiku` | Judgement steps (industry, offers, domain-matches-company), tried in order |
+| `LLM_ROUTE_MEDIUM` / `LLM_ROUTE_LOW` | `qwen` | Shorter extraction and normalising |
+| `LLM_ROUTER_COOLDOWN_SECONDS` | 60 | A provider that answered 429 without `Retry-After` is skipped this long |
+| `LLM_<CODE>_URL` | `https://api.groq.com/openai/v1` | OpenAI-compatible base URL |
+| `LLM_<CODE>_KEY` | — | Declared even when empty (an endpoint with no auth). Never logged, never returned |
+| `LLM_<CODE>_MODEL` | `openai/gpt-oss-120b` | Read the ids your key may call off the provider's console |
+| `LLM_<CODE>_CTX` | 8000 | Window in tokens; 0 = unknown, not judged. A prompt that does not fit is NOT trimmed — that provider is skipped |
+| `LLM_<CODE>_RPM` / `_DAILY` | 30 / 1000 | Requests per minute / per UTC day, counted across every process from `gt_llm_calls`; 0 = no limit declared |
+| `LLM_<CODE>_TPM` / `_TPD` | 8000 / 200000 | Tokens (prompt + answer) per minute / per UTC day, counted the same way; a call is planned with its own estimate, so a provider is skipped BEFORE it would run out. Free tiers usually bind here first; 0 = no limit declared |
+| `LLM_<CODE>_DATA_TERMS` | `no_training` · `may_train` · `unknown` | Read from the provider's current terms. Tenant data goes only to `no_training`; people data never to an outside provider |
+
+`qwen` takes its URL, model, key and window from `LLM_PRIMARY_*` and
+`LLM_CONTEXT_TOKENS`; `haiku` takes `ANTHROPIC_API_KEY` and
+`LLM_FAILOVER_MODEL`, and a route may name it only when the key is set.
+
 ## Approved to stay in code
 
 | Value | Where | Ruling |

@@ -10,16 +10,20 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import u from '@/platform/shell/ui.module.css';
 import s from './settings.module.css';
+import { useAuth } from '@/context/auth-provider';
+import { IS_LIVE } from '@/lib/live-transport';
 import { SETTINGS_TABS } from '../tabs';
 
 export function SettingsFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? '';
+  const { tenant } = useAuth();
+  const isAdmin = !IS_LIVE || tenant?.is_admin === true;
   return (
     <div>
       <div className={u.eyebrow}>// SYSTEM</div>
       <h1 className={u.h1}>Settings</h1>
       <nav className={s.tabs} aria-label="Settings sections">
-        {SETTINGS_TABS.map((t) => {
+        {SETTINGS_TABS.filter((t) => !t.adminOnly || isAdmin).map((t) => {
           const on = pathname === t.href || pathname.startsWith(t.href + '/');
           return (
             <Link

@@ -315,6 +315,8 @@ its phase lands.
 | 268 | `268_pool_enrichment.sql` | P2 | `gt_enrichment_requests`, `_items`, `_usage`; FK from loads (renumbered 2026-10-01: P1's four come first so the runner applies them in order) |
 | 269 | `269_pool_company_signals.sql` | P4 | `gt_company_signals` |
 | 270 | `270_gt_cleanup_gap.sql` | P5 | `gt_cleanup_gap` |
+| 272 | `272_llm_router.sql` | P2-R (S19, S20 — approved 2026-10-02) | `gt_llm_calls`, `gt_llm_provider_switch`, `gt_llm_route_state()`, `gt_llm_usage_today()`, append-only triggers — **written** |
+| 273 | `273_llm_router_token_limits.sql` | P2-R | `gt_llm_route_state()` also returns tokens per minute and per day (no table or column) — **written** |
 | 271 | `271_ontology_pool_graph.sql` | before P3 (S16) | `gt_universe_kg_nodes` / `_edges`, `gt_concepts`, `gt_concept_aliases` — written only once S16 is approved |
 
 Each guarded and idempotent, applied with the runner on the VPS, `--status`
@@ -343,7 +345,9 @@ clean at checkout. Pool tables keep RLS **off by design** (no tenant_id, as
 | S13 | The rotation policy of §9, including its rule-12 exception (free → Haiku escalation, declared and capped per run) | yes |
 | S14 | `model` on source rows; `provider/model/escalated_from/cost_inr/confidence` on enrichment items; `last_enriched_at` on `gt_prospects`; re-enrichment cadences in `.env` | yes |
 | S15 | Budgets as §10: tenant = 100,000 tokens/day + 2,000,000/month (all intelligence, every lane); admin = records per run; BYOK uncapped; + `gt_tenant_context.monthly_token_limit` | **values DECIDED 2026-10-01**; the column is part of this approval |
-| S16 | Ontology v1 (`documents/design-notes-ontology.md`): the pool company graph `gt_universe_kg_nodes` / `_edges` (no tenant_id, RLS off by design, platform-written; node/edge contract of the note §7 — concept_id, evidence, confidence, method, model, load_id, observed_at, valid_until, ontology_version) and the concept catalogs `gt_concepts` / `gt_concept_aliases` (model proposes, admin approves). Migration 271. Needed before P3 | **PENDING** (added 2026-10-02) |
+| S16 | **Widened 2026-10-02 (D-Q2).** Ontology v1 (`documents/design-notes-ontology.md`) has two homes now, not one: the pool company graph `gt_universe_kg_nodes` / `_edges` (no tenant_id, RLS off by design, admin-written) AND a tenant's account graph `gt_account_kg_nodes` / `_edges` (tenant_id, RLS on, keyed to `gt_prospects`) — a tenant enriches its own upload before research. Plus the concept catalogs `gt_concepts` / `gt_concept_aliases`. Node/edge contract of the note §7. Needed for P2-C | **PENDING** |
+| S17 | Scoring profiles `gt_score_profiles`: tenant_id NULL = platform default, a tenant's own optional; weights of the seven parts and their items, level boundaries; versioned, append-only, one active per scope (D-Q4–D-Q7) | **PENDING** (2026-10-02) |
+| S18 | Token top-ups `gt_token_topups` (tenant, tokens, added_by, reason, created_at) and `gt_tenant_context.monthly_token_limit` (S15's column): the balance is drawn after the day's/month's base is used (D-Q12) | **PENDING** (2026-10-02) |
 | — | P7–P9 tables (§2.8) | approved at their own phase |
 
 Approving S1–S15 lets P1 start; S16 is needed before P3 and does not block P1–P2. Sprint 0 (the agentic foundation) needs no
@@ -471,7 +475,14 @@ tier, xAI (Grok) where credits apply. **Quotas and data terms change often —
 each is read from the provider's current terms when it is added, written into
 `.env`, and re-checked at every phase checkout; none is taken from memory.**
 
-`.env` (no defaults in code):
+> **Superseded 2026-10-02 (POA D-Q14):** the router is platform-wide (P2-R),
+> and its settings use Charan's shape — `LLM_PROVIDERS`, `LLM_<CODE>_URL /
+> _KEY / _MODEL / _CTX / _RPM / _DAILY / _DATA_TERMS`, and routes
+> `LLM_ROUTE_HIGH / _MEDIUM / _LOW` naming providers in order (`qwen` = the
+> platform model, `haiku` = the Claude settings). The `ENRICH_*` audit,
+> confidence and mode settings below still apply. Usage is counted in S19.
+
+`.env` as first proposed (no defaults in code):
 
 | Variable | Meaning |
 |---|---|
@@ -501,6 +512,30 @@ refresh run for the affected set (the person starts it).
 | classification | when the description changed, or the taxonomy version changed |
 | email verification (P8) | `ENRICH_REFRESH_VERIFY_DAYS` — 180 |
 | domain lookup "none found" | `ENRICH_REFRESH_DOMAIN_DAYS` — 180 |
+
+---
+
+### 9.7 S19 — one usage row per model call (APPROVED 2026-10-02, migration 272)
+
+Proposed `gt_llm_calls`: tenant_id (nullable for pool/admin work), run_id,
+step, route (`high/medium/low`), rung, provider code, model, data class,
+prompt and answer tokens, outcome (`ok · rate_limited · timeout · error ·
+refused_data_terms · refused_context · invalid`), latency, created_at.
+Per-minute and per-day quotas, cooldown evidence, the tenant token budget
+(D-Q12, S15/S18) and per-provider cost are all counted from it. It replaces
+S13's `gt_enrichment_usage` and the per-call telemetry table of Sprint 0a
+part 2 (C4) — one table, not three. Tenant-scoped RLS with the pool rows
+(tenant_id NULL) readable by admin only. Retention from `.env`.
+
+### 9.8 S20 — the admin's on/off switch per model (APPROVED 2026-10-02, migration 272)
+
+Proposed `gt_llm_provider_switch`, append-only: provider_code (as declared in
+`LLM_PROVIDERS`, plus `qwen` and `haiku`), purpose (`enrichment` today),
+enabled, changed_by, changed_at, note. The latest row per (provider, purpose)
+is the state; earlier rows are the history of who switched what. No row means
+**off**. Platform-level, no tenant_id; read and written by admin only. The
+router reads it on each enrichment call (cached briefly, invalidated on
+write), so a switch takes effect on the next call without a restart.
 
 ---
 

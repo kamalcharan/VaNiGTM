@@ -85,3 +85,69 @@ curl -s -o /dev/null -w "%{http_code}\n" https://api.vikuna.io/api/v1/runs/1/str
 #   counts fill in; open a delivery and a company to see its eight checks.
 # And: import a small CSV and stage it; afterwards this folder is empty:
 ls -la /opt/vikuna/data/vani-uploads
+
+# =============================================================================
+# RELEASE 2 (P2-R) — the model router: several models serve enrichment, the
+# admin switches each on or off (Settings → Platform models). Migrations 272, 273.
+# Ships TOGETHER with 2026-10-02b above (neither is deployed yet):
+#   02b's A  →  this A  →  1 (deploy)  →  2 (migrations: 272, 273 pending)  →  3
+#   →  02b's B  →  this B  →  4.
+# The API and the worker REFUSE TO START without this A — do it before step 1.
+# =============================================================================
+
+# ---- A. BEFORE step 1 --------------------------------------------------------
+# A1. Back up, then add the router settings (skips any already set).
+COMPOSE_DIR=$(docker inspect vani-backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}')
+cp "$COMPOSE_DIR/.env" "$COMPOSE_DIR/.env.bak-$(date +%Y%m%d-%H%M)"
+E="$COMPOSE_DIR/.env"
+add() { grep -q "^$1=" "$E" || echo "$1=$2" >> "$E"; }
+add LLM_PROVIDERS groq,openrouter
+add LLM_ROUTE_MEDIUM qwen
+add LLM_ROUTE_LOW qwen
+add LLM_ROUTER_COOLDOWN_SECONDS 60
+add LLM_GROQ_URL https://api.groq.com/openai/v1
+add LLM_GROQ_KEY ''
+add LLM_GROQ_MODEL openai/gpt-oss-120b
+add LLM_GROQ_CTX 8000
+add LLM_GROQ_RPM 30
+add LLM_GROQ_DAILY 1000
+add LLM_GROQ_TPM 8000
+add LLM_GROQ_TPD 200000
+add LLM_GROQ_DATA_TERMS unknown
+add LLM_OPENROUTER_URL https://openrouter.ai/api/v1
+add LLM_OPENROUTER_KEY ''
+add LLM_OPENROUTER_MODEL ''
+add LLM_OPENROUTER_CTX 8000
+add LLM_OPENROUTER_RPM 20
+add LLM_OPENROUTER_DAILY 50
+add LLM_OPENROUTER_TPM 0
+add LLM_OPENROUTER_TPD 0
+add LLM_OPENROUTER_DATA_TERMS may_train
+# Haiku is the last rung of HIGH only when the Claude key is there to call it:
+grep -q '^ANTHROPIC_API_KEY=.\+' "$E" && add LLM_ROUTE_HIGH groq,openrouter,qwen,haiku || add LLM_ROUTE_HIGH groq,openrouter,qwen
+grep -E '^LLM_(PROVIDERS|ROUTE_|ROUTER_|GROQ_|OPENROUTER_)' "$E" | sed -E 's/(_KEY=).+/\1(set)/'
+
+# A2. Put the NEW Groq and OpenRouter keys in by hand (the old ones were
+#     pasted in a chat — VPS task 4). Open the file, find LLM_GROQ_KEY= and
+#     LLM_OPENROUTER_KEY=, paste each key after the =, save:
+nano "$COMPOSE_DIR/.env"
+#     Also fill LLM_OPENROUTER_MODEL= with a current free model id (it must
+#     end in :free — the free Llama 3.3 was withdrawn); the API refuses to
+#     start while it is empty. The Groq figures are gpt-oss-120b's free tier
+#     as read off the console on 2026-10-02 (30/min, 1,000/day, 8K tokens/min,
+#     200K tokens/day); set OpenRouter's from its model page (0 = no limit). LLM_GROQ_DATA_TERMS stays
+#     "unknown" (tenant data skips it) until Groq's terms are read and say
+#     no_training.
+
+# ---- then steps 1, 2 (expect 272 pending, plus anything 02b listed), 3 ------
+
+# ---- B. AFTER steps 1–3 -------------------------------------------------------
+cd /opt/vikuna/src/vanigtm
+docker exec -i vani-backend node - < deploy/vani-main-vps/checks/2026-10-03-p2r.js
+docker exec -i vani-worker  node - < deploy/vani-main-vps/checks/2026-10-03-p2r.js
+docker logs vani-backend 2>&1 | grep "LLM router:" | tail -1
+docker logs vani-worker  2>&1 | grep "LLM router:" | tail -1
+# Then in the console (vani.vikuna.io → Settings → Platform models, admin):
+#   every model shows "Off" — press Test on groq and on openrouter (each must
+#   answer), then Switch on the ones enrichment may use. Haiku asks once more:
+#   it is paid. "Routes, as they would run now" shows who serves what.

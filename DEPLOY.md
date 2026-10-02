@@ -363,6 +363,7 @@ touches most:
 | Import pipeline — **required**, checked at API and worker start | `ETL_UPLOAD_MAX_BYTES` (nginx's `/api/v1/etl/upload` location must allow as much — 200m today), `ETL_SYNC_MAX_BYTES`, `ETL_STAGE_CHUNK_ROWS`, `ETL_UPLOAD_DIR` (`/app/uploads` — the host folder below, mounted in BOTH containers), `ETL_UPLOAD_TEMP_TTL_HOURS` |
 | Common pool matching — **required**, checked at API and worker start | `MATCH_LINK_MIN`, `MATCH_REVIEW_MIN`, `MATCH_DOMAIN_NAME_MIN`, `POOL_RESOLVE_CHUNK_ROWS` |
 | Run stream — **required**, checked at API start | `RUNS_STREAM_POLL_MS`, `RUNS_STREAM_HEARTBEAT_MS`, `RUNS_STREAM_MAX_SECONDS` (nginx's stream location reads for 900s, so keep this below it) |
+| Model router — **required**, checked at API and worker start (release 2) | `LLM_PROVIDERS`, `LLM_ROUTE_HIGH/MEDIUM/LOW`, `LLM_ROUTER_COOLDOWN_SECONDS`, and per provider `LLM_<CODE>_URL/KEY/MODEL/CTX/RPM/DAILY/TPM/TPD/DATA_TERMS` (`docs/llm-config.md`). A route may name `haiku` only when `ANTHROPIC_API_KEY` is set. Which models enrichment may use is switched in the console (Settings → Platform models), not here |
 | CORS (dev only) | `CORS_ORIGIN` — comma-separated; production uses nginx instead |
 
 Never commit a value. Never print `.env` into a chat.

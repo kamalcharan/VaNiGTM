@@ -1,0 +1,34 @@
+/*
+ * Settings → Platform models. Tokens only — no literal colours, so it follows
+ * the theme. Buttons, notes and the table come from model-provider.module.css.
+ */
+.wrap { overflow-x: auto; }
+.code { font-weight: 600; }
+.sub { display: block; font-family: var(--mono); font-size: var(--fs-xs); color: var(--tx3); margin-top: 2px; word-break: break-all; }
+.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rows th, .rows td { padding-right: 14px; vertical-align: top; }
+.rows th:last-child, .rows td:last-child { padding-right: 0; }
+.rows th.num, .rows td.num { text-align: right; }
+.cellPad { padding-right: 14px; }
+
+.route { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 4px; }
+.hop {
+  font-family: var(--mono); font-size: var(--fs-sm);
+  border: 1px solid var(--line2); border-radius: 6px; padding: 4px 9px; color: var(--tx);
+}
+.hopSkip { color: var(--tx3); text-decoration: line-through; border-style: dashed; }
+.arr { color: var(--tx3); font-size: var(--fs-sm); }
+.reasons { margin: 4px 0 0; padding-left: 18px; color: var(--tx2); font-size: var(--fs-sm); line-height: 1.6; }
+.routeHead { font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx3); margin-top: 6px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font: inherit; font-size: var(--fs-sm); padding: 5px 11px; border-radius: 20px;
+  border: 1px solid var(--line2); background: transparent; color: var(--tx2); cursor: pointer;
+}
+.chip[aria-pressed='true'] { border-color: var(--ac-line); color: var(--tx); background: var(--bg2); }
+.chip:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+
+.stop { border: 1px solid var(--bad); border-radius: 8px; padding: 10px 12px; color: var(--tx); font-size: var(--fs-ui); line-height: 1.6; }
+.confirm { border: 1px solid var(--line2); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+.result { font-size: var(--fs-sm); color: var(--tx2); margin-top: 4px; }

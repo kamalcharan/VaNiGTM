@@ -286,6 +286,7 @@ Each skill in `backend/src/skills/<name>/`:
 | pulse-skill | follow-ups + meeting workflow (funnel) | ✅ retargeted to contacts |
 | etl (src/etl) | import pipeline (staging works) | ⚠️ processing = 501 until prospect-skill |
 | pool-skill | common pool admin: sources, deliveries by state, each company's Complete checks, decisions, industry master (P1-B) | ✅ built 2026-10-02 — admin only |
+| model-router-skill | the admin's view of the model router: models, on/off switch per model for enrichment, quotas, routes as they run now, today by route, test a free model (P2-R) | ✅ built 2026-10-02 — admin only |
 
 ## nginx on api.vikuna.io — the whole API, not an allowlist (2026-09-30)
 
@@ -357,7 +358,7 @@ stay here, because they are worth not re-deciding:
   were first run on production by pasting SQL (2026-09-30) and so were NOT
   recorded; all three are idempotent, and the fix is to let the runner re-apply
   them (`docker exec vani-backend node dist/migrate.js`) — rehearsed on a copy
-  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); next free is **268** (P2 enrichment). The
+  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); **268–271 are reserved** for P2–P5 (P0 §6); **272 written 2026-10-02** (the model router: `gt_llm_calls`, `gt_llm_provider_switch` — S19/S20), **273** (the router counts tokens: `gt_llm_route_state()` gains tokens per minute/day); next free is **274**. The
   runner uses `DB_MIGRATE` when set (the owner, once the runtime is the app
   role), else `DB_PRIMARY`. **Two files
   share the number 249** (`249_ki_import_sessions_needs_review.sql` and
@@ -483,6 +484,40 @@ stay here, because they are worth not re-deciding:
       stay loud (user ruling, 2026-09-15). Enforced twice on purpose —
       a posture check in `callLLM` and distinct error codes, so widening
       the failover condition still cannot route BYOK onto our key.
+    - ✅ APPROVED (Charan, 2026-10-01 S12/S13; 2026-10-02 D-Q13–D-Q17):
+      **the model router** — `agent-core/llm.router.ts`. A ROUTED call
+      (`route` + `dataClass` on the call; enrichment) walks its route from
+      .env (`LLM_ROUTE_HIGH/MEDIUM/LOW`) and moves to the next provider on a
+      429, a timeout, an error, or an answer that fails validation. Allowed
+      because it is DECLARED (the route is in .env and drawn on Settings →
+      Platform models), VISIBLE (an `llm_route` step for every skip and every
+      move, a `gt_llm_calls` row for every call, `provider · model` on every
+      `model_call` step) and CONTROLLED (a provider is used only while the
+      admin has it switched on — no row = off; Haiku asks once more because it
+      is paid). Nothing left = `LLM_ROUTE_EXHAUSTED` with every provider's
+      reason; nothing is guessed. Routed calls do NOT use the failover above:
+      Haiku is simply the last rung when a route names it. Unrouted calls are
+      unchanged. Data gate: tenant data only to `no_training` providers;
+      people data never to an outside provider (DPDP review pending). BYOK
+      tenants never enter a route.
+
+## The model router (release 2, P2-R — built 2026-10-02)
+
+- `.env` says what a provider IS (`LLM_PROVIDERS`, `LLM_<CODE>_URL/KEY/MODEL/
+  CTX/RPM/DAILY/TPM/TPD/DATA_TERMS`, `LLM_ROUTE_*`, `LLM_ROUTER_COOLDOWN_SECONDS` —
+  `docs/llm-config.md`). `qwen` (= `LLM_PRIMARY_*`) and `haiku` (= the Claude
+  settings) are reserved codes, never declared twice.
+- Whether enrichment may USE one is `gt_llm_provider_switch` (append-only),
+  set on console Settings → Platform models (admin). **No row = off.**
+- Quotas are counted from `gt_llm_calls` across every process through
+  `gt_llm_route_state()` (SECURITY DEFINER — numbers per provider, never a
+  row). Both tables carry append-only triggers, because
+  `scripts/grant-vanigtm-app.sql` grants DML on ALL tables when re-run.
+- A prompt is never trimmed for a smaller window: that provider is skipped
+  and the skip says why. Builders that paste variable text should budget for
+  the smallest window in their route.
+- Nothing calls a route yet — the enrichment agent (P2-C) is the first
+  caller. Use `route` + `dataClass` + `step` + `purpose: 'enrichment'`.
 
 ## Running locally
 ```bash
