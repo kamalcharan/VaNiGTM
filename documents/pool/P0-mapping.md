@@ -315,6 +315,7 @@ its phase lands.
 | 268 | `268_pool_enrichment.sql` | P2 | `gt_enrichment_requests`, `_items`, `_usage`; FK from loads (renumbered 2026-10-01: P1's four come first so the runner applies them in order) |
 | 269 | `269_pool_company_signals.sql` | P4 | `gt_company_signals` |
 | 270 | `270_gt_cleanup_gap.sql` | P5 | `gt_cleanup_gap` |
+| 272 | `272_llm_router.sql` | P2-R (S19, S20 — approved 2026-10-02) | `gt_llm_calls`, `gt_llm_provider_switch`, `gt_llm_route_state()`, `gt_llm_usage_today()`, append-only triggers — **written** |
 | 271 | `271_ontology_pool_graph.sql` | before P3 (S16) | `gt_universe_kg_nodes` / `_edges`, `gt_concepts`, `gt_concept_aliases` — written only once S16 is approved |
 
 Each guarded and idempotent, applied with the runner on the VPS, `--status`
@@ -513,7 +514,7 @@ refresh run for the affected set (the person starts it).
 
 ---
 
-### 9.7 S19 — one usage row per model call (PENDING approval)
+### 9.7 S19 — one usage row per model call (APPROVED 2026-10-02, migration 272)
 
 Proposed `gt_llm_calls`: tenant_id (nullable for pool/admin work), run_id,
 step, route (`high/medium/low`), rung, provider code, model, data class,
@@ -525,7 +526,7 @@ S13's `gt_enrichment_usage` and the per-call telemetry table of Sprint 0a
 part 2 (C4) — one table, not three. Tenant-scoped RLS with the pool rows
 (tenant_id NULL) readable by admin only. Retention from `.env`.
 
-### 9.8 S20 — the admin's on/off switch per model (PENDING approval)
+### 9.8 S20 — the admin's on/off switch per model (APPROVED 2026-10-02, migration 272)
 
 Proposed `gt_llm_provider_switch`, append-only: provider_code (as declared in
 `LLM_PROVIDERS`, plus `qwen` and `haiku`), purpose (`enrichment` today),

@@ -58,6 +58,13 @@ const TEST_LLM_ENV: Record<string, string> = {
   RUNS_STREAM_POLL_MS: '100',
   RUNS_STREAM_HEARTBEAT_MS: '1000',
   RUNS_STREAM_MAX_SECONDS: '10',
+  // The model router (llm.router.config.ts): no outside providers by default;
+  // a test that needs one declares it.
+  LLM_PROVIDERS: '',
+  LLM_ROUTE_HIGH: 'qwen',
+  LLM_ROUTE_MEDIUM: 'qwen',
+  LLM_ROUTE_LOW: 'qwen',
+  LLM_ROUTER_COOLDOWN_SECONDS: '60',
 };
 for (const [k, v] of Object.entries(TEST_LLM_ENV)) {
   if (process.env[k] === undefined) process.env[k] = v;

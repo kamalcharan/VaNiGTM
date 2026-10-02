@@ -44,6 +44,8 @@ import { createTenantDb } from '../db';
 import { appendStep } from './agent.runner';
 import { resolveProvider, type ResolvedProvider } from './llm.provider';
 import { readLlmConfig } from './llm.config';
+import { callRouted, callRoutedValidated } from './llm.router';
+import type { RouteClass } from './llm.router.config';
 import { withLlmSlot, type LlmPriority, checkContext, contextError, noteObservedTokens, noteContextOverflow, noteObservedSpeed, tokensPerSec, estimateTokens, charsPerToken, platformContextTokens } from './llm.gate';
 
 const charsPerTokenLabel = (model?: string) => charsPerToken(model).toFixed(2);
@@ -101,6 +103,42 @@ export interface LLMCallOptions {
    * jobs pass 'batch'.
    */
   priority?: LlmPriority;
+  /**
+   * ROUTED call (POA D-Q13–D-Q17): how hard the step is. When set, the call is
+   * served by the model router (llm.router.ts) — the route's providers in
+   * order, skipping any the admin switched off, any whose terms forbid this
+   * data, any out of quota or cooling down — instead of the platform model
+   * with its failover. Unset = exactly the path every call took before.
+   */
+  route?: RouteClass;
+  /**
+   * What the prompt carries, for the data gate. Required with `route`:
+   * 'public_company' may go to any provider; 'tenant' only to providers that
+   * do not train on prompts; 'people' only to Vikuna's own model or Haiku.
+   */
+  dataClass?: 'public_company' | 'tenant' | 'people';
+  /** The agent's step name, recorded on every routed call (gt_llm_calls.step). */
+  step?: string;
+  /** What the admin's switch is keyed on. Only 'enrichment' exists today. */
+  purpose?: 'enrichment';
+}
+
+/**
+ * A failed call, classified. The message keeps the codes every caller and the
+ * failover branch already match on (LLM_VPS_*, LLM_BYOK_*); the fields are for
+ * the router, which must tell a 429 (cool down, move on) from everything else.
+ */
+export class LlmCallError extends Error {
+  constructor(
+    message: string,
+    public readonly kind: 'timeout' | 'unreachable' | 'http',
+    public readonly status?: number,
+    /** Seconds from a 429's Retry-After header, when the provider sent one. */
+    public readonly retryAfterS?: number,
+  ) {
+    super(message);
+    this.name = 'LlmCallError';
+  }
 }
 
 export interface LLMResult {
@@ -108,6 +146,9 @@ export interface LLMResult {
   inputTokens: number;
   outputTokens: number;
   source: 'vps' | 'escalation';
+  /** Which provider answered — 'platform', a BYOK code, or a router code. */
+  provider?: string;
+  model?: string;
   /**
    * The answer hit max_tokens and was cut off. A caller that parses the
    * answer (the extractor's <extract> tags, the drafter's JSON) MUST treat
@@ -259,7 +300,7 @@ async function recordTokenUsage(
 
 /* ── Primary: VPS LLM call ──────────────────────────────────────────────── */
 
-async function callEndpoint(
+export async function callEndpoint(
   options: LLMCallOptions,
   provider: ResolvedProvider,
 ): Promise<LLMResult> {
@@ -307,11 +348,15 @@ async function callEndpoint(
   // BYOK failures carry their own codes. Reusing LLM_VPS_* would make a
   // tenant's endpoint being down read as OUR VPS being down in the run feed,
   // and would trip the failover branch below, which must never fire for BYOK.
-  const unreachable = provider.posture === 'byok' ? 'LLM_BYOK_UNREACHABLE' : 'LLM_VPS_UNREACHABLE';
-  const errored     = provider.posture === 'byok' ? 'LLM_BYOK_ERROR'       : 'LLM_VPS_ERROR';
+  // A router rung has its own codes too: LLM_VPS_* would read as our VPS
+  // being down and match the failover branch, which is not how a route moves.
+  const unreachable = provider.posture === 'byok' ? 'LLM_BYOK_UNREACHABLE'
+    : provider.posture === 'external' ? 'LLM_PROVIDER_UNREACHABLE' : 'LLM_VPS_UNREACHABLE';
+  const errored     = provider.posture === 'byok' ? 'LLM_BYOK_ERROR'
+    : provider.posture === 'external' ? 'LLM_PROVIDER_ERROR' : 'LLM_VPS_ERROR';
   const who         = provider.posture === 'byok'
     ? `your ${provider.providerCode} endpoint`
-    : 'the platform LLM';
+    : provider.posture === 'external' ? `the ${provider.providerCode} provider` : 'the platform LLM';
 
   // ONE CALL AT A TIME against the platform endpoint by default. Five agents
   // sharing one small model server is what "Context size has been exceeded"
@@ -364,7 +409,8 @@ async function callEndpoint(
         + `+ ${maxTokens} answer tokens; the last measured speed of ${provider.model} was ${tps.toFixed(1)} tok/s. `
         + `Either the server is down, or this prompt is too large for it to read in time — lower LLM_CONTEXT_TOKENS to shrink every prompt, or raise LLM_PRIMARY_TIMEOUT_MS)`
       : '';
-    throw new Error(`${unreachable}: Cannot reach ${who} at ${provider.url} — ${String(err)}${detail}`);
+    throw new LlmCallError(`${unreachable}: Cannot reach ${who} at ${provider.url} — ${String(err)}${detail}`,
+      timedOut ? 'timeout' : 'unreachable');
   }
 
   if (!response.ok) {
@@ -384,8 +430,10 @@ async function callEndpoint(
         + `${charsPerTokenLabel(provider.model)} chars/token, so the next call is smaller. `
         + `If the estimate fits the configured window, LLM_CONTEXT_TOKENS is larger than the server's real window]`
       : '';
-    throw new Error(
+    const retryAfter = Number(response.headers?.get?.('retry-after'));
+    throw new LlmCallError(
       `${errored}: ${who} returned ${response.status} ${response.statusText} — ${detail.slice(0, 300)}${ours}`,
+      'http', response.status, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
     );
   }
 
@@ -415,12 +463,13 @@ async function callEndpoint(
   // question a BYOK tenant will ask, and the only place to answer it is here.
   await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'vps');
   await noteCallInRun(pool, options.runId, {
-    model: provider.model, posture: provider.posture, priority: options.priority ?? 'interactive',
+    model: provider.posture === 'external' ? `${provider.providerCode} · ${provider.model}` : provider.model,
+    posture: provider.posture, priority: options.priority ?? 'interactive',
     inputTokens, outputTokens, maxTokens, elapsedMs, queuedMs, truncated,
-    window: provider.posture === 'platform' ? platformContextTokens() : 0,
+    window: provider.posture === 'platform' ? platformContextTokens() : (provider.contextTokens ?? 0),
   });
 
-  return { text, inputTokens, outputTokens, source: 'vps', truncated };
+  return { text, inputTokens, outputTokens, source: 'vps', truncated, provider: provider.providerCode, model: provider.model };
 }
 
 /* ── The context report: one step per model call (AGENTS.md §4b) ─────────── */
@@ -462,7 +511,7 @@ export async function noteCallInRun(
 
 /* ── Failover: Claude API call ──────────────────────────────────────────── */
 
-async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
+export async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
   const { tenantId, pool, system, messages } = options;
   const maxTokens = options.maxTokens ?? readLlmConfig().defaultMaxTokens;
 
@@ -498,12 +547,14 @@ async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
 
   await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'escalation');
   await noteCallInRun(pool, options.runId, {
-    model, posture: 'escalation', priority: options.priority ?? 'interactive',
+    // A routed call to Haiku is a declared rung, not a failover.
+    model: options.route ? `haiku · ${model}` : model, posture: options.route ? 'external' : 'escalation',
+    priority: options.priority ?? 'interactive',
     inputTokens, outputTokens, maxTokens, elapsedMs: Date.now() - startedAt, queuedMs: 0,
     truncated: response.stop_reason === 'max_tokens', window: 0,
   });
 
-  return { text, inputTokens, outputTokens, source: 'escalation', truncated: response.stop_reason === 'max_tokens' };
+  return { text, inputTokens, outputTokens, source: 'escalation', truncated: response.stop_reason === 'max_tokens', provider: 'haiku', model };
 }
 
 /* ── Failover visibility — rule 12: never silent ────────────────────────── */
@@ -595,6 +646,7 @@ async function noteFailover(
  * paths; usage is recorded under 'vps' or 'escalation' respectively.
  */
 export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
+  if (options.route) return callRouted(options);
   const provider = await resolveProvider(options.pool, options.tenantId);
 
   // The cap exists because Vikuna pays. On BYOK the tenant pays, so it does
@@ -776,6 +828,23 @@ export async function callLLMValidated<T>(
   schema: z.ZodSchema<T>,
   jsonPath?: string,
 ): Promise<T> {
+  if (options.route) return callRoutedValidated(options, schema, jsonPath);
+  return validateOn(callLLM, options, schema, jsonPath);
+}
+
+/**
+ * The validated call against ONE way of calling: ask, parse, and if the answer
+ * does not parse, ask once more with a correction that names the problem.
+ * Exported for the router, which runs it per rung — a bad answer from one
+ * provider moves to the next rung, never quietly to the same question twice
+ * more (D-Q15).
+ */
+export async function validateOn<T>(
+  callOnce: (o: LLMCallOptions) => Promise<LLMResult>,
+  options: LLMCallOptions,
+  schema: z.ZodSchema<T>,
+  jsonPath?: string,
+): Promise<T> {
   const tryParse = (text: string): ParseResult<T> => {
     let raw = text.replace(/```json|```/g, '').trim();
     if (jsonPath) {
@@ -821,12 +890,12 @@ export async function callLLMValidated<T>(
         + 'still use its declared type: an empty array [] for lists, null for text. '
         + 'Never the string "not stated" where a list is expected.';
 
-  const first = await callLLM(options);
+  const first = await callOnce(options);
   const parsed = tryParse(first.text);
   if (parsed.ok) return parsed.value as T;
   const firstFailure = parsed.failure!;
 
-  const retry = await callLLM({
+  const retry = await callOnce({
     ...options,
     messages: [
       ...options.messages,

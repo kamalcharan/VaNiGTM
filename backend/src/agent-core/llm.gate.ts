@@ -126,14 +126,17 @@ function laneFor(url: string, limit: number): Lane {
  */
 export async function withLlmSlot<T>(
   url: string,
-  posture: 'platform' | 'byok',
+  posture: 'platform' | 'byok' | 'external',
   fn: () => Promise<T>,
   onWait?: (waitedMs: number, queueDepth: number, where: 'process' | 'shared') => void,
   /** When given, platform calls also take a cross-process slot (see header). */
   pool?: Pool,
   priority: LlmPriority = 'interactive',
 ): Promise<T> {
-  const lane = laneFor(url, posture === 'byok' ? cfg().byokMaxConcurrent : cfg().maxConcurrent);
+  // An external router rung (Groq, OpenRouter…) is someone else's server with
+  // its own rate limits, enforced by the router from gt_llm_calls; in-process
+  // it gets the same bound as a tenant's endpoint, and no shared slot.
+  const lane = laneFor(url, posture === 'platform' ? cfg().maxConcurrent : cfg().byokMaxConcurrent);
   const startedWaiting = Date.now();
 
   if (lane.running >= lane.limit) {
@@ -396,7 +399,7 @@ export interface ContextCheck {
  * turned off), which means "do not judge", not "yes".
  */
 export function checkContext(
-  posture: 'platform' | 'byok',
+  posture: 'platform' | 'byok' | 'external',
   text: string,
   maxTokens: number,
   model?: string,

@@ -26,6 +26,7 @@ import { readLlmConfig, assertLlmConfig } from './llm.config';
 import { readWorkerConfig, assertWorkerConfig } from './worker.config';
 import { assertEtlConfig } from '../etl/etl.config';
 import { assertPoolConfig } from '../etl/pool.config';
+import { assertRouterConfig } from './llm.router.config';
 import { runPoolResolveJob } from '../etl/pool-merge';
 import { runStageJob } from '../etl/stage-job';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
@@ -380,6 +381,7 @@ export function startWorker(pool: Pool, queue: EventQueue): void {
   assertWorkerConfig();
   assertEtlConfig('Worker');
   assertPoolConfig('Worker');
+  assertRouterConfig('Worker');
   console.log(
     `[Worker] Starting — polling every ${workerCfg().pollMs}ms, batch size ${workerCfg().batchSize}`,
   );

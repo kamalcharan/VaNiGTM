@@ -22,6 +22,7 @@ import { createEmbedRouter } from './vani/embed.routes';
 import { assertLlmConfig } from './agent-core/llm.config';
 import { assertEtlConfig } from './etl/etl.config';
 import { assertPoolConfig } from './etl/pool.config';
+import { assertRouterConfig } from './agent-core/llm.router.config';
 import { createRunStreamRouter, assertRunStreamConfig } from './runs/run-stream';
 import { verifyAccessToken } from './auth/token.service';
 import { resolveAuth } from './auth/auth-context';
@@ -69,6 +70,7 @@ async function main() {
   assertLlmConfig('VaNi-GTM');
   assertEtlConfig('VaNi-GTM');
   assertPoolConfig('VaNi-GTM');
+  assertRouterConfig('VaNi-GTM');
   assertRunStreamConfig('VaNi-GTM');
 
   // Initialize DB pool
