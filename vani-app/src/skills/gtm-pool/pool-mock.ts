@@ -4,6 +4,7 @@
  * real data on the live transport.
  */
 import type { CompanyResult, Delivery, IndustryNode, RowsResult, SourcesResult } from './usePool';
+import { ENRICH_MOCK_PROVENANCE, ENRICH_MOCK_READS, ENRICH_MOCK_WRITES } from './enrich-mock';
 
 const SOURCES: SourcesResult = {
   pool: { candidate: 2098, enriching: 0, held: 21, complete: 0, junk: 17 },
@@ -58,11 +59,16 @@ export const POOL_MOCK_READS: Record<string, (p: Record<string, unknown>) => unk
   'pool-skill.sources': () => SOURCES,
   'pool-skill.deliveries': () => ({ deliveries: DELIVERIES }),
   'pool-skill.delivery_rows': (p) => ({ ...ROWS, state: String(p.state ?? 'all'), rows: ['held', 'all'].includes(String(p.state ?? 'all')) ? ROWS.rows : [], total: ['held', 'all'].includes(String(p.state ?? 'all')) ? 1 : 0 }),
-  'pool-skill.company': () => COMPANY,
+  // The company after enrichment run #1 (release 4 prototype, tab 5).
+  'pool-skill.company': () => ({ ...COMPANY, company: { ...COMPANY.company!, name: 'Kavya Lab Instruments Pvt Ltd', lifecycle_state: 'complete', coverage_score: 56,
+    coverage_parts: { level: 'qualified' }, industry_name: 'Lab equipment', is_individual: false, domain_normalized: 'kavyalab.example', source_codes: ['ftcci', 'crawl', 'llm_pass'] },
+    provenance: ENRICH_MOCK_PROVENANCE }),
+  ...ENRICH_MOCK_READS,
   'pool-skill.industries': () => ({ industries: INDUSTRIES }),
 };
 export const POOL_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {
   'pool-skill.decide': (p) => ({ company: { id: String(p.company_id), lifecycle_state: p.decision === 'individual' || p.decision === 'junk' ? 'junk' : 'candidate' } }),
   'pool-skill.retire_delivery': (p) => ({ retired: Number(p.load_id), companies_retested: 2098 }),
   'pool-skill.resolve': () => ({ event_id: 'mock', queued: true }),
+  ...ENRICH_MOCK_WRITES,
 };

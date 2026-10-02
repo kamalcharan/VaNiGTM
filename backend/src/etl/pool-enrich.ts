@@ -254,7 +254,7 @@ export async function startEnrichRun(pool: Pool, tenantId: string, userId: strin
 
 /* ── Snapshots: levels, average, parts ─────────────────────────────────── */
 
-export interface Snapshot { levels: Record<Level, number>; avg: number; parts: Record<string, number>; n: number }
+export interface Snapshot { levels: Record<Level, number>; avg: number; parts: Record<string, number>; weights: Record<string, number>; n: number }
 
 export async function snapshot(db: Pool | PoolClient, ids: string[]): Promise<Snapshot> {
   const rows = ids.length ? (await db.query<{ level: string; score: number | null; parts: Record<string, [number, number]> | null }>(
@@ -262,15 +262,19 @@ export async function snapshot(db: Pool | PoolClient, ids: string[]): Promise<Sn
        FROM gt_universe_companies WHERE id = ANY($1::bigint[])`, [ids])).rows : [];
   const levels = Object.fromEntries(LEVELS.map((l) => [l, 0])) as Record<Level, number>;
   const parts: Record<string, number> = Object.fromEntries(PARTS.map((p) => [p, 0]));
+  const weights: Record<string, number> = Object.fromEntries(PARTS.map((p) => [p, 0]));
   let sum = 0;
   for (const r of rows) {
     levels[(LEVELS as readonly string[]).includes(r.level) ? r.level as Level : 'raw']++;
     sum += Number(r.score ?? 0);
-    for (const p of PARTS) parts[p] += Number(r.parts?.[p]?.[0] ?? 0);
+    for (const p of PARTS) {
+      parts[p] += Number(r.parts?.[p]?.[0] ?? 0);
+      weights[p] = Math.max(weights[p], Number(r.parts?.[p]?.[1] ?? 0));   // the part's weight in the profile that scored it
+    }
   }
   const n = rows.length || 1;
   for (const p of PARTS) parts[p] = Math.round((parts[p] / n) * 10) / 10;
-  return { levels, avg: Math.round(sum / n), parts, n: rows.length };
+  return { levels, avg: Math.round(sum / n), parts, weights, n: rows.length };
 }
 
 /* ── The run ───────────────────────────────────────────────────────────── */
