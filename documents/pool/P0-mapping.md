@@ -525,6 +525,16 @@ S13's `gt_enrichment_usage` and the per-call telemetry table of Sprint 0a
 part 2 (C4) — one table, not three. Tenant-scoped RLS with the pool rows
 (tenant_id NULL) readable by admin only. Retention from `.env`.
 
+### 9.8 S20 — the admin's on/off switch per model (PENDING approval)
+
+Proposed `gt_llm_provider_switch`, append-only: provider_code (as declared in
+`LLM_PROVIDERS`, plus `qwen` and `haiku`), purpose (`enrichment` today),
+enabled, changed_by, changed_at, note. The latest row per (provider, purpose)
+is the state; earlier rows are the history of who switched what. No row means
+**off**. Platform-level, no tenant_id; read and written by admin only. The
+router reads it on each enrichment call (cached briefly, invalidated on
+write), so a switch takes effect on the next call without a restart.
+
 ---
 
 ## 10. Budgets — tokens for a tenant, records for the admin (S15)

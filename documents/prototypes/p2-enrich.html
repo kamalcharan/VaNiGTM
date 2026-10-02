@@ -69,7 +69,7 @@ select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;font:13px 
 
 <div class="eyebrow">P2-A · release 1 prototype · for review · 02-Oct-2026</div>
 <h1>Upload, <em>enrich</em>, watch it qualify</h1>
-<p class="muted">Eight screens: what a tenant sees, what the admin sees, and the four Settings pages behind them. Data is illustrative unless tagged <span class="tag ok">measured</span>. Company names are invented. Blue boxes are questions for the review.</p>
+<p class="muted">Eight screens: what a tenant sees, what the admin sees, and the four Settings pages behind them. Data is illustrative unless tagged <span class="tag ok">measured</span>. Company names are invented. Notes marked <b>Decided</b> record the review of 02-Oct-2026.</p>
 
 <div class="tabs" role="tablist">
   <span class="group">Tenant</span>
@@ -154,7 +154,7 @@ select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;font:13px 
         <p class="muted" style="margin:0">Your data is a tenant list, so providers that may train on prompts are skipped (D-Q15).</p>
       </div>
       <div class="actions"><button class="btn primary" id="run">Confirm and run</button><button class="btn" data-go="t1">Cancel</button></div>
-      <div class="q"><b>For review:</b> about 3,500 tokens per company means the 100k day covers roughly 28 companies. Should enrichment on free providers count against the tenant's budget (D-Q15 says yes, every token), or only paid calls? And once matching exists, companies already enriched in the pool would cost the tenant nothing.</div>
+      <div class="note"><b>Decided 02-Oct-2026:</b> the token budget is the tenant's. Every token a tenant's run spends counts, whichever model served it, and the tenant waits or uses a top-up. The admin's pool runs are limited by record count, not tokens (tab 4).</div>
     </div>
 
     <div class="card">
@@ -219,7 +219,7 @@ select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;font:13px 
         <tr><td>Company, not individual</td><td>/about + name</td><td><span class="mono">groq:llama-3.3-70b</span> 0.97</td><td>02-Oct-2026</td></tr>
         <tr><td>Phone, Hyderabad, PIN</td><td>your upload</td><td><span class="mono">code</span></td><td>02-Oct-2026</td></tr>
       </table></div>
-      <div class="q"><b>For review:</b> in your copy the graph can also say how this company fits <i>your</i> offers (FITS → your ICP). That edge is yours alone and never enters the pool (rule 13). Show it here, or only under research?</div>
+      <div class="note"><b>Decided 02-Oct-2026:</b> after research, this page adds how the company fits <i>you</i>: your ICP, your TAM and your offers, as edges in your copy only. They never enter the pool (rule 13).</div>
     </div>
 
     <div class="card wide">
@@ -302,27 +302,28 @@ select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;font:13px 
   <div class="grid">
     <div class="card wide">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
-        <h2 style="margin:0">Providers</h2><span class="muted">Read from <span class="mono">.env</span>; this screen shows them and never edits them. Keys are never shown.</span>
+        <h2 style="margin:0">Providers</h2><span class="muted">Declared in <span class="mono">.env</span> (URL, key, model, window, quota, data terms; keys never shown). The admin switches each one on or off for enrichment here, and whatever is on runs.</span>
       </div>
       <div class="tablewrap" style="margin-top:8px"><table>
-        <tr><th>Code</th><th>Model</th><th class="num">Window</th><th>Data terms</th><th class="num">Today</th><th class="num">This minute</th><th>State</th></tr>
-        <tr><td><b>groq</b></td><td class="mono">llama-3.3-70b-versatile</td><td class="num">8,000</td><td><span class="tag warn">set from its terms</span></td><td class="num">812 / 1,000</td><td class="num">11 / 30</td><td><span class="tag ok">serving</span></td></tr>
-        <tr><td><b>openrouter</b></td><td class="mono">llama-3.3-70b-instruct:free</td><td class="num">8,000</td><td><span class="tag bad">may_train</span></td><td class="num">200 / 200</td><td class="num">—</td><td><span class="tag warn">quota spent · resets 05:30</span></td></tr>
-        <tr><td><b>qwen</b></td><td class="mono">platform · Vikuna VPS</td><td class="num">16,384</td><td><span class="tag ok">no_training</span></td><td class="num">146</td><td class="num">1 slot</td><td><span class="tag ok">serving</span></td></tr>
-        <tr><td><b>haiku</b></td><td class="mono">claude-haiku-4-5</td><td class="num">200,000</td><td><span class="tag ok">no_training</span></td><td class="num">38</td><td class="num">—</td><td><span class="tag ok">serving · paid</span></td></tr>
+        <tr><th>Code</th><th>Model</th><th class="num">Window</th><th>Data terms</th><th class="num">Today</th><th class="num">This minute</th><th>State</th><th>Enrichment</th></tr>
+        <tr><td><b>groq</b></td><td class="mono">llama-3.3-70b-versatile</td><td class="num">8,000</td><td><span class="tag warn">set from its terms</span></td><td class="num">812 / 1,000</td><td class="num">11 / 30</td><td><span class="tag ok">serving</span></td><td><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" class="sw" data-c="groq" checked> <span>on</span></label></td></tr>
+        <tr><td><b>openrouter</b></td><td class="mono">llama-3.3-70b-instruct:free</td><td class="num">8,000</td><td><span class="tag bad">may_train</span></td><td class="num">200 / 200</td><td class="num">—</td><td><span class="tag warn">quota spent · resets 05:30</span></td><td><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" class="sw" data-c="openrouter" checked> <span>on</span></label></td></tr>
+        <tr><td><b>qwen</b></td><td class="mono">platform · Vikuna VPS</td><td class="num">16,384</td><td><span class="tag ok">no_training</span></td><td class="num">146</td><td class="num">1 slot</td><td><span class="tag ok">serving</span></td><td><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" class="sw" data-c="qwen" checked> <span>on</span></label></td></tr>
+        <tr><td><b>haiku</b></td><td class="mono">claude-haiku-4-5</td><td class="num">200,000</td><td><span class="tag ok">no_training</span></td><td class="num">38</td><td class="num">—</td><td><span class="tag ok">serving · paid</span></td><td><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" class="sw" data-c="haiku" checked> <span>on</span></label></td></tr>
       </table></div>
     </div>
     <div class="card">
       <h2>Routes</h2>
       <p class="muted">A step declares how hard it is; the route says who serves it, in order.</p>
       <div class="eyebrow" style="margin-top:8px">HIGH · judgement (industry, offers, domain matches company)</div>
-      <div class="route"><span class="hop">groq</span><span class="arr">→</span><span class="hop">openrouter</span><span class="arr">→</span><span class="hop">qwen</span><span class="arr">→</span><span class="hop">haiku</span></div>
+      <div class="route" id="rHigh"></div>
       <div class="eyebrow" style="margin-top:12px">Same route, for a tenant's list</div>
-      <div class="route"><span class="hop">groq</span><span class="arr">→</span><span class="hop skip">openrouter</span><span class="arr">→</span><span class="hop">qwen</span><span class="arr">→</span><span class="hop">haiku</span></div>
-      <p class="muted">openrouter is skipped: tenant data never goes to a may_train provider.</p>
+      <div class="route" id="rTenant"></div>
+      <p class="muted">openrouter is always skipped here: tenant data never goes to a may_train provider.</p>
       <div class="eyebrow" style="margin-top:12px">MEDIUM · LOW · short extraction, normalising</div>
-      <div class="route"><span class="hop">qwen</span></div>
-      <div class="q"><b>For review:</b> haiku as the last rung of HIGH (shown) replaces the separate failover for routed calls. That's pending decision D-Q16(a).</div>
+      <div class="route" id="rLow"></div>
+      <div id="rWarn"></div>
+      <div class="note"><b>Decided 02-Oct-2026:</b> haiku is the last rung of HIGH, replacing the separate failover for routed calls. Switch haiku off and enrichment spends nothing on paid models. A switch-off applies to new calls; a call already running finishes. Every switch records who and when.</div>
     </div>
     <div class="card">
       <h2>Today, by route</h2>
@@ -358,7 +359,7 @@ select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;font:13px 
       </table></div>
       <div class="actions"><button class="btn primary" id="wsave">Save as v2 and re-score</button><button class="btn">Reset to platform default</button></div>
       <p class="muted" id="wmsg">Saving re-scores 3,239 pool and 553 Vikuna records. Every score names its version.</p>
-      <div class="q"><b>For review:</b> Contact points took freshness's 5 and is now 20 (D-Q4). Please confirm.</div>
+      <div class="note"><b>Confirmed 02-Oct-2026:</b> Contact points = 20 (it took freshness's 5).</div>
     </div>
     <div class="card">
       <h2>Levels</h2>
@@ -506,5 +507,14 @@ var ins=document.querySelectorAll('#wtab input');
 function sum(){var s=0;ins.forEach(function(x){s+=Number(x.value)||0});var e=document.getElementById('wsum');e.textContent=s;e.style.color=s===100?'':'var(--red)';
   document.getElementById('wsave').disabled=s!==100;document.getElementById('wmsg').textContent=s===100?'Saving re-scores 3,239 pool and 553 Vikuna records. Every score names its version.':'The weights must add up to 100 (now '+s+'). Nothing is saved until they do.';}
 ins.forEach(function(x){x.addEventListener('input',sum)});
+
+var ROUTES={rHigh:['groq','openrouter','qwen','haiku'],rTenant:['groq','openrouter','qwen','haiku'],rLow:['qwen']};
+function drawRoutes(){var on={};document.querySelectorAll('.sw').forEach(function(x){on[x.dataset.c]=x.checked;x.nextElementSibling.textContent=x.checked?'on':'off'});
+  var warn=[];Object.keys(ROUTES).forEach(function(id){var live=0;document.getElementById(id).innerHTML=ROUTES[id].map(function(c,i){
+    var skip=!on[c]||(id==='rTenant'&&c==='openrouter');if(!skip)live++;
+    return (i?'<span class="arr">→</span>':'')+'<span class="hop'+(skip?' skip':'')+'">'+c+(on[c]?'':' · off')+'</span>'}).join('');
+    if(!live)warn.push(id==='rHigh'?'HIGH':id==='rTenant'?'HIGH for tenant lists':'MEDIUM / LOW')});
+  document.getElementById('rWarn').innerHTML=warn.length?'<div class="decision" style="margin-top:10px"><h3>No model is on for '+warn.join(', ')+'</h3><p style="margin:0">Enrichment steps on this route stop and say so. They are not sent to a switched-off model, and nothing is guessed.</p></div>':'';}
+document.querySelectorAll('.sw').forEach(function(x){x.addEventListener('change',drawRoutes)});drawRoutes();
 </script>
 </body></html>
