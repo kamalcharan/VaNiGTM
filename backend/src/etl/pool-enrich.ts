@@ -337,7 +337,8 @@ export async function runPoolEnrichJob(pool: Pool, tenantId: string, payload: Re
 
   const rcfg = readRouterConfig();
   const state = await readRouteState(pool, 'enrichment');
-  const route = rcfg.routes.high.map((c) => `${c}${state[c]?.enabled ? '' : ' (off)'}`).join(' → ');
+  // Every model's switch, said both ways — an "on" left unsaid was read as off.
+  const route = rcfg.routes.high.map((c) => `${c} (${state[c]?.enabled ? (rcfg.providers[c]?.paid ? 'ON, paid' : 'ON') : 'off'})`).join(' → ');
   const lim = await recordLimit(pool);
   await appendStep(pool, runId, {
     step_name: 'plan',
