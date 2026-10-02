@@ -198,6 +198,12 @@ Everything after it runs agents in front of a person; build the frame once.
 - **0a:** SSE run stream (`/api/v1/runs/:id/stream`, nginx with buffering
   off); the run-event vocabulary (`AGENTS.md` §9a); risk classes declared in
   `SKILL.md` and checked by the harness; the approval token for R3/R4.
+  Added 2026-10-02: lane priority (interactive before batch, `AGENTS.md` §4
+  rule 5); `agent_name` + `parent_run_id` on runs (C1) and pathway
+  definitions in the backend (D5), so a pathway is one conductor run with
+  children (§10); a context report per call — window fill, trimmed, lane wait
+  — with the per-call telemetry table **pending approval** (C4, §4b);
+  run-step retention from `.env`.
 - **0b:** run-feed and decision-card components (a logged platform change —
   needs approval); `/runs/awaiting` and the failover queue moved onto them;
   runs carry inputs, gaps, confidence, cost (`AGENTS.md` §8a).
@@ -241,6 +247,10 @@ Everything after it runs agents in front of a person; build the frame once.
   concepts queued as `taxonomy_proposal`.
 - **Checkout:** agreement measured and recorded; abstentions visible, not
   guessed; the pool contract refuses Person/Team/KNOWS (tested).
+
+**Before the story agent (outreach, outside this plan):** embedding retrieval
+(D4) and cached purpose context (`AGENTS.md` §4c) — retrieval quality, not
+storage, is the memory bottleneck there.
 
 ### P4 — Government data and signals (parallel to P2–P3)
 - **A:** MCA RoC CSV keyed on CIN; Udyam OGD pull by state, resumable, rows
