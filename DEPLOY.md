@@ -1,5 +1,7 @@
 # DEPLOY.md — how VaNi reaches production
 
+> Commands only, for copy-paste: `deploy.txt` at the repo root. This page explains them.
+>
 > The one page for "where does it run and how do I ship it". CLAUDE.md points
 > here; `deploy/vani-main-vps/RUNBOOK.md` keeps the first-time setup history.
 > Everything below was checked on the Main VPS on **2026-09-30**. Anything
@@ -39,9 +41,8 @@ LLM: platform model from .env (Haiku today, api.anthropic.com); SearXNG from SEA
 ```
 
 One repo since 2026-10-01 (Track H): the console and the website build on
-Vercel from this repo's `vani-app/` and `web/`. Until the two Vercel projects
-are re-pointed (§7) they still build from `kamalcharan/vikunawebsite` — check
-the project's Git settings before trusting either line above.
+Vercel from this repo's `vani-app/` and `web/` (both projects re-pointed to
+VaNiGTM by Charan, 2026-10-01).
 
 ## 2. Folder structure that matters for deploys
 
@@ -53,7 +54,7 @@ VaNiGTM/
 │   ├── src/server.ts              API entry  → dist/server.js
 │   ├── src/agent-core/worker.ts   worker     → dist/agent-core/worker.js
 │   ├── src/migrate.ts             runner     → dist/migrate.js (baked into the image)
-│   ├── migrations/                001…258 — see §4
+│   ├── migrations/                001…267 — see §4
 │   └── .env.example               every variable the code reads
 ├── deploy/vani-main-vps/
 │   ├── deploy-vani.sh             THE redeploy command (§3)
@@ -63,11 +64,13 @@ VaNiGTM/
 │   ├── api.vikuna.io.conf         LIVE nginx site config (copied off the box)
 │   ├── vani-cors.inc              LIVE CORS include (.inc, never .conf)
 │   ├── smoke-test.sh              black-box HTTP checks, run from a laptop
+│   ├── checks/                    one read-only check per release (deploy.txt says which)
 │   ├── post-deploy-check.sql      RLS / schema checks
 │   ├── rls-two-tenant-test.sql    isolation test — run as the app role
 │   ├── verify-phase0-findings.sql read-only production facts
 │   └── RUNBOOK.md                 first-time setup, history
 ├── DEPLOY.md                      this file
+├── deploy.txt                     the commands only, plus the current release's extra steps
 └── CLAUDE.md                      working notebook — rulings, traps
 ```
 
@@ -174,9 +177,9 @@ prints which (`[Migrate] connecting as …`). Once the runtime is `vanigtm_app`
   CLAUDE.md → Migrations has the detail.
 - A migration is applied when `--status` says so, not when the commit that
   added it is deployed.
-- Highest = **259**, applied on production 2026-09-30 (Charan). Next new
-  file = **260**.
-  Two files share 249; never reuse a number.
+- Highest in the repo = **267** (264–267: common pool P1-A, 2026-10-02).
+  **263 is reserved** for the DPDP notice and is not in `migrations/`. Next new
+  file = **268**. Two files share 249; never reuse a number.
 - Schema changes need Charan's approval before the file is written.
 
 Read-only DB checks from the container (same connection the API uses):

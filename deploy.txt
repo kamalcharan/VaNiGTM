@@ -1,0 +1,54 @@
+# Run on the VPS over SSH (bash), not in PowerShell.
+
+# ---- 1. STANDARD DEPLOY ------------------------------------------------------
+cd /opt/vikuna/src/vanigtm
+git status --short
+git rev-parse HEAD > ~/vani-previous-sha
+git fetch origin && git checkout main && git pull origin main
+git log --oneline -1
+bash deploy/vani-main-vps/deploy-vani.sh
+
+# ---- 2. MIGRATIONS -----------------------------------------------------------
+docker exec vani-backend node dist/migrate.js --status
+docker exec vani-backend node dist/migrate.js
+docker exec vani-backend node dist/migrate.js --status | tail -3
+
+# ---- 3. NGINX (only when deploy/vani-main-vps/*.conf or *.inc changed) -------
+F=/opt/vikuna/docker/docker/config/nginx/conf.d
+cp "$F/api.vikuna.io.conf" "$F/api.vikuna.io.conf.bak-$(date +%Y%m%d-%H%M)"
+cp deploy/vani-main-vps/api.vikuna.io.conf deploy/vani-main-vps/vani-cors.inc "$F/"
+docker exec vikuna-nginx nginx -t && docker exec vikuna-nginx nginx -s reload
+
+# ---- 4. VERIFY ---------------------------------------------------------------
+docker ps --filter name=vani --format '{{.Names}}\t{{.Status}}'
+docker logs --tail 30 vani-backend
+docker logs --tail 30 vani-worker
+docker logs vani-worker 2>&1 | grep -c "Poll error"
+curl -s https://api.vikuna.io/health
+curl -s -X POST https://api.vikuna.io/api/v1/embed/boot -H 'Content-Type: application/json' -d '{}'
+
+# ---- 5. ROLLBACK -------------------------------------------------------------
+cd /opt/vikuna/src/vanigtm
+git checkout "$(cat ~/vani-previous-sha)"
+bash deploy/vani-main-vps/deploy-vani.sh
+git checkout main
+
+
+# =============================================================================
+# RELEASE 2026-10-02 — common pool P1-A (migrations 264-267, ETL settings)
+# Order: A, then 1, 2, 3, B, 4.
+# =============================================================================
+
+# ---- A. BEFORE step 1: add the three ETL settings (skips any already set) ----
+COMPOSE_DIR=$(docker inspect vani-backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}')
+cp "$COMPOSE_DIR/.env" "$COMPOSE_DIR/.env.bak-$(date +%Y%m%d-%H%M)"
+grep -q '^ETL_UPLOAD_MAX_BYTES=' "$COMPOSE_DIR/.env" || echo 'ETL_UPLOAD_MAX_BYTES=10485760' >> "$COMPOSE_DIR/.env"
+grep -q '^ETL_SYNC_MAX_BYTES='   "$COMPOSE_DIR/.env" || echo 'ETL_SYNC_MAX_BYTES=10485760'   >> "$COMPOSE_DIR/.env"
+grep -q '^ETL_STAGE_CHUNK_ROWS=' "$COMPOSE_DIR/.env" || echo 'ETL_STAGE_CHUNK_ROWS=1000'     >> "$COMPOSE_DIR/.env"
+grep -c '^ETL_' "$COMPOSE_DIR/.env"
+
+# ---- B. AFTER steps 1-3: release check (read-only, every line must say OK) ---
+cd /opt/vikuna/src/vanigtm
+docker logs vani-backend 2>&1 | grep "ETL:"
+docker logs vani-worker 2>&1 | grep "ETL:"
+docker exec -i vani-backend node - < deploy/vani-main-vps/checks/2026-10-02-p1a-pool.js
