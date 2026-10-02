@@ -228,6 +228,22 @@ d('the model router', () => {
     expect(await calls()).toEqual([]);
   });
 
+  it('272 without 273 (no token counts) is refused with the migration named, never counted as zero', async () => {
+    await turnOn('groq');
+    await ask();                                   // one call today, so the function returns a row
+    const def = (await pool.query(`SELECT pg_get_functiondef('gt_llm_route_state()'::regprocedure) AS d`)).rows[0].d;
+    await pool.query('DROP FUNCTION gt_llm_route_state()');
+    await pool.query(`CREATE FUNCTION gt_llm_route_state()
+      RETURNS TABLE (provider_code TEXT, calls_minute INTEGER, calls_today INTEGER, cooldown_until TIMESTAMPTZ)
+      LANGUAGE sql STABLE AS $$ SELECT provider_code, 1, 1, NULL::timestamptz FROM gt_llm_calls GROUP BY provider_code $$`);
+    try {
+      await expect(ask()).rejects.toThrow(/LLM_ROUTER_SCHEMA_OUTDATED.*migration 273/);
+    } finally {
+      await pool.query('DROP FUNCTION gt_llm_route_state()');
+      await pool.query(def);
+    }
+  });
+
   it('a routed call must say what its data is', async () => {
     await expect(ask({ dataClass: undefined })).rejects.toThrow(/LLM_ROUTE_NO_DATA_CLASS/);
   });

@@ -47,7 +47,8 @@ const CLASSES: Array<{ id: DataClass; label: string }> = [
   { id: 'people', label: 'People' },
 ];
 const ROUTE_LABEL = { high: 'High · judgement (industry, offers, does this domain belong to this company)', medium: 'Medium', low: 'Low · short extraction, normalising' };
-const n = (v: number) => v.toLocaleString('en-US');
+// A count the server could not give is shown as a dash, never crashes the screen.
+const n = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v.toLocaleString('en-US') : '—');
 
 export default function PlatformModels() {
   const { tenant } = useAuth();

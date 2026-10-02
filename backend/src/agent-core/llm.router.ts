@@ -152,6 +152,13 @@ export async function readRouteState(pool: Pool, purpose: Purpose): Promise<Reco
     tokens_minute: string; tokens_today: string;
   }>('SELECT * FROM gt_llm_route_state()');
   for (const r of st.rows) {
+    // 272 without 273: the function has no token counts. Counting them as
+    // zero would let every provider past its token limits without a word, so
+    // the router refuses instead — and says which migration is missing.
+    if (!('tokens_today' in r)) {
+      throw new Error('LLM_ROUTER_SCHEMA_OUTDATED: gt_llm_route_state() returns no token counts — migration 273 '
+        + '(273_llm_router_token_limits.sql) is not applied to this database. Apply it with the migration runner.');
+    }
     const cur = out[r.provider_code] ?? EMPTY;
     out[r.provider_code] = {
       ...cur, callsMinute: Number(r.calls_minute), callsToday: Number(r.calls_today), cooldownUntil: r.cooldown_until,
