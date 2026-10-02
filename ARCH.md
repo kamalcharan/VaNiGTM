@@ -198,7 +198,9 @@ on `gt_events`, so each is a schema decision.
   one embedding provider, from `.env`.
 - **Provenance per field:** agents write suggestions, humans approve, re-runs
   never touch an approved value [deviation → Track D1, schema pending].
-- The graph stays in Postgres. No second knowledge store.
+- The graph stays in Postgres. **One knowledge model, separate homes** (§7b):
+  the Brain's graph is the tenant's and is never shared or reused as the store
+  for knowledge about other companies.
 
 ## 7a. The common pool — one master, a copy per tenant (2026-10-01)
 
@@ -222,6 +224,47 @@ Decided with Charan; the plan is `documents/POA-2026-10-01-common-pool.md`.
 - **Suppression is shared, people are not:** unsubscribe per tenant; bounce,
   complaint and erasure platform-wide; addresses as a keyed hash
   (`vani_suppression`, 260).
+
+## 7b. Knowledge: one ontology, three homes (2026-10-02)
+
+Decided with Charan; the design is `documents/design-notes-ontology.md`.
+
+- **Tables for facts and events; the graph for meaning.** A typed value that
+  is checked, filtered or counted (domain, CIN, phone, a touch, a page view)
+  is a column or a row. What connects things — who offers what, which pain an
+  offering solves, who is hiring for which role — is a node or an edge.
+  **A conclusion points to its evidence**: a graph fact names the source rows,
+  load or run it came from; raw events stay in their spine and the graph holds
+  only the roll-up (a Signal), never the events.
+- **One ontology, versioned in code** (`agent-core/ontology.ts`, intended):
+  labels, relationships, the homes each may be written in, evidence and decay
+  rules. Every node and edge carries the version that wrote it.
+- **Three homes, the same format, never one table:**
+
+  | Home | About | Tables | Scope |
+  |---|---|---|---|
+  | Brain | the tenant itself | `gt_kg_nodes` / `gt_kg_edges` (exist) | tenant, RLS |
+  | Pool company graph | other companies (a mini Smart Profile) | `gt_universe_kg_nodes` / `_edges` (S16, pending approval) | no tenant, platform-written, RLS off by design like 195 |
+  | Account graph | what one tenant learned about one account | `gt_account_kg_nodes` / `_edges` (with P7) | tenant, RLS, keyed to `gt_prospects` |
+
+  The Brain table is never shared and never holds another company. The pool
+  graph is read, not copied, by a tenant who adopts a company; the tenant's
+  own learning goes to its account graph and never flows back (rule 13).
+  Person, Team and KNOWS live only in the account graph.
+- **Shared concepts make the homes connect.** `gt_concepts` (pain_point, role,
+  technology, initiative, use_case) and `gt_concept_aliases` (S16), governed
+  like the industry master: a model proposes, an admin approves. A node whose
+  name resolves carries `concept_id`; one that does not stays valid and is
+  queued for mapping. Industry stays in `gt_industries`.
+- **One site reader, two agents.** The Smart Profile and pool enrichment share
+  the reader (P2) and the extract primitive; each writes only its own home,
+  through its own extraction contract (AGENTS §5).
+- **Decay is part of a fact.** `observed_at` and `valid_until` on every pool
+  and account node/edge; an expired fact stays (history) but is not fresh
+  evidence (AGENTS §9b).
+- [deviation → only the Brain's tables exist, on the v0 vocabulary and without
+  the v1 columns (concept, evidence, confidence, validity, version). S16
+  comes before P3; the Brain gains the columns with provenance track D1.]
 
 ## 8. Migrations and schema
 

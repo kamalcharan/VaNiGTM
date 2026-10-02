@@ -35,6 +35,8 @@ export type EventType =
   // Track E1 — a visitor's website read before signup (src/funnel), owned by
   // the vikuna-funnel system tenant
   | 'FUNNEL_SITE_SUBMITTED'
+  // Common pool P1 — a large CSV staged by the worker in chunks (src/etl/stage-job.ts)
+  | 'IMPORT_STAGE_REQUESTED'
   | 'URL_SUBMITTED'
   | 'KNOWLEDGE_UPDATED'
   | 'FOLDER_CONNECTED'

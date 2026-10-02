@@ -15,6 +15,16 @@
 > be handheld by an agent"): §6a risk boundaries, §7 eval tiers, §8a
 > self-awareness, §8b the improvement loop, §9a agentic IX. AG-UI is NOT
 > adopted as a dependency; its event vocabulary is borrowed (§9a).
+>
+> Added 2026-10-02 (Charan: "enriched data will have ontologies for agents to
+> understand … without these the Story Teller cannot harness properly, and
+> outreach becomes a normal cold email"): the ontology and `account.context`
+> in §3, graph extraction contracts in §5, path signatures in §8b, §9b
+> evidence paths. Design: `documents/design-notes-ontology.md`.
+>
+> Added 2026-10-02 (discussion with Charan on the harness): §4 rule 5 lane
+> priority, §4a long runs, §4b observability, §4c memory and context, §10
+> agents / steps / capabilities, conductor runs and handover by reference.
 
 ## 1. What an agent is
 
@@ -65,6 +75,20 @@ Stated once, at registration; the platform reads it, never re-asks.
   **metering** and **audit** through the platform's append-only spines.
 - **Search** through `search.client.ts` (SearXNG), chosen by the agent's code,
   never by the model.
+- **The ontology**, from `agent-core/ontology.ts` (intended, with S16 — see
+  `documents/design-notes-ontology.md`): the labels, relationships, homes,
+  evidence and decay rules, and the version. An agent that writes or reads a
+  graph takes its vocabulary from there; it never invents a label or a
+  relationship name in a prompt or a parser. [deviation → the file does not
+  exist yet; the Brain's v0 vocabulary is spread across ingestion's prompt
+  and parser.]
+- **Knowledge about an account**, through `account.context(purpose)`
+  (intended, beside `brain.context`): it reads the pool company graph, the
+  tenant's account graph and the typed rows, and renders the best few
+  **evidence paths** (§9b) under a character budget, reporting what it
+  trimmed. Cross-home context is assembled THERE, never by an agent joining
+  the three homes itself. The Brain is still read only through
+  `brain.context`; the two are separate on purpose (ARCH §7b).
 
 ## 4. The harness — what a run is
 
@@ -96,12 +120,92 @@ Rules:
 5. **Concurrency:** batch size caps how many events are claimed; the LLM lane
    caps how many model calls are in flight (one per platform endpoint by
    default). These are different numbers and both matter.
+   **The lane has two priorities: interactive before batch.** A call made
+   while a person waits (Smart Profile, the console, a decision card) goes
+   ahead of a call from a batch job (enrichment, graph extraction); batch
+   calls stay FIFO among themselves. Without it, an admin enrichment run on
+   the platform model slows every tenant's onboarding with no error to show
+   for it. Batch model work defaults to its own rungs (free pools, Haiku
+   batch — different URLs, different lanes) and uses the platform lane only
+   as a declared rung. [deviation → the lane is one FIFO today; Sprint 0a.]
 6. **No tool-use loop.** One prompt in, one structured answer out, validated;
    the agent's code decides the next step. This is what keeps every decision
    point readable and testable. It is a choice, not a limitation, and stays
    until a case is made for a specific loop.
 7. **Cost is answerable per run**: model, posture (platform | byok), prompt and
    completion tokens [deviation → C1/C4].
+
+## 4a. Long runs — the ledger, init, progress, handoff
+
+Harnesses where the model is the loop need a feature list, a progress file,
+an init step and session notes, because the model forgets between context
+windows. Here the code is the loop (rule 6) and every model call is
+stateless, so each of those is **database state the agent's code reads**:
+
+| Need | Ours |
+|---|---|
+| What "done" means | per record, the test it must pass (e.g. `complete_checks`); per job, an **item ledger** — one row per record: required steps, done steps, the lane/model that did each, state (`gt_enrichment_items`, P2) |
+| Progress | run steps (readable, **one per chunk, never one per record**), item counts by state, and the checkpoint — a cursor into the ledger |
+| Init | on the person's **confirm**: the first step freezes the selection (a job never drifts mid-run), reserves budget, and states the blast radius. A resume opens with `restore` instead |
+| Handoff | crash → reclaim + checkpoint · budget exhausted → the run parks visibly ("1,240 of 2,000, continues tomorrow") and resumes · agent → person → `awaiting` + decision card · agent → agent → an event by reference (§10) |
+
+- **One run per request, not per record.** 50,000 runs would bury `/runs`;
+  the ledger carries per-record detail.
+- **A model call receives one item's state plus its context** and returns one
+  validated answer. Nothing the agent needs later lives only in a prompt.
+
+## 4b. Observability — three stores, one is the trace
+
+| Store | Holds | Read by |
+|---|---|---|
+| `gt_events` | **work to be done** — triggers; cross-tenant, RLS off by design | the worker; `/runs/events` for queue health |
+| `gt_agent_runs` | **what an agent did** — steps, decisions, approvals, cost, awaiting | a person: `/runs`, the pathway view, a job's screen |
+| `gt_touch_log` + the signals spine | **what happened in the world** — sends, replies, visits | campaign results, the governor, learning |
+
+- The bus is never the trace, and the trace is never the outcome record. A
+  send's `gt_touch_log` row carries its `run_id`, so any touch opens the run
+  that produced it and the evidence it used.
+- A large job's screen (the Enrich screen, P2-B) reads the ledger, not the
+  steps: done / abstained / held / junk, usage per lane, ₹ against the cap,
+  budget left today, an estimated finish.
+- **A campaign is many short runs, not one long one**: activation is an event;
+  each cadence tick (who is due → evidence paths → draft → approval → send
+  through `mayContact` and the governor) is a short run tagged with the
+  campaign (`gt_agent_runs.campaign_id` exists). The campaign page shows
+  results from the touch log and its runs.
+- Pool jobs run under Vikuna's tenant and are visible to its admin; a tenant
+  sees its own runs only.
+- **Per-call telemetry** (model, lane, wait, prompt/answer tokens, window
+  fill, what was trimmed, latency) goes to a table with C4 — recommended,
+  **pending approval**. Until then it is the worker's `[LLM]` log line.
+- **Run-step retention** is a rule, from `.env`: summaries kept, step detail
+  dropped after a period [not built].
+
+## 4c. Memory and context — where the limits are
+
+Long-term memory is Postgres and is not the constraint. These are:
+
+1. **The model's working memory.** The platform window is GPU memory split
+   across slots (16k × 1 slot today; more slots, less each). Every prompt is
+   sized by `charBudgetFor`; context is rendered for a PURPOSE
+   (`brain.context`, `account.context`), trimmed with a report, refused with
+   numbers when it cannot fit — never silently truncated.
+2. **Choosing what goes in** — the real memory bottleneck. Wrong selection
+   produces a generic answer while the right evidence sits unused. Embedding
+   retrieval (D4) lands **before the story agent**.
+3. **Stale memory**, worse than none: decay (`valid_until`), provenance on
+   every fact, expired facts never count as fresh evidence (ARCH §7b).
+4. **Throughput**: lane priority (§4 rule 5) and batch work on its own rungs.
+5. **Growth**: graph extraction on demand (segments, hotlists, adopted
+   companies), never the whole pool; run-step retention (§4b).
+
+Rendered purpose context may be **cached as an artefact** keyed by the
+versions of its inputs and re-rendered only when one changes [proposed with
+the story agent; a table, so a schema decision].
+
+**Never:** conversational memory that grows, agent-to-agent transcripts, a
+scratchpad an agent writes to itself, summaries of summaries, or a per-agent
+copy of shared knowledge.
 
 ## 5. Prompts and output contracts
 
@@ -138,6 +242,15 @@ Rules:
   instruction, declared as `LLM_PRIMARY_SYSTEM_SUFFIX` in .env (platform only).
 - **Prompt changes are versioned** (append-only, one active per scope) and run
   the fixtures before they go live (§7).
+- **Graph extraction has a contract per ontology version and per home.** It
+  names the labels and relationships that may be written in that home, with
+  fixtures for each relationship, and is built on the extract primitive (the
+  evidence must be verbatim in the source). The pool contract refuses
+  Person, Team and KNOWS; the account contract is the only one that may write
+  them. A node or edge carries the version that wrote it, its evidence,
+  confidence, method, model and `observed_at` / `valid_until`
+  (ontology note §7). A new label or relationship is a new ontology version:
+  fixtures, the eval run, and Charan's approval — never a prompt edit.
 
 ## 6. Failure, failover, and rule 12
 
@@ -301,6 +414,13 @@ online signals ─► weakest prompt/field ─► candidate version ─► offli
   those change by a human editing the declaration.
 - Every promotion is a new version with its eval report attached; rollback is
   choosing the previous version.
+- **For outreach, the unit of learning is the path signature** (§9b):
+  offering, pain concept, signal kind, angle, persona. Outcomes (reply,
+  meeting, ignore, unsubscribe) attach to the signature, and an aggregate by
+  segment ("pharma hiring QA after a trade show answers the compliance
+  angle") is a PROPOSAL a person approves, like every other change here.
+  Outcomes are tenant data: the learning stays inside the tenant and never
+  reaches the pool (rule 13).
 
 ## 9. Visibility — what every run owes a person
 
@@ -347,6 +467,38 @@ platform layer, used by every pathway — a logged platform change
 [deviation → none of the transport or components exist yet; the console polls
 in 7 places. Built as Sprint 0 of the common pool POA.]
 
+## 9b. Evidence paths — no path, no draft
+
+An outreach draft is only as specific as the path behind it. A **path** runs
+from one of the tenant's Offerings to a target account (and, with people data,
+a Person), crossing the three homes through shared concept ids:
+
+```
+Brain: Offering ─SOLVES→ PainPoint(c)
+Pool:  Company ─HIRING_FOR→ Role ; JobPosting ─MENTIONS→ PainPoint(c)
+Acct:  Person ─WORKS_AT(as Role)→ Company ; Role ─CARES_ABOUT→ PainPoint(c)
+```
+
+- Paths are ranked by evidence strength × freshness × fit to the ICP and
+  handed to the model by `account.context(purpose)` (§3) — the best few with
+  their evidence, not the graph.
+- Every claim in a draft cites a fact id it was given (the draft primitive's
+  `UNKNOWN_FACT_ID` / `NO_FACTS_CITED`, story-skill's R-S1).
+- **Guard: no evidence path, no outreach draft.** The agent says "not enough
+  basis on this account — research first" and proposes the research. It does
+  not write generic copy; a cold email with the company's name pasted in is
+  the failure this exists to prevent (rule 12: degraded output is never
+  passed off as the real thing).
+- **Story evidence coverage** — the share of drafts with at least one fresh
+  path — is an online eval of the Storyteller (§7), reported with its
+  acceptance rate.
+- Expired evidence (past `valid_until`, e.g. a job posting after ~90 days)
+  does not make a path fresh.
+
+[deviation → none of this exists: no pool or account graph, no concept
+catalog, no path assembly. Phasing in the ontology note §14; the guard lands
+with the first sender.]
+
 ## 10. Orchestration — the event bus, and pathways
 
 - **Sequencing is event chains.** An agent finishes by emitting the next event
@@ -362,6 +514,37 @@ in 7 places. Built as Sprint 0 of the common pool POA.]
   server's stop being two lists.
 - **Cross-agent orchestration stays event-shaped.** One agent's output is
   another's trigger; nothing calls another agent's code.
+- **Agent, step, or capability?** A separate AGENT has its own trigger, risk
+  class, budget, evals and failure mode. Otherwise it is a STEP inside an
+  agent, or a CAPABILITY several agents call. So: the site reader is a
+  capability (Smart Profile and enrichment both call it); the company's
+  social URLs are a step of the reader (footer links, code; reading people's
+  profiles is R5); ICP, enrichment, story and campaign are agents; posting to
+  social later is its own agent (R4). One agent doing everything is refused:
+  it outgrows the window, cannot be evaluated per job, loses everything on
+  one failure, and carries the highest risk class of anything it does.
+- **One harness for all of them.** Budget, approval, lane, failover, resume
+  and observability are enforced once.
+- **A pathway runs as a conductor run** with child runs linked by
+  `parent_run_id`; a person sees one pathway with its children — current
+  step, what each produced, what waits on them. **No LLM decides which agent
+  runs next**; the pathway definition does. [deviation → chains exist,
+  `parent_run_id` does not (C1); pathways are a UI stepper, not a backend
+  definition (D5).]
+- **What an agent has.** It READS shared knowledge through `brain.context` /
+  `account.context` and never copies it; it OWNS its declaration, contracts,
+  evals, artefacts and runs; the harness GIVES it execution, the model
+  client, approvals, decision cards and the run stream.
+- **Handover is by reference**, e.g.
+  `STORIES_APPROVED { segment_id, story_ids[], parent_run_id, approval_id }`.
+  The receiver re-reads the artefacts from their source (a person may have
+  edited them; the approved version counts) and its claim key makes the
+  handover idempotent.
+- **Chains run both ways, but backwards only as proposals.** Forward:
+  ICP → story → campaign. Backward ("this segment lacks evidence", outcomes by
+  path signature) reaches the earlier agent as a proposal a person decides —
+  an agent never rewrites another agent's output, and the ICP is a Brain
+  object no agent owns.
 - **Idempotency of a chain** is per claim (SKIP LOCKED + attempts) and per
   agent (a claim stamped inside the transaction that takes it). A chain that
   must not run twice states its claim key in `SKILL.md`.
@@ -403,3 +586,9 @@ in 7 places. Built as Sprint 0 of the common pool POA.]
 12. Runs report inputs, gaps, confidence (with abstain), cost and budget left
     (§8a); the decision card shows its track record.
 13. An eval report at all three tiers (§7) attached to the phase checkout.
+14. Writes a graph only through its home's extraction contract for the current
+    ontology version (§5); labels and relationships come from
+    `agent-core/ontology.ts`, never from the prompt.
+15. Reads an account through `account.context`, the tenant through
+    `brain.context`; an outreach agent refuses to draft without an evidence
+    path (§9b) and reports story evidence coverage.

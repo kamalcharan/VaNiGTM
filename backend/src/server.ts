@@ -20,6 +20,7 @@ import { createVaraRouter } from './vara/vara.routes';
 import { createLlmProviderRouter } from './vani/llm-provider.routes';
 import { createEmbedRouter } from './vani/embed.routes';
 import { assertLlmConfig } from './agent-core/llm.config';
+import { assertEtlConfig } from './etl/etl.config';
 import { verifyAccessToken } from './auth/token.service';
 import { resolveAuth } from './auth/auth-context';
 import { parseCorsOrigins } from './cors-origins';
@@ -64,6 +65,7 @@ async function main() {
   // missing one stops the API here, with the full list, rather than on the
   // first request that needs a model.
   assertLlmConfig('VaNi-GTM');
+  assertEtlConfig('VaNi-GTM');
 
   // Initialize DB pool
   const pool = getPool();

@@ -40,6 +40,10 @@ const TEST_LLM_ENV: Record<string, string> = {
   WORKER_HEARTBEAT_MS: '30000',
   WORKER_STALE_CLAIM_SECONDS: '120',
   WORKER_MAX_ATTEMPTS: '3',
+  // Import pipeline (etl.config.ts) — no defaults either.
+  ETL_UPLOAD_MAX_BYTES: '10485760',
+  ETL_SYNC_MAX_BYTES: '10485760',
+  ETL_STAGE_CHUNK_ROWS: '1000',
 };
 for (const [k, v] of Object.entries(TEST_LLM_ENV)) {
   if (process.env[k] === undefined) process.env[k] = v;

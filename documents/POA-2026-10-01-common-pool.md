@@ -35,7 +35,7 @@ Judgement calls Charan delegated ("I will leave the best judgement to you"):
 |---|---|---|
 | J1 | Email "risky" / "catch-all" never pass Exit for an automated send; allowed for a manual one-to-one email a person sends themselves | Automated sends to unverifiable addresses are how a sending domain loses its reputation, and every tenant on it suffers |
 | J2 | Role addresses (`info@`, `sales@`) pass Exit, tagged company-level: the story is written to the company, never as if to a named person; at most one role address per company per campaign | They are often the only reachable address, and they are not personal data in the same way |
-| J3 | Starting daily limits (in `.env`, none in code): code-only 50,000 records/day per tenant · crawl 2,000 · LLM 500 per tenant, 5,000 for the admin pool · paid providers by a monthly ₹ cap that is **unset = refused** | A forgotten cap must cost nothing, not everything |
+| J3 | **Superseded by Charan, 2026-10-01** (P0-mapping §10): a tenant is capped in TOKENS — 100,000/day and a monthly cap, covering all intelligence, every model lane; the admin enters the number of records per run. Code and crawl keep only infrastructure rate limits. Paid providers keep a monthly ₹ cap, unset = refused | the cap is a tier decision, shown to the tenant in records as well as tokens |
 | J4 | Coverage weights: response 25 · people 20 · verified contact points 15 · identity 10 · firmographics 10 · research 10 · signals 5 · freshness 5 | A reply is worth more than any amount of data; people are the asset (Charan, 26-Sep) |
 | J5 | Junk: admin marks and reverses on the pool; a tenant marks and reverses on its own copy, and can *report* a pool row, which goes to the admin's review queue | A tenant must not be able to hide a company from everyone else |
 | J6 | LinkedIn, X and Facebook are sources of **URLs and owned exports** (a company page linked from its own site, a URL the tenant gives us, Charan's LinkedIn data export) — never scraped content | Scraping breaks their terms, risks the tenant's account and has been litigated; the spec already puts scraping out of scope |
@@ -198,6 +198,12 @@ Everything after it runs agents in front of a person; build the frame once.
 - **0a:** SSE run stream (`/api/v1/runs/:id/stream`, nginx with buffering
   off); the run-event vocabulary (`AGENTS.md` §9a); risk classes declared in
   `SKILL.md` and checked by the harness; the approval token for R3/R4.
+  Added 2026-10-02: lane priority (interactive before batch, `AGENTS.md` §4
+  rule 5); `agent_name` + `parent_run_id` on runs (C1) and pathway
+  definitions in the backend (D5), so a pathway is one conductor run with
+  children (§10); a context report per call — window fill, trimmed, lane wait
+  — with the per-call telemetry table **pending approval** (C4, §4b);
+  run-step retention from `.env`.
 - **0b:** run-feed and decision-card components (a logged platform change —
   needs approval); `/runs/awaiting` and the failover queue moved onto them;
   runs carry inputs, gaps, confidence, cost (`AGENTS.md` §8a).
@@ -228,12 +234,23 @@ Everything after it runs agents in front of a person; build the frame once.
   limits hold under a forced overrun. **External UX audit #1.**
 
 ### P3 — Enrichment engine: the model
+- **Prerequisite: S16 approved** — ontology v1, the pool company graph and the
+  concept catalogs (`documents/design-notes-ontology.md`, P0 §7, migration 271).
 - **A:** Haiku classification (industry, B2B/B2C, is_individual, domain-name
   relation) with fixtures; `charBudgetFor`; `truncated` checked; offline eval.
+  `agent-core/ontology.ts` v1; the pool extraction contract with fixtures per
+  relationship; concept seeding from the tenants' Brains.
 - **B:** shadow eval on 100 hand-labelled FTCCI rows; online acceptance
   recorded; confidence and abstain on the decision card.
+- **B (graph):** pool graph extraction on demand (a segment, a hotlist, an
+  adopted company), inside the admin's records-per-run budget; unresolved
+  concepts queued as `taxonomy_proposal`.
 - **Checkout:** agreement measured and recorded; abstentions visible, not
-  guessed.
+  guessed; the pool contract refuses Person/Team/KNOWS (tested).
+
+**Before the story agent (outreach, outside this plan):** embedding retrieval
+(D4) and cached purpose context (`AGENTS.md` §4c) — retrieval quality, not
+storage, is the memory bottleneck there.
 
 ### P4 — Government data and signals (parallel to P2–P3)
 - **A:** MCA RoC CSV keyed on CIN; Udyam OGD pull by state, resumable, rows
@@ -285,8 +302,10 @@ Everything after it runs agents in front of a person; build the frame once.
 | Phase | State |
 |---|---|
 | Sprint 0 | not started |
-| P0 | next — waiting for "go P0" |
-| P1–P9 | not started |
+| P0 | **approved 2026-10-01** (S1–S15) |
+| P1 | sprint A in progress: migrations 264–267 ✓, prototype `documents/prototypes/p1-sources.html` ✓ (awaiting review), licence gate ✓, junk/held/restore on staged rows ✓, chunked CSV staging on the worker (`IMPORT_STAGE_REQUESTED`, resumable) ✓ — sprint B: the Complete test, the screens on real data, re-landing FTCCI/analytica/prospector, raising the upload limit once the console shows staging |
+| P2–P9 | not started |
+| Ontology v1 | design note written 2026-10-02; ARCH §7b and AGENTS §3/§5/§8b/§9b updated; **S16 awaiting approval** (needed before P3). Account graph with P7; evidence paths and the no-path-no-draft guard with the first sender |
 
 ## 5. Dependencies outside this plan
 
