@@ -14,6 +14,7 @@ import { GTM_MOCK_READS, GTM_MOCK_WRITES } from '@/skills/gtm-shell/mock';
 import { EDGE_MOCK_READS } from '@/skills/edge/mock';
 import { OUTREACH_MOCK_READS, OUTREACH_MOCK_WRITES } from '@/skills/settings/outreach-mock';
 import { OFFERS_MOCK_READS, OFFERS_MOCK_WRITES } from '@/skills/smart-profile/offers-mock';
+import { POOL_MOCK_READS, POOL_MOCK_WRITES } from '@/skills/gtm-pool/pool-mock';
 import { KNOWLEDGE_MOCK_READS, KNOWLEDGE_MOCK_WRITES } from '@/skills/smart-profile/knowledge-mock';
 import { FUNNEL_MOCK_READS, FUNNEL_MOCK_WRITES } from '@/site/funnel-mock';
 
@@ -347,6 +348,7 @@ export const CONSOLE_PREVIEW_READS: Record<string, (p: Record<string, unknown>) 
 const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   ...GTM_MOCK_READS,
   ...OFFERS_MOCK_READS,
+  ...POOL_MOCK_READS,
   ...KNOWLEDGE_MOCK_READS,
   ...FUNNEL_MOCK_READS,
   ...CONSOLE_PREVIEW_READS,
@@ -463,6 +465,7 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
 const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   ...GTM_MOCK_WRITES,
   ...OFFERS_MOCK_WRITES,
+  ...POOL_MOCK_WRITES,
   ...KNOWLEDGE_MOCK_WRITES,
   ...OUTREACH_MOCK_WRITES,
   ...FUNNEL_MOCK_WRITES,

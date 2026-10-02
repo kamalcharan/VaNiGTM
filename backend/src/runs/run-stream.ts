@@ -92,7 +92,7 @@ export function createRunStreamRouter(pool: Pool): Router {
     res.flushHeaders?.();
 
     let closed = false;
-    req.on('close', () => { closed = true; });
+    res.on('close', () => { closed = true; });   // the client went away (res, not req: a request's 'close' can fire once its body is read)
     const send = (event: string, data: unknown, id?: number) => {
       if (closed) return;
       res.write(`${id !== undefined ? `id: ${id}\n` : ''}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);

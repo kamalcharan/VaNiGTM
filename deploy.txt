@@ -36,20 +36,30 @@ git checkout main
 
 
 # =============================================================================
-# RELEASE 2026-10-02b — uploads are temporary (ETL_UPLOAD_DIR, shared folder)
-# No migrations. Order: A, then 1, B, 4.
+# RELEASE 2026-10-02b — uploads are temporary · common pool P1-B (companies +
+# the Complete test) · Sprint 0a part 1 (run stream, queue priority, risk classes)
+# No migrations. Order: A, then 1, 3, B, 4.
 # =============================================================================
 
 # ---- A. BEFORE step 1 --------------------------------------------------------
-# A1. The shared temp folder on the host.
+# A1. The shared temp folder for uploads.
 mkdir -p /opt/vikuna/data/vani-uploads
 
-# A2. Two settings (skips any already set).
+# A2. Settings: back up, add the new ones (skips any already set), change two.
 COMPOSE_DIR=$(docker inspect vani-backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}')
 cp "$COMPOSE_DIR/.env" "$COMPOSE_DIR/.env.bak-$(date +%Y%m%d-%H%M)"
-grep -q '^ETL_UPLOAD_DIR='            "$COMPOSE_DIR/.env" || echo 'ETL_UPLOAD_DIR=/app/uploads'       >> "$COMPOSE_DIR/.env"
-grep -q '^ETL_UPLOAD_TEMP_TTL_HOURS=' "$COMPOSE_DIR/.env" || echo 'ETL_UPLOAD_TEMP_TTL_HOURS=24'      >> "$COMPOSE_DIR/.env"
-grep -E '^ETL_UPLOAD_(DIR|TEMP_TTL_HOURS)=' "$COMPOSE_DIR/.env"
+grep -q '^ETL_UPLOAD_DIR='            "$COMPOSE_DIR/.env" || echo 'ETL_UPLOAD_DIR=/app/uploads'      >> "$COMPOSE_DIR/.env"
+grep -q '^ETL_UPLOAD_TEMP_TTL_HOURS=' "$COMPOSE_DIR/.env" || echo 'ETL_UPLOAD_TEMP_TTL_HOURS=24'     >> "$COMPOSE_DIR/.env"
+grep -q '^MATCH_LINK_MIN='            "$COMPOSE_DIR/.env" || echo 'MATCH_LINK_MIN=0.86'              >> "$COMPOSE_DIR/.env"
+grep -q '^MATCH_REVIEW_MIN='          "$COMPOSE_DIR/.env" || echo 'MATCH_REVIEW_MIN=0.75'            >> "$COMPOSE_DIR/.env"
+grep -q '^MATCH_DOMAIN_NAME_MIN='     "$COMPOSE_DIR/.env" || echo 'MATCH_DOMAIN_NAME_MIN=0.90'       >> "$COMPOSE_DIR/.env"
+grep -q '^POOL_RESOLVE_CHUNK_ROWS='   "$COMPOSE_DIR/.env" || echo 'POOL_RESOLVE_CHUNK_ROWS=1000'     >> "$COMPOSE_DIR/.env"
+grep -q '^RUNS_STREAM_POLL_MS='       "$COMPOSE_DIR/.env" || echo 'RUNS_STREAM_POLL_MS=1000'         >> "$COMPOSE_DIR/.env"
+grep -q '^RUNS_STREAM_HEARTBEAT_MS='  "$COMPOSE_DIR/.env" || echo 'RUNS_STREAM_HEARTBEAT_MS=15000'   >> "$COMPOSE_DIR/.env"
+grep -q '^RUNS_STREAM_MAX_SECONDS='   "$COMPOSE_DIR/.env" || echo 'RUNS_STREAM_MAX_SECONDS=600'      >> "$COMPOSE_DIR/.env"
+sed -i 's/^ETL_UPLOAD_MAX_BYTES=.*/ETL_UPLOAD_MAX_BYTES=209715200/' "$COMPOSE_DIR/.env"
+sed -i 's/^ETL_SYNC_MAX_BYTES=.*/ETL_SYNC_MAX_BYTES=5242880/'       "$COMPOSE_DIR/.env"
+grep -E '^(ETL_|MATCH_|POOL_|RUNS_STREAM_)' "$COMPOSE_DIR/.env"
 
 # A3. Mount the folder in BOTH services of the live compose file.
 #     This prints the file(s) compose uses:
@@ -60,10 +70,18 @@ docker inspect vani-backend --format '{{index .Config.Labels "com.docker.compose
 #     (if a service already has volumes:, add only the "- ..." line to it).
 #     The repo's deploy/vani-main-vps/docker-compose.vani.yml shows the result.
 
-# ---- B. AFTER step 1: both containers see the same folder --------------------
-docker inspect vani-backend --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
-docker inspect vani-worker  --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
-docker logs vani-backend 2>&1 | grep "ETL:" | tail -1
-docker logs vani-worker  2>&1 | grep "ETL:" | tail -1
-# Then in the console: import a small CSV, stage it; afterwards this is empty:
+# ---- then steps 1 (deploy) and 3 (nginx: the run stream's new location) -----
+
+# ---- B. AFTER steps 1 and 3 --------------------------------------------------
+cd /opt/vikuna/src/vanigtm
+docker exec -i vani-backend node - < deploy/vani-main-vps/checks/2026-10-02b-p1b.js
+docker exec -i vani-worker  node - < deploy/vani-main-vps/checks/2026-10-02b-p1b.js
+docker logs vani-backend 2>&1 | grep -E "Pool matching:|Run stream:" | tail -2
+docker logs vani-worker  2>&1 | grep -E "Pool matching:" | tail -1
+# The stream route reaches the API (expect 401, the API's answer — not nginx's 404 page):
+curl -s -o /dev/null -w "%{http_code}\n" https://api.vikuna.io/api/v1/runs/1/stream
+# Then in the console (vani.vikuna.io → GTM → Common pool):
+#   "Match unmatched rows now" → Runs shows "Pool matching" working → the
+#   counts fill in; open a delivery and a company to see its eight checks.
+# And: import a small CSV and stage it; afterwards this folder is empty:
 ls -la /opt/vikuna/data/vani-uploads

@@ -59,3 +59,37 @@
 .fk { font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx3); padding-top: 3px; font-weight: var(--fw-label); }
 .fv { color: var(--tx); word-break: break-word; }
 .dSecTitle { font-family: var(--font-label); font-size: var(--fs-xs); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx3); margin-top: 6px; font-weight: var(--fw-label); }
+
+/* ── P1-B: the pool as companies, their states and the Complete test ── */
+.crumbs { display: flex; gap: 10px; flex-wrap: wrap; font-size: var(--fs-ui); }
+.crumbs a { color: var(--ac); text-decoration: none; }
+.crumbOn { color: var(--tx); font-weight: 600; }
+.statOk .statV { color: var(--ok); } .statBad .statV { color: var(--bad); }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tab { font: inherit; font-size: var(--fs-ui); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line2); background: var(--bg2); color: var(--tx2); cursor: pointer; }
+.tabOn { background: var(--surf); color: var(--tx); border-color: var(--ac); }
+.tabN { font-family: var(--mono); font-size: var(--fs-sm); color: var(--tx3); margin-left: 6px; }
+.states { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.progress { font-family: var(--mono); font-size: var(--fs-sm); color: var(--tx2); }
+.open { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.checks { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 4px; }
+.check { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; font-size: var(--fs-ui); }
+.checkDot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--tx3); }
+.dotPass { background: var(--ok); } .dotFail { background: var(--bad); } .dotPending { background: var(--warn); } .dotReview { background: var(--bad); } .dotNa { background: var(--line2); }
+.checkLabel { color: var(--tx); } .checkDetail { color: var(--tx3); font-size: var(--fs-sm); text-align: right; }
+.decision { border: 1px solid var(--ac); border-radius: 10px; padding: 12px 14px; margin: 12px 0; background: var(--bg2); }
+.decisionQ { font-family: var(--display); font-weight: 700; font-size: var(--fs-xl); margin: 0 0 4px; }
+.decisionWhy { font-size: var(--fs-ui); color: var(--tx2); line-height: 1.55; margin: 0 0 10px; }
+.decisionRow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { font: inherit; font-size: var(--fs-ui); padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line2); background: var(--surf); color: var(--tx); cursor: pointer; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btnPrimary { border-color: var(--ac); color: var(--ac); }
+.btnBad { border-color: var(--bad); color: var(--bad); }
+.decisionNote { font-size: var(--fs-sm); color: var(--tx3); margin-top: 8px; }
+.tree { display: flex; flex-direction: column; gap: 6px; }
+.node { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 14px; align-items: baseline; padding: 9px 12px; background: var(--bg2); border: 1px solid var(--line); border-radius: 8px; }
+.nodeChild { margin-left: 24px; background: var(--surf); }
+.nodeName { font-weight: 600; }
+.nodeNic { font-family: var(--mono); font-size: var(--fs-sm); color: var(--tx3); margin-left: 8px; font-weight: 400; }
+.nodeN { font-family: var(--mono); font-size: var(--fs-sm); color: var(--tx2); }
+.confirm { border: 1px solid var(--bad); border-radius: 8px; padding: 10px 12px; margin-top: 8px; font-size: var(--fs-ui); color: var(--tx2); background: var(--bg2); }

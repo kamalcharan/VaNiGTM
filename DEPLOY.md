@@ -318,6 +318,9 @@ Restore on failure: copy the `.bak-…` file back and reload.
   own `CORS_ORIGIN` is unset in production and prints
   `http://localhost:3000` at startup — harmless. A new console origin is a
   line in the map.
+- **The run stream** (`/api/v1/runs/<id>/stream`, server-sent events) has
+  its own regex location with `proxy_buffering off` and a 900s read timeout;
+  without it nginx would hold every step until the run ended.
 - **Timeouts:** 300s on LLM-bearing paths (`ingest`, `profile`, `vani`, the
   catch-all); 30s default otherwise.
 - CORS check, from anywhere:
@@ -358,6 +361,8 @@ touches most:
 | Embeddings (checked at call time) | `EMBED_URL`, `EMBED_MODEL`, `EMBED_TIMEOUT_MS`, `EMBED_DIM`, `EMBED_KEY` |
 | Integrations | `SEARXNG_URL`, `N8N_RENDER_URL`, `N8N_RENDER_SECRET`, `N8N_ENV`, `GDRIVE_*` |
 | Import pipeline — **required**, checked at API and worker start | `ETL_UPLOAD_MAX_BYTES` (nginx's `/api/v1/etl/upload` location must allow as much — 200m today), `ETL_SYNC_MAX_BYTES`, `ETL_STAGE_CHUNK_ROWS`, `ETL_UPLOAD_DIR` (`/app/uploads` — the host folder below, mounted in BOTH containers), `ETL_UPLOAD_TEMP_TTL_HOURS` |
+| Common pool matching — **required**, checked at API and worker start | `MATCH_LINK_MIN`, `MATCH_REVIEW_MIN`, `MATCH_DOMAIN_NAME_MIN`, `POOL_RESOLVE_CHUNK_ROWS` |
+| Run stream — **required**, checked at API start | `RUNS_STREAM_POLL_MS`, `RUNS_STREAM_HEARTBEAT_MS`, `RUNS_STREAM_MAX_SECONDS` (nginx's stream location reads for 900s, so keep this below it) |
 | CORS (dev only) | `CORS_ORIGIN` — comma-separated; production uses nginx instead |
 
 Never commit a value. Never print `.env` into a chat.

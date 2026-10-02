@@ -25,9 +25,10 @@ import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import { formatDate } from '@/lib/format';
 import u from '@/platform/shell/ui.module.css';
 import s from '../pool.module.css';
+import { useQueryClient } from '@tanstack/react-query';
 import { ImportWizard } from '@/skills/gtm-audience/screens/ImportWizard';
-import { useLoads } from '@/skills/gtm-audience/useImport';
-import type { RecordRow, SourceLoad } from '@/skills/gtm-audience/mock-data';
+import type { RecordRow } from '@/skills/gtm-audience/mock-data';
+import { PoolCrumbs, PoolDeliveries, PoolSources, PoolStates } from './PoolParts';
 
 /** A pool row: what the view carries beyond the list columns. */
 interface PoolRecord extends RecordRow {
@@ -64,7 +65,7 @@ function Detail({ r, onClose }: { r: PoolRecord; onClose: () => void }) {
           <Field k="Completeness" v={`${pct(r.completeness)} of tracked fields populated`} /><Field k="Validity" v={`${pct(r.validity)} of populated fields passed validation`} />
           <Field k="As of" v={r.source_as_of ? formatDate(r.source_as_of) : 'undated — scored as less fresh'} />
           <Field k="Shares an identifier" v={r.duplicate ? 'yes — flagged, not merged' : null} />
-          <Field k="Merged into a company" v={r.resolved ? 'yes' : 'no — the merge engine is not built'} />
+          <Field k="Matched to a company" v={r.resolved ? 'yes — open its delivery to see the company and its checks' : 'not yet — "Match unmatched rows now" on the pool page'} />
           {r.tags.length > 0 && <Field k="Tags" v={r.tags.map((t) => t.label).join(', ')} />}
         </div>
         <div className={s.dSecTitle}>The row as the file had it</div>
@@ -93,7 +94,7 @@ export default function CommonPool() {
     ...(domain ? { domain } : {}), ...(dupes ? { only_duplicates: true } : {}),
   }), [search, industry, tagId, domain, dupes, page]);
   const q = useSkillQuery<PoolList>('prospect-skill', 'get_records', params, { enabled: isAdmin });
-  const loads = useLoads('pool', isAdmin);
+  const qc = useQueryClient();
   const stats = q.data?.data?.stats;
   const facets = q.data?.data?.facets;
   const total = q.data?.data?.total ?? 0;
@@ -118,55 +119,41 @@ export default function CommonPool() {
       <div>
         <div className={u.eyebrow}>// GTM · SHARED DATA · ADMIN</div>
         <h1 className={u.h1}>Common pool</h1>
+        <PoolCrumbs on="pool" />
         <p className={u.lede}>The directory data every tenant draws on. Fed here by importing a delivery as a common-pool dataset; read by tenants through the hot list, never written by them.</p>
       </div>
 
-      <div className={s.note}>These are the <b>source rows</b> each delivery contributed — one per record per delivery, kept exactly as the file supplied them. The merged company record they resolve into is not built yet, so nothing here has been combined across deliveries: rows sharing an identifier are flagged for review, never silently merged. Coverage is what the deliveries cover — a Telangana chamber directory is a strong hook for a Hyderabad tenant and close to worthless for anyone else, which is why every row carries its delivery and date.</div>
-
-      {stats && (
-        <div className={s.stats}>
-          <div className={s.stat}><div className={s.statK}>Source rows</div><div className={s.statV}>{stats.total.toLocaleString()}</div></div>
-          <div className={`${s.stat} ${s.statInfo}`}><div className={s.statK}>Deliveries</div><div className={s.statV}>{stats.loads.toLocaleString()}</div></div>
-          <div className={s.stat}><div className={s.statK}>Avg completeness</div><div className={s.statV}>{pct(stats.avg_completeness)}</div></div>
-          <div className={`${s.stat} ${Number(stats.avg_validity ?? 1) < 1 ? s.statWarn : ''}`}><div className={s.statK}>Avg validity</div><div className={s.statV}>{pct(stats.avg_validity)}</div></div>
-          <div className={`${s.stat} ${stats.duplicates ? s.statWarn : ''}`}><div className={s.statK}>Share an identifier</div><div className={s.statV}>{stats.duplicates.toLocaleString()}</div></div>
-          <div className={s.stat}><div className={s.statK}>Merged into a company</div><div className={s.statV}>{stats.resolved.toLocaleString()}</div></div>
-        </div>
-      )}
-      {stats && stats.with_rejected_fields > 0 && (
-        <div className={s.note}><b>{stats.with_rejected_fields.toLocaleString()}</b> {stats.with_rejected_fields === 1 ? 'record has' : 'records have'} a field that was populated but failed validation — a spreadsheet-mangled range, or a literal like <code>undefined+</code>. Rejected at import rather than stored, which is why validity sits below 100%.</div>
-      )}
+      <PoolStates />
+      <PoolSources />
 
       <section className={s.section}>
         <header className={s.secHead}>
-          <div><h2 className={s.secTitle}>Deliveries</h2><p className={s.secWhat}>One row per dataset delivered — the unit of provenance, freshness and rollback. Retiring a bad delivery is an operator action on the API for now; it is not offered here until the record view honours it.</p></div>
+          <div><h2 className={s.secTitle}>Deliveries</h2><p className={s.secWhat}>One row per dataset delivered — the unit of provenance, freshness and rollback — with its companies counted by state. Open one to see why each company is or is not in the pool. Retiring a delivery keeps its rows and re-tests every company it fed.</p></div>
           <button type="button" className={s.quiet} onClick={() => setAdding((v) => !v)}>{adding ? 'Close' : '+ Add a delivery'}</button>
         </header>
         <div className={s.secBody}>
-          {adding && <div style={{ marginBottom: 16 }}><ImportWizard relationship="dataset" fixedRelationship landedHref="/agents/gtm/pool" onLanded={() => { void loads.refetch(); void q.refetch(); }} /></div>}
-          <DataBoundary query={loads} label="deliveries" skeleton={<SkeletonRows rows={2} lines={2} />} isEmpty={(d) => !d?.loads?.length}
-            empty="The pool has had no deliveries yet. Add one above — a directory imported as a common-pool dataset — and its rows land here for every tenant.">
-            {(d) => (
-              <div className={s.loads}>
-                {d.loads.map((l: SourceLoad) => (
-                  <div key={l.id} className={s.load}>
-                    <div>
-                      <div className={s.loadName}>{l.label}</div>
-                      <div className={s.loadMeta}><span>{l.source_name}{l.source_kind.toLowerCase() !== l.source_name.toLowerCase() ? ` · ${l.source_kind}` : ''}</span>{l.region && <span>· {l.region}</span>}<span>· {l.as_of ? `as of ${formatDate(l.as_of)}` : 'undated'}</span><span>· loaded {formatDate(l.loaded_at)}</span>{l.status !== 'active' && <span className={`${u.tag} ${u.tagBad}`}>{l.status}</span>}</div>
-                    </div>
-                    <div className={s.loadQ}>{l.records.toLocaleString()} live {l.records === 1 ? 'row' : 'rows'}{l.row_count != null ? ` of ${l.row_count.toLocaleString()} delivered` : ''} · {l.with_domain.toLocaleString()} with a domain · completeness {pct(l.avg_completeness)} · validity {pct(l.avg_validity)}{l.duplicates ? ` · ${l.duplicates} share an identifier` : ''}</div>
-                    <div className={s.loadTags}>{l.tags.map((t) => <span key={t.id} className={`${u.tag} ${t.is_platform ? u.tagOk : u.tagDim}`}>{t.label}</span>)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </DataBoundary>
+          {adding && <div style={{ marginBottom: 16 }}><ImportWizard relationship="dataset" fixedRelationship landedHref="/agents/gtm/pool" onLanded={() => { void qc.invalidateQueries({ queryKey: ['skill', 'pool-skill'] }); void q.refetch(); }} /></div>}
+          <PoolDeliveries />
         </div>
       </section>
 
       <section className={s.section}>
-        <header className={s.secHead}><div><h2 className={s.secTitle}>Source rows</h2><p className={s.secWhat}>Every row, with its quality as two numbers — fill rate and validity, never blended — and the delivery it came from.</p></div></header>
+        <header className={s.secHead}><div><h2 className={s.secTitle}>Source rows</h2><p className={s.secWhat}>The raw layer under the companies: every row each delivery contributed, kept exactly as the file supplied it, with its quality as two numbers — fill rate and validity, never blended. A company is derived from these rows field by field; the row itself is never edited.</p></div></header>
         <div className={s.secBody}>
+          {stats && (
+            <div className={s.stats}>
+              <div className={s.stat}><div className={s.statK}>Source rows</div><div className={s.statV}>{stats.total.toLocaleString()}</div></div>
+              <div className={`${s.stat} ${s.statInfo}`}><div className={s.statK}>Deliveries</div><div className={s.statV}>{stats.loads.toLocaleString()}</div></div>
+              <div className={s.stat}><div className={s.statK}>Avg completeness</div><div className={s.statV}>{pct(stats.avg_completeness)}</div></div>
+              <div className={`${s.stat} ${Number(stats.avg_validity ?? 1) < 1 ? s.statWarn : ''}`}><div className={s.statK}>Avg validity</div><div className={s.statV}>{pct(stats.avg_validity)}</div></div>
+              <div className={`${s.stat} ${stats.duplicates ? s.statWarn : ''}`}><div className={s.statK}>Share an identifier</div><div className={s.statV}>{stats.duplicates.toLocaleString()}</div></div>
+              <div className={s.stat}><div className={s.statK}>Matched to a company</div><div className={s.statV}>{stats.resolved.toLocaleString()}</div></div>
+            </div>
+          )}
+          {stats && stats.with_rejected_fields > 0 && (
+            <div className={s.note}><b>{stats.with_rejected_fields.toLocaleString()}</b> {stats.with_rejected_fields === 1 ? 'record has' : 'records have'} a field that was populated but failed validation — a spreadsheet-mangled range, or a literal like <code>undefined+</code>. Rejected at import rather than stored, which is why validity sits below 100%.</div>
+          )}
+          <div style={{ height: 12 }} />
           <div className={s.tools}>
             <input className={s.search} type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, domain, city, industry…" />
             <button type="button" className={`${u.tag} ${dupes ? u.tagWarn : u.tagDim}`} aria-pressed={dupes} onClick={() => setDupes((v) => !v)} style={{ cursor: 'pointer', font: 'inherit', fontSize: 'var(--fs-sm)' }}>Possible duplicates{stats?.duplicates ? ` (${stats.duplicates})` : ''}</button>

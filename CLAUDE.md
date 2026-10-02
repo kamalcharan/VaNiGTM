@@ -285,6 +285,7 @@ Each skill in `backend/src/skills/<name>/`:
 | campaign / channel / sequence / icp / gtm-analytics | campaign suite | ✅ live |
 | pulse-skill | follow-ups + meeting workflow (funnel) | ✅ retargeted to contacts |
 | etl (src/etl) | import pipeline (staging works) | ⚠️ processing = 501 until prospect-skill |
+| pool-skill | common pool admin: sources, deliveries by state, each company's Complete checks, decisions, industry master (P1-B) | ✅ built 2026-10-02 — admin only |
 
 ## nginx on api.vikuna.io — the whole API, not an allowlist (2026-09-30)
 
@@ -782,7 +783,7 @@ Commands for 1 are in `deploy.txt`; DEPLOY.md explains them. Tick here when done
    shown, but rotation is cheap. Update the compose `.env` and every laptop
    `.env` that holds them, then recreate both containers.
 5. [x] **Confirm 262 is recorded** — DONE 2026-10-02 (release check).
-6. [ ] **Uploaded files are not persisted** (found 2026-10-02). **CODE BUILT 2026-10-02** (`src/etl/temp-files.ts`, 6 tests): awaiting the VPS release in `deploy.txt` (host folder, two `.env` lines, the mount in both services). Multer writes
+6. [ ] **Uploaded files are not persisted** (found 2026-10-02). **CODE BUILT 2026-10-02** (`src/etl/temp-files.ts`, 6 tests): ships in release 2026-10-02b in `deploy.txt` (host folder, `.env` lines, the mount in both services) together with P1-B and Sprint 0a part 1. Multer writes
    to `/app/uploads` inside `vani-backend` with no volume: every deploy deletes
    the originals (staged rows survive — `raw_data` is in Postgres), and
    `vani-worker` has its own empty `/app/uploads`, so the large-CSV worker path

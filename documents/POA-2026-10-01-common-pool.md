@@ -301,9 +301,9 @@ storage, is the memory bottleneck there.
 
 | Phase | State |
 |---|---|
-| Sprint 0 | not started |
+| Sprint 0 | **0a part 1 built 2026-10-02** (lane priority, runs named by agent, per-call `model_call` step, run stream + nginx, risk classes declared and enforced for skill functions); 0a part 2 (parent_run_id, approvals, telemetry table) awaits the schema decision; 0b (components) awaits the platform-change decision |
 | P0 | **approved 2026-10-01** (S1–S15) |
-| P1 | sprint A in progress: migrations 264–267 ✓, prototype `documents/prototypes/p1-sources.html` ✓ (awaiting review), licence gate ✓, junk/held/restore on staged rows ✓, chunked CSV staging on the worker (`IMPORT_STAGE_REQUESTED`, resumable) ✓ — sprint B: the Complete test, the screens on real data, re-landing FTCCI/analytica/prospector, raising the upload limit once the console shows staging |
+| P1 | sprint A **deployed 2026-10-02** · sprint B **built 2026-10-02**: the match ladder, survivorship and the Complete test (`pool-merge.ts`, `complete-test.ts`, worker job `POOL_RESOLVE_REQUESTED`); decisions (company/individual, not a duplicate, junk, restore, retire a delivery); `pool-skill`; the console's pool by state, sources, a delivery's rows with each company's eight checks, the industry master; large CSVs followed live; uploads raised to 200 MB; uploads temporary. Checkout: on the deployed stack after the release in `deploy.txt` |
 | P2–P9 | not started |
 | Ontology v1 | design note written 2026-10-02; ARCH §7b and AGENTS §3/§5/§8b/§9b updated; **S16 awaiting approval** (needed before P3). Account graph with P7; evidence paths and the no-path-no-draft guard with the first sender |
 
