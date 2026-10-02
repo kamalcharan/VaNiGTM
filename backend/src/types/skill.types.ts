@@ -73,12 +73,22 @@ export interface SkillParam {
 }
 
 /** Parsed function definition from SKILL.md */
+/**
+ * AGENTS.md §6a. R0 read/derive · R1 the tenant's own data, reversibly · R2
+ * shared platform data · R3 spends money · R4 reaches a person or the public ·
+ * R5 forbidden. Declared per function in SKILL.md (`- Risk: R2`); the
+ * executor enforces it (skill-registry.ts), not the function's good intentions.
+ */
+export type RiskClass = 'R0' | 'R1' | 'R2' | 'R3' | 'R4' | 'R5';
+
 export interface SkillFunctionDef {
   name: string;
   description: string;
   parameters: SkillParam[];
   returns: string;
   default_recipe?: string;
+  /** Undefined = not yet classified (a ratchet test keeps that list from growing). */
+  risk?: RiskClass;
 }
 
 /** Parsed skill definition from SKILL.md frontmatter + body */

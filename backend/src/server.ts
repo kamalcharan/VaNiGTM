@@ -21,6 +21,8 @@ import { createLlmProviderRouter } from './vani/llm-provider.routes';
 import { createEmbedRouter } from './vani/embed.routes';
 import { assertLlmConfig } from './agent-core/llm.config';
 import { assertEtlConfig } from './etl/etl.config';
+import { assertPoolConfig } from './etl/pool.config';
+import { createRunStreamRouter, assertRunStreamConfig } from './runs/run-stream';
 import { verifyAccessToken } from './auth/token.service';
 import { resolveAuth } from './auth/auth-context';
 import { parseCorsOrigins } from './cors-origins';
@@ -66,6 +68,8 @@ async function main() {
   // first request that needs a model.
   assertLlmConfig('VaNi-GTM');
   assertEtlConfig('VaNi-GTM');
+  assertPoolConfig('VaNi-GTM');
+  assertRunStreamConfig('VaNi-GTM');
 
   // Initialize DB pool
   const pool = getPool();
@@ -97,6 +101,8 @@ async function main() {
   // platform session exists. See vara/vara.routes.ts for the threat model.
   app.use('/api/v1/vara', createVaraRouter(pool));
   app.use('/api/v1/llm-provider', createLlmProviderRouter(pool));
+  // One run, live (AGENTS.md §9a). nginx serves /api/v1/runs/<id>/stream unbuffered.
+  app.use('/api/v1/runs', createRunStreamRouter(pool));
   // Platform-owned embed channel. Mounted at /api/v1 because it owns two paths
   // in that namespace — /tenant/embed (workspace) and /embed/boot (public) —
   // and belongs to no agent.

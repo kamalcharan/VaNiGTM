@@ -1,1 +1,1 @@
-export { SkillContext, SkillDb, QueryResult, SkillHandler, SkillResult, SkillDefinition, SkillFunctionDef, SkillParam, SubscriptionTier, VaniProductConfig } from '../types/skill.types';
+export { SkillContext, SkillDb, QueryResult, SkillHandler, SkillResult, SkillDefinition, SkillFunctionDef, SkillParam, SubscriptionTier, VaniProductConfig, RiskClass } from '../types/skill.types';

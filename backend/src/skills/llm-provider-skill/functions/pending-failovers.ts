@@ -17,6 +17,7 @@
  */
 
 import { SkillContext } from '../../../shared/types';
+import { agentOf } from '../../../agent-core/agent-names';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -76,7 +77,7 @@ export async function pending_failovers(
     const superseded = !!source && x.superseded === true;
     return {
       run_id: String(x.id),
-      agent: x.agent_name,
+      agent: agentOf(x.agent_name),
       asked_at: x.started_at,
       failover_model: x.awaiting_input?.failover_model ?? null,
       // The server's own words, never a paraphrase. "Cannot reach" and "context

@@ -36,6 +36,7 @@ export const HANDLED_EVENT_TYPES: readonly EventType[] = [
   'DOMAIN_ENRICHMENT_REQUESTED',
   'FUNNEL_SITE_SUBMITTED',
   'IMPORT_STAGE_REQUESTED',
+  'POOL_RESOLVE_REQUESTED',
 ];
 
 export function isHandledEvent(type: string): boolean {

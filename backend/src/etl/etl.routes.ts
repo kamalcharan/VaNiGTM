@@ -780,6 +780,13 @@ export function createEtlRouter(pool: Pool): Router {
       );
 
       const result = await landSession(pool, session, auth);
+      // A common-pool delivery has landed as per-source rows; matching them
+      // into companies and running the Complete test is a worker job
+      // (pool-merge.ts) — it may be hundreds of thousands of rows.
+      if (session.destination === 'universe_companies' && session.load_id) {
+        await emitEvent(pool, auth.tenant_id, 'POOL_RESOLVE_REQUESTED', 'human',
+          { load_id: Number(session.load_id) }, `load-${session.load_id}`);
+      }
       res.json(result);
     } catch (err: any) {
       console.error('[ETL:process]', err);

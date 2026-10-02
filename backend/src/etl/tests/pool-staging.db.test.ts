@@ -14,6 +14,7 @@ import { Pool } from 'pg';
 import * as XLSX from 'xlsx';
 import { createEtlRouter } from '../etl.routes';
 import { runStageJob } from '../stage-job';
+import { runPoolResolveJob } from '../pool-merge';
 import * as staging from '../staging';
 import { register } from '../../auth/auth.service';
 import { signAccessToken } from '../../auth/token.service';
@@ -329,5 +330,29 @@ d('uploads are temporary files (Charan, 2026-10-02)', () => {
     expect(fs.existsSync(a.file_path)).toBe(false);
     expect(a.processing_status).toBe('failed');
     expect(fs.existsSync((await fileRow(inFlight.body.file_id)).file_path)).toBe(true);
+  });
+});
+
+d('a pool delivery becomes companies (P1-B, end to end)', () => {
+  it('landing queues the resolve job; the job matches, derives and runs the Complete test', async () => {
+    process.env.ETL_SYNC_MAX_BYTES = '10485760';
+    const up = await upload(admin.token, 'pool-e2e.csv', csvOf(4));
+    const sid = (await session(up.body.file_id)).body.session_id;
+    const landed = await call('POST', `/sessions/${sid}/process`, {});
+    expect(landed.status).toBe(200);
+    const loadId = (await pool.query('SELECT load_id FROM ki_import_sessions WHERE id = $1', [sid])).rows[0].load_id;
+    const ev = await pool.query(`SELECT payload FROM gt_events WHERE event_type = 'POOL_RESOLVE_REQUESTED' AND source_id = $1`, [`load-${loadId}`]);
+    expect(ev.rows).toHaveLength(1);
+    expect(Number(ev.rows[0].payload.load_id)).toBe(Number(loadId));
+
+    const out = await runPoolResolveJob(pool, admin.tenant, ev.rows[0].payload, 0);
+    expect(out.resolved).toBe(5);
+    const states = await pool.query(
+      `SELECT c.lifecycle_state, c.complete_checks->>'passed' AS passed FROM gt_universe_company_sources s
+         JOIN gt_universe_companies c ON c.id = s.company_id WHERE s.load_id = $1`, [loadId]);
+    expect(states.rows).toHaveLength(5);
+    // A directory row with a name, a domain, a city and a PIN — but no mapped
+    // industry and no type decided — waits for enrichment; nothing is admitted.
+    expect(new Set(states.rows.map((r) => r.lifecycle_state))).toEqual(new Set(['candidate']));
   });
 });
