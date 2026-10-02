@@ -26,6 +26,7 @@ const AGENT_OF: Record<string, string> = {
   IMPORT_STAGE_REQUESTED: 'Import staging',
   POOL_RESOLVE_REQUESTED: 'Pool matching',
   SCORE_REFRESH_REQUESTED: 'Scoring',
+  POOL_ENRICH_REQUESTED: 'Pool enrichment',
   'brand-skill.generate': 'Brand',
   'profile-skill.offers.generate': 'Offer drafting',
 };

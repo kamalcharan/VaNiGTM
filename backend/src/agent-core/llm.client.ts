@@ -121,6 +121,19 @@ export interface LLMCallOptions {
   step?: string;
   /** What the admin's switch is keyed on. Only 'enrichment' exists today. */
   purpose?: 'enrichment';
+  /**
+   * 'pool' — common-pool work (release 4, D-Q19 E4): metered by RECORDS a day
+   * and in gt_llm_calls, never checked against or recorded to any tenant's
+   * tokens, and never routed to a tenant's own key. Routed public-company
+   * calls only; the router refuses anything else.
+   */
+  meter?: 'pool';
+  /**
+   * Called with the provider and model that served each successful routed
+   * call, so the caller can name the model behind every value it writes
+   * (a validated call returns only the parsed answer).
+   */
+  onServed?: (served: { provider: string; model: string; inputTokens: number; outputTokens: number }) => void;
 }
 
 /**
@@ -329,7 +342,8 @@ export async function callEndpoint(
 
   // Recorded on both postures. Metering is not capping: what a run cost is a
   // question a BYOK tenant will ask, and the only place to answer it is here.
-  await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'vps', { posture: provider.posture, runId: options.runId });
+  // Pool work is not any tenant's spend (D-Q19 E4); gt_llm_calls meters it.
+  if (options.meter !== 'pool') await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'vps', { posture: provider.posture, runId: options.runId });
   await noteCallInRun(pool, options.runId, {
     model: provider.posture === 'external' ? `${provider.providerCode} · ${provider.model}` : provider.model,
     posture: provider.posture, priority: options.priority ?? 'interactive',
@@ -455,7 +469,7 @@ export async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
   const inputTokens  = response.usage.input_tokens;
   const outputTokens = response.usage.output_tokens;
 
-  await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'escalation', { posture: 'platform', runId: options.runId });
+  if (options.meter !== 'pool') await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'escalation', { posture: 'platform', runId: options.runId });
   await noteCallInRun(pool, options.runId, {
     // A routed call to Haiku is a declared rung, not a failover.
     model: options.route ? `haiku · ${model}` : model, posture: options.route ? 'external' : 'escalation',
