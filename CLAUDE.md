@@ -255,7 +255,14 @@ deploy/vani-main-vps/ — the VPS: compose, Dockerfile, deploy script, nginx
   the same vocabulary space. Phase 2 adds `cluster_embedding vector(768)`
   + HNSW on this table for Lead Finder matching — same table, vocabulary
   first, vectors second.
-- **Token budget:** per tenant per day in `gt_tenant_context`.
+- **Token budget (release 3, D-Q12):** every platform tenant is capped —
+  `TENANT_DAILY_TOKEN_LIMIT` a UTC day and `TENANT_MONTHLY_TOKEN_LIMIT` a month
+  from .env (no defaults), or the tenant's own LOWER limit in
+  `gt_tenant_context`. Once the base is used, calls draw from the top-up ledger
+  `gt_token_topups` (+ added by an admin, − drawn); both spent → refused before
+  sending, with the numbers. The limits never rise. BYOK: metered, never capped.
+  `agent-core/token.budget.ts`. This REVERSES migration 217's "NULL = no cap"
+  deliberately.
 - **Resume-from-failure:** `gt_agent_runs.checkpoint` JSONB (migration 191)
   + `saveCheckpoint`/`loadCheckpoint`/`findResumableRun` in agent.runner.
   Long agents checkpoint after each expensive stage and write KG results
@@ -287,6 +294,8 @@ Each skill in `backend/src/skills/<name>/`:
 | etl (src/etl) | import pipeline (staging works) | ⚠️ processing = 501 until prospect-skill |
 | pool-skill | common pool admin: sources, deliveries by state, each company's Complete checks, decisions, industry master (P1-B) | ✅ built 2026-10-02 — admin only |
 | model-router-skill | the admin's view of the model router: models, on/off switch per model for enrichment, quotas, routes as they run now, today by route, test a free model (P2-R) | ✅ built 2026-10-02 — admin only |
+| scoring | the 0–100 readiness score: profile in force (own or platform default), save own part weights, platform default (admin), companies by level, re-score, explain one company (release 3) | ✅ built 2026-10-02 |
+| tenant | the tenant context (one read: status, tokens, agents, model, scoring, brand, industry, consent, domains), token budget, top-ups (admin) (release 3) | ✅ built 2026-10-02 |
 
 ## nginx on api.vikuna.io — the whole API, not an allowlist (2026-09-30)
 
@@ -358,7 +367,7 @@ stay here, because they are worth not re-deciding:
   were first run on production by pasting SQL (2026-09-30) and so were NOT
   recorded; all three are idempotent, and the fix is to let the runner re-apply
   them (`docker exec vani-backend node dist/migrate.js`) — rehearsed on a copy
-  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); **268–271 are reserved** for P2–P5 (P0 §6); **272 written 2026-10-02** (the model router: `gt_llm_calls`, `gt_llm_provider_switch` — S19/S20), **273** (the router counts tokens: `gt_llm_route_state()` gains tokens per minute/day); next free is **274**. The
+  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); **268–271 are reserved** for P2–P5 (P0 §6); **272 written 2026-10-02** (the model router: `gt_llm_calls`, `gt_llm_provider_switch` — S19/S20), **273** (the router counts tokens: `gt_llm_route_state()` gains tokens per minute/day), **274** (scoring profiles S17 + token top-ups S18); next free is **275**. The
   runner uses `DB_MIGRATE` when set (the owner, once the runtime is the app
   role), else `DB_PRIMARY`. **Two files
   share the number 249** (`249_ki_import_sessions_needs_review.sql` and

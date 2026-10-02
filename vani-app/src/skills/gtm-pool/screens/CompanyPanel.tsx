@@ -14,6 +14,7 @@ import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import { formatDate } from '@/lib/format';
 import u from '@/platform/shell/ui.module.css';
 import s from '../pool.module.css';
+import { ScoreCard } from '@/skills/scoring/ScoreCard';
 import { JUNK_REASONS, useCompany, usePoolWrites, type Check, type CompanyResult } from '../usePool';
 
 const DOT: Record<Check['status'], string> = { pass: s.dotPass, fail: s.dotFail, pending: s.dotPending, review: s.dotReview, na: s.dotNa };
@@ -93,6 +94,8 @@ export function CompanyPanel({ companyId, onClose }: { companyId: string; onClos
                   <button type="button" className={s.dClose} onClick={onClose} aria-label="Close">×</button>
                 </div>
                 <span className={`${u.tag} ${STATE_TAG[c.lifecycle_state] ?? u.tagDim}`}>{STATE_LABEL[c.lifecycle_state] ?? c.lifecycle_state}</span>
+
+                <div style={{ marginTop: 12 }}><ScoreCard companyId={c.id} /></div>
 
                 <div className={s.dSecTitle}>Why it is {c.lifecycle_state === 'complete' ? '' : 'not '}in the pool · Complete {c.complete_checks?.passed ?? '?'} of {c.complete_checks?.total ?? 8}</div>
                 {checks.length ? (

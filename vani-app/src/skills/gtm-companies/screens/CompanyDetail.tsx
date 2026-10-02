@@ -14,6 +14,7 @@ import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import u from '@/platform/shell/ui.module.css';
 import s from '@/skills/gtm-people/people.module.css';
 import type { Brief } from '@/skills/gtm-audience/mock-data';
+import { ScoreCard } from '@/skills/scoring/ScoreCard';
 
 interface Prospect {
   id: number | string; ref: string; name: string; domain_normalized: string | null; website: string | null; email: string | null; phone: string | null;
@@ -51,6 +52,8 @@ export default function CompanyDetail({ refId }: { refId: string }) {
               <div className={u.eyebrow}>// GTM · COMPANY · {p.ref}</div>
               <h1 className={u.h1}>{p.name}</h1>
               <p className={u.lede}>{[p.industry_raw, p.employees_band, [p.city, p.state_code].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || 'Nothing beyond the name yet.'}</p>
+
+              <div style={{ marginBottom: 16 }}><ScoreCard prospectId={p.id} /></div>
 
               <div className={s.two}>
                 <section className={u.card}>

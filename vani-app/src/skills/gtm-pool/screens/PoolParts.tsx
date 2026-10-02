@@ -38,7 +38,7 @@ export function PoolCrumbs({ on }: { on: 'pool' | 'delivery' | 'industries' }) {
     <nav className={s.crumbs} aria-label="Common pool">
       {on === 'pool' ? <span className={s.crumbOn}>Sources & deliveries</span> : <Link href="/agents/gtm/pool">Sources & deliveries</Link>}
       <span className={s.muted}>·</span>
-      {on === 'industries' ? <span className={s.crumbOn}>Industry master</span> : <Link href="/agents/gtm/pool/industries">Industry master</Link>}
+      <Link href="/settings/industries">Industry master (Settings)</Link>
     </nav>
   );
 }

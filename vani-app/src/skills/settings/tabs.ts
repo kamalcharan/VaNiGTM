@@ -25,7 +25,10 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'appearance', label: 'Appearance', href: '/settings/appearance', status: 'live' },
   { id: 'model',      label: 'Model',      href: '/settings/model',      status: 'live' },
   { id: 'consent',    label: 'Outreach consent', href: '/settings/consent', status: 'live' },
+  { id: 'scoring',    label: 'Scoring',    href: '/settings/scoring',    status: 'live' },
+  { id: 'tokens',     label: 'Tokens',     href: '/settings/tokens',     status: 'live' },
   { id: 'platform-models', label: 'Platform models', href: '/settings/platform-models', status: 'live', adminOnly: true },
+  { id: 'industries', label: 'Industry master', href: '/settings/industries', status: 'live', adminOnly: true },
   { id: 'data',       label: 'Data',       href: '/settings/data',       status: 'planned',
     summary: 'Your own data provider — Apollo, Clay, anything with an API. Same shape as Model: platform or yours, the key never comes back. '
       + 'What it pulls stays in your workspace and never enters the shared pool. Nothing behind this tab is built yet — no table, no connector.' },
