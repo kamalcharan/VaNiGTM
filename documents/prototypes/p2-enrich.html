@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>VaNi GTM · P2-A Enrich, score and the settings behind them</title>
+<style>
+:root{--bg:#f5f5ef;--paper:#fffef9;--ink:#213e34;--muted:#68766f;--line:#dce1d6;--green:#244f3d;--lime:#deeca8;--amber:#9a601d;--soft:#f6edda;--red:#a33a2b;--rsoft:#f6e1dc;--blue:#2d5a7a;--bsoft:#e2edf4;font:15px 'Segoe UI',Arial,sans-serif;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg)}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+.eyebrow{font:600 11px/1.4 'Segoe UI',Arial;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 28px/1.15 Georgia,serif;margin:6px 0 4px}h1 em{color:var(--amber)}
+h2{font:600 18px/1.3 Georgia,serif;margin:0 0 6px}h3{font-size:15px;margin:0 0 4px}
+p{line-height:1.6;color:#3d5249;margin:0 0 10px}.muted{color:var(--muted);font-size:13px}
+.note{font-size:12px;color:var(--muted);background:var(--soft);border-radius:8px;padding:8px 10px;margin-top:10px}
+.q{font-size:12px;color:var(--blue);background:var(--bsoft);border-radius:8px;padding:8px 10px;margin-top:10px}
+.q b{color:var(--blue)}
+.group{font:600 11px 'Segoe UI';letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:0 6px;align-self:center;white-space:nowrap}
+.tabs{display:flex;gap:4px;overflow-x:auto;margin:16px 0 18px;border-bottom:1px solid var(--line)}
+.tab{border:0;background:none;padding:10px 12px;font:600 12px 'Segoe UI';letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.tab[aria-selected=true]{color:var(--green);border-bottom-color:var(--green)}
+.screen{display:none}.screen.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.wide{grid-column:1/-1}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}.row:last-child{border:0}
+.row span:last-child{color:var(--muted);text-align:right}
+.tag{display:inline-block;font:600 11px 'Segoe UI';letter-spacing:.05em;padding:3px 8px;border-radius:20px;background:#eef0e8;color:var(--muted);white-space:nowrap}
+.ok{background:var(--lime);color:var(--green)}.warn{background:var(--soft);color:var(--amber)}.bad{background:var(--rsoft);color:var(--red)}.info{background:var(--bsoft);color:var(--blue)}
+.btn{border:1px solid var(--green);background:var(--paper);color:var(--green);border-radius:8px;padding:7px 12px;font:600 13px 'Segoe UI';cursor:pointer}
+.btn.primary{background:var(--green);color:#fff}.btn.sm{padding:4px 9px;font-size:12px}.btn:disabled{opacity:.45;cursor:default}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.agent{display:flex;gap:12px;align-items:flex-start;background:#eef3e4;border:1px solid #cfdcb7;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.agent .av{width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:700;flex-shrink:0}
+.bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin:8px 0}.bar span{display:block;height:100%;background:var(--green);transition:width .6s}
+.stack{display:flex;height:14px;border-radius:6px;overflow:hidden;margin:8px 0;background:var(--line)}.stack i{display:block;transition:width .8s}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.legend b{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}.chip{border:1px solid var(--line);background:var(--paper);border-radius:20px;padding:5px 11px;font-size:13px;cursor:pointer}.chip.on{background:var(--green);color:#fff;border-color:var(--green)}
+.check{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
+.mono{font:12px Consolas,monospace;color:var(--muted)}
+.decision{border:1px solid #e3c68f;background:#fffaf0;border-radius:12px;padding:14px;margin-top:10px}
+.big{font:600 34px/1 Georgia,serif}.big small{font-size:14px;color:var(--muted);font-family:'Segoe UI'}
+.lvl{display:inline-block;font:600 11px 'Segoe UI';padding:3px 9px;border-radius:20px;color:#fff}
+.L0{background:#b9bfb4}.L1{background:#9aa88b}.L2{background:#6f9a5a}.L3{background:#3f7a55}.L4{background:#244f3d}.L5{background:#132e23}
+.part{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;font-size:13px;padding:5px 0}
+.part .pb{height:8px;background:var(--line);border-radius:6px;overflow:hidden;position:relative}
+.part .pb span{position:absolute;left:0;top:0;bottom:0;background:var(--green);border-radius:6px;transition:width .8s}
+.part .pb em{position:absolute;left:0;top:0;bottom:0;background:#c9d7b5;border-radius:6px}
+.feed{font-size:13px;max-height:340px;overflow:auto}
+.feed .s{display:grid;grid-template-columns:62px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.feed .s .t{color:var(--muted);font:12px Consolas,monospace}
+.feed .model{font:11px Consolas,monospace;color:var(--blue);background:var(--bsoft);border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap}
+.feed .move{color:var(--amber)}
+input[type=number]{width:64px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;font:13px 'Segoe UI';background:#fff;color:var(--ink)}
+select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;font:13px 'Segoe UI';background:#fff;color:var(--ink)}
+.kg{width:100%;height:auto;display:block}
+.kg text{font:12px 'Segoe UI',Arial;fill:var(--ink)}
+.kg .lbl{font-size:10px;fill:var(--muted)}
+.route{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px}
+.route .hop{border:1px solid var(--line);border-radius:8px;padding:4px 9px;background:#fff}
+.route .hop.skip{opacity:.5;text-decoration:line-through}
+.route .arr{color:var(--muted)}
+.tree .n{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}.tree .c{padding-left:22px}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center}
+@media(max-width:820px){.grid,.grid3{grid-template-columns:1fr}.wide{grid-column:auto}h1{font-size:23px}.part{grid-template-columns:110px 1fr 56px}}
+</style></head><body><div class="wrap">
+
+<div class="eyebrow">P2-A · release 1 prototype · for review · 02-Oct-2026</div>
+<h1>Upload, <em>enrich</em>, watch it qualify</h1>
+<p class="muted">Eight screens: what a tenant sees, what the admin sees, and the four Settings pages behind them. Data is illustrative unless tagged <span class="tag ok">measured</span>. Company names are invented. Blue boxes are questions for the review.</p>
+
+<div class="tabs" role="tablist">
+  <span class="group">Tenant</span>
+  <button class="tab" role="tab" aria-selected="true" data-s="t1">1 · My companies</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="t2">2 · Enrich run</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="t3">3 · A company</button>
+  <span class="group">Admin</span>
+  <button class="tab" role="tab" aria-selected="false" data-s="a1">4 · Pool workbench</button>
+  <span class="group">Settings</span>
+  <button class="tab" role="tab" aria-selected="false" data-s="s1">5 · Models</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="s2">6 · Scoring</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="s3">7 · Tokens &amp; top-ups</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="s4">8 · Industry master</button>
+</div>
+
+<!-- ============ T1: MY COMPANIES ============ -->
+<section class="screen on" id="t1">
+  <div class="agent"><div class="av">V</div><div>
+    <h3>VaNi: "Your upload <i>hyd-pharma-targets.csv</i> is staged. 480 companies, and 412 of them sit at Raw or Identified. I can read their websites and qualify them."</h3>
+    <p class="muted" style="margin:0">Order (D-Q1): upload → stage → <b>enrich</b> → research. Research opens only for Qualified companies and above.</p>
+    <div class="actions"><button class="btn primary" data-go="t2">Estimate an enrichment run →</button><button class="btn">Not now</button></div>
+  </div></div>
+
+  <div class="grid">
+    <div class="card wide">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">Where your 480 companies stand</h2>
+        <span class="muted">Scoring: platform default v1 · last refreshed 02-Oct-2026 (delivery)</span>
+      </div>
+      <div class="stack" id="t1stack"></div>
+      <div class="legend" id="t1legend"></div>
+      <div class="grid3" style="margin-top:14px">
+        <div><div class="eyebrow">Ready for a campaign</div><div class="big">0 <small>pass the Exit gate</small></div><p class="muted">Needs a named person and a verified channel. People come later (P7).</p></div>
+        <div><div class="eyebrow">Qualified or better</div><div class="big" id="t1q">68 <small>of 480</small></div><p class="muted">Pass Complete. Research is open for these.</p></div>
+        <div><div class="eyebrow">Average score</div><div class="big" id="t1avg">27 <small>/ 100</small></div><p class="muted">Most are missing a website, an industry and contact points.</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>What's missing, and what fills it</h2>
+      <div class="tablewrap"><table>
+        <tr><th>Gap</th><th class="num">Companies</th><th>Filled by</th></tr>
+        <tr><td>No verified website</td><td class="num">302</td><td><span class="tag info">domain lookup + liveness</span></td></tr>
+        <tr><td>Industry not mapped</td><td class="num">371</td><td><span class="tag info">site read → model</span></td></tr>
+        <tr><td>No contact point (role email / phone)</td><td class="num">355</td><td><span class="tag info">site read (contact page)</span></td></tr>
+        <tr><td>Company or individual unknown</td><td class="num">96</td><td><span class="tag info">model, or you decide</span></td></tr>
+        <tr><td>No research</td><td class="num">480</td><td><span class="tag">research (after Qualified)</span></td></tr>
+        <tr><td>No people</td><td class="num">480</td><td><span class="tag">P7 · not yet</span></td></tr>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2>Your uploads</h2>
+      <div class="row"><span><b>hyd-pharma-targets.csv</b><br><span class="muted">480 rows · 02-Oct-2026 · file deleted after staging, metadata kept</span></span><span><span class="tag ok">staged</span></span></div>
+      <div class="row"><span><b>expo-leads-sept.xlsx</b><br><span class="muted">73 rows · 28-Sep-2026</span></span><span><span class="tag ok">staged</span></span></div>
+      <div class="actions"><button class="btn">Upload a list</button></div>
+      <div class="empty" style="margin-top:12px"><div class="eyebrow">Empty state, for comparison</div><p style="margin:6px 0">No companies yet. Upload a CSV or Excel list and VaNi will tell you what it can fill.</p><button class="btn primary sm">Upload a list</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ T2: ENRICH RUN ============ -->
+<section class="screen" id="t2">
+  <div class="grid">
+    <div class="card">
+      <div class="eyebrow">Step 1 of 3 · select</div>
+      <h2>Which companies</h2>
+      <div class="chips"><span class="chip on">Raw + Identified · 412</span><span class="chip">All 480</span><span class="chip">A segment…</span></div>
+      <div class="eyebrow" style="margin-top:6px">Step 2 of 3 · estimate</div>
+      <div class="tablewrap"><table>
+        <tr><th>Step</th><th>Lane</th><th class="num">Companies</th><th class="num">≈ Tokens</th></tr>
+        <tr><td>Normalise, domain from corporate email, phone to E.164</td><td><span class="tag ok">code</span></td><td class="num">412</td><td class="num">0</td></tr>
+        <tr><td>Find a website (search + check)</td><td><span class="tag info">route LOW</span></td><td class="num">302</td><td class="num">90,600</td></tr>
+        <tr><td>Read the site (about, contact, products)</td><td><span class="tag info">route HIGH</span></td><td class="num">≈ 340</td><td class="num">1,190,000</td></tr>
+        <tr><td>Industry, B2B/B2C, company or individual</td><td><span class="tag info">route HIGH</span></td><td class="num">≈ 340</td><td class="num">in the read</td></tr>
+        <tr><td><b>Total</b></td><td></td><td></td><td class="num"><b>≈ 1,280,600</b></td></tr>
+      </table></div>
+      <div class="decision">
+        <h3>That is more than one day's budget</h3>
+        <p>Your daily base is 100,000 tokens (35,800 used today). This run needs about 1.28 million: about 12 days on the base alone, or today from your top-up balance of 1,500,000.</p>
+        <div class="chips" id="pace"><span class="chip on" data-p="base">Base only · ≈ 12 days</span><span class="chip" data-p="topup">Use top-up · finishes today</span></div>
+        <p class="muted" style="margin:0">Your data is a tenant list, so providers that may train on prompts are skipped (D-Q15).</p>
+      </div>
+      <div class="actions"><button class="btn primary" id="run">Confirm and run</button><button class="btn" data-go="t1">Cancel</button></div>
+      <div class="q"><b>For review:</b> about 3,500 tokens per company means the 100k day covers roughly 28 companies. Should enrichment on free providers count against the tenant's budget (D-Q15 says yes, every token), or only paid calls? And once matching exists, companies already enriched in the pool would cost the tenant nothing.</div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Step 3 of 3 · live</div>
+      <h2 id="runtitle">Waiting for you to confirm</h2>
+      <div class="bar"><span id="runbar" style="width:0%"></span></div>
+      <p class="muted" id="runmeta">0 of 412 companies · 0 tokens</p>
+      <div class="feed" id="feed"><div class="s"><span class="t">—</span><span class="muted">The run's steps stream here: every model call names its provider and model, and every move between providers is shown.</span></div></div>
+    </div>
+
+    <div class="card wide">
+      <h2>Before and after</h2>
+      <div class="part"><span>Before</span><div class="stack" id="beforeStack" style="margin:0"></div><span class="muted">avg 27</span></div>
+      <div class="part"><span>After this run</span><div class="stack" id="afterStack" style="margin:0"></div><span class="muted" id="afterAvg">—</span></div>
+      <div class="legend" id="t2legend" style="margin-top:8px"></div>
+      <p class="note">The after-bar fills while the run goes. Each company moves when its last step finishes; nothing is counted twice.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ T3: A COMPANY ============ -->
+<section class="screen" id="t3">
+  <div class="grid">
+    <div class="card">
+      <div class="eyebrow">Your copy · hyd-pharma-targets.csv · row 117</div>
+      <h2>Kavya Lab Instruments Pvt Ltd</h2>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:6px 0 10px">
+        <div class="big" id="cScore">25 <small>/ 100</small></div>
+        <span class="lvl L1" id="cLevel">Identified</span>
+        <button class="btn sm" id="cToggle">Show after enrichment</button>
+      </div>
+      <p class="muted">Last refreshed <b id="cRef">02-Oct-2026 · delivery</b> · scored on platform default v1</p>
+      <div id="parts"></div>
+      <p class="note">Light segment = before, dark = now. People, research and signals &amp; response are about your relationship with the company, so the common pool's copy of a company tops out near 70.</p>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Mini knowledge graph · this company</div>
+      <svg class="kg" viewBox="0 0 520 330" role="img" aria-label="Company knowledge graph">
+        <g stroke="#c4ccbd" stroke-width="1.4">
+          <line x1="260" y1="165" x2="95" y2="55"/><line x1="260" y1="165" x2="425" y2="55"/>
+          <line x1="260" y1="165" x2="70" y2="175"/><line x1="260" y1="165" x2="450" y2="175"/>
+          <line x1="260" y1="165" x2="120" y2="285"/><line x1="260" y1="165" x2="400" y2="285"/>
+          <line x1="260" y1="165" x2="260" y2="30"/>
+        </g>
+        <g class="lbl"><text x="160" y="100" class="lbl">IN_INDUSTRY</text><text x="330" y="100" class="lbl">OFFERS</text><text x="135" y="160" class="lbl">LOCATED_IN</text><text x="330" y="160" class="lbl">HAS_SITE</text><text x="150" y="235" class="lbl">REACHABLE_AT</text><text x="320" y="235" class="lbl">SIGNAL</text><text x="266" y="95" class="lbl">SELLS_TO</text></g>
+        <circle cx="260" cy="165" r="36" fill="#244f3d"/><text x="260" y="162" text-anchor="middle" style="fill:#fff;font-weight:600">Kavya Lab</text><text x="260" y="177" text-anchor="middle" style="fill:#deeca8;font-size:10px">Company</text>
+        <g><rect x="35" y="38" width="120" height="34" rx="8" fill="#deeca8"/><text x="95" y="59" text-anchor="middle">Lab equipment</text></g>
+        <g><rect x="365" y="38" width="120" height="34" rx="8" fill="#e2edf4"/><text x="425" y="59" text-anchor="middle">HPLC columns</text></g>
+        <g><rect x="200" y="12" width="120" height="34" rx="8" fill="#f6edda"/><text x="260" y="33" text-anchor="middle">QC labs (buyer)</text></g>
+        <g><rect x="10" y="158" width="120" height="34" rx="8" fill="#eef0e8"/><text x="70" y="179" text-anchor="middle">Hyderabad · 500055</text></g>
+        <g><rect x="390" y="158" width="120" height="34" rx="8" fill="#eef0e8"/><text x="450" y="179" text-anchor="middle">kavyalab.example</text></g>
+        <g><rect x="60" y="268" width="120" height="34" rx="8" fill="#eef0e8"/><text x="120" y="289" text-anchor="middle">sales@ · +91 40…</text></g>
+        <g><rect x="340" y="268" width="120" height="34" rx="8" fill="#f6edda"/><text x="400" y="289" text-anchor="middle">Exhibitor 2026</text></g>
+      </svg>
+      <p class="muted">Every node and edge carries its evidence: the page it came from, the model that read it, and its confidence. No path, no claim.</p>
+      <div class="tablewrap"><table>
+        <tr><th>Fact</th><th>From</th><th>By</th><th>When</th></tr>
+        <tr><td>Industry: Lab equipment</td><td>kavyalab.example/about</td><td><span class="mono">groq:llama-3.3-70b</span> 0.91</td><td>02-Oct-2026</td></tr>
+        <tr><td>Offers: HPLC columns</td><td>/products</td><td><span class="mono">groq:llama-3.3-70b</span> 0.88</td><td>02-Oct-2026</td></tr>
+        <tr><td>Sells to: QC labs</td><td>/about</td><td><span class="mono">qwen:qwen3</span> 0.74</td><td>02-Oct-2026</td></tr>
+        <tr><td>Company, not individual</td><td>/about + name</td><td><span class="mono">groq:llama-3.3-70b</span> 0.97</td><td>02-Oct-2026</td></tr>
+        <tr><td>Phone, Hyderabad, PIN</td><td>your upload</td><td><span class="mono">code</span></td><td>02-Oct-2026</td></tr>
+      </table></div>
+      <div class="q"><b>For review:</b> in your copy the graph can also say how this company fits <i>your</i> offers (FITS → your ICP). That edge is yours alone and never enters the pool (rule 13). Show it here, or only under research?</div>
+    </div>
+
+    <div class="card wide">
+      <div class="eyebrow">Complete · 8 checks · decides Qualified</div>
+      <div class="grid" style="gap:0 24px">
+        <div>
+          <div class="check"><span>Clean name</span><span class="tag ok">pass</span></div>
+          <div class="check"><span>Identity anchor</span><span class="tag ok" data-after="domain verified">name + PIN</span></div>
+          <div class="check"><span>Location</span><span class="tag ok">Hyderabad, TG</span></div>
+          <div class="check"><span>Industry</span><span class="tag warn" data-after-ok="Lab equipment">not mapped</span></div>
+        </div>
+        <div>
+          <div class="check"><span>Domain lookup attempted</span><span class="tag warn" data-after-ok="kavyalab.example">not tried</span></div>
+          <div class="check"><span>Match decided</span><span class="tag ok">new</span></div>
+          <div class="check"><span>Type: company or individual</span><span class="tag warn" data-after-ok="company">not decided</span></div>
+          <div class="check"><span>Legal status</span><span class="tag">no source gives one</span></div>
+        </div>
+      </div>
+      <div class="actions"><button class="btn">Research this company</button><span class="muted" id="resNote" style="align-self:center">Opens at Qualified.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ A1: POOL WORKBENCH ============ -->
+<section class="screen" id="a1">
+  <div class="agent"><div class="av">V</div><div>
+    <h3>VaNi: "FTCCI has 2,151 companies that still lack an industry. Most have a website. A site-read run moves an estimated 1,400 of them to Qualified."</h3>
+    <p class="muted" style="margin:0">Admin only. The pool is enriched by record count (your daily record limit), not tenant tokens. Pool company facts may use any provider in the route.</p>
+    <div class="actions"><button class="btn primary">Estimate that run →</button><button class="btn">Pick a different slice</button></div>
+  </div></div>
+  <div class="grid">
+    <div class="card wide">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">Common pool · 3,239 companies</h2>
+        <span class="muted">Platform default v1 · company side only (people, research and response are tenant-side)</span>
+      </div>
+      <div class="stack" id="a1stack"></div>
+      <div class="legend" id="a1legend"></div>
+      <div class="grid3" style="margin-top:14px">
+        <div><div class="eyebrow">Company side of Exit</div><div class="big">412 <small>ready</small></div><p class="muted">Complete, active, not junk, no open duplicate. A tenant still adds the person and the channel.</p></div>
+        <div><div class="eyebrow">Qualified or better</div><div class="big">688 <small>of 3,239</small></div><p class="muted">+344 since the last run (28-Sep-2026)</p></div>
+        <div><div class="eyebrow">Needs a person</div><div class="big">158 <small>decisions</small></div><p class="muted">137 shared-domain flags <span class="tag ok">measured</span> · 21 held</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Readiness by delivery</h2>
+      <div class="tablewrap"><table>
+        <tr><th>Delivery</th><th class="num">Companies</th><th class="num">Qualified+</th><th>Last refreshed</th></tr>
+        <tr><td>FTCCI · Members</td><td class="num">2,912 <span class="tag ok">measured</span></td><td class="num">21%</td><td>28-Sep-2026 · enrich run 3</td></tr>
+        <tr><td>analytica · Exhibitors</td><td class="num">327 <span class="tag ok">measured</span></td><td class="num">23%</td><td>01-Oct-2026 · delivery</td></tr>
+      </table></div>
+      <p class="note">"Last refreshed" is the later of the delivery date and the last enrichment run. Age is shown, never deducted from the score (D-Q8).</p>
+    </div>
+
+    <div class="card">
+      <h2>What's missing across the pool</h2>
+      <div class="part"><span>Identity</span><div class="pb"><span style="width:71%"></span></div><span class="muted">14.2 / 20</span></div>
+      <div class="part"><span>Firmographics</span><div class="pb"><span style="width:34%"></span></div><span class="muted">6.8 / 20</span></div>
+      <div class="part"><span>Digital presence</span><div class="pb"><span style="width:41%"></span></div><span class="muted">4.1 / 10</span></div>
+      <div class="part"><span>Contact points</span><div class="pb"><span style="width:38%"></span></div><span class="muted">7.6 / 20</span></div>
+      <div class="part"><span>Signals</span><div class="pb"><span style="width:20%"></span></div><span class="muted">1.0 / 5</span></div>
+      <p class="muted" style="margin-top:8px">Firmographics is the biggest gap. Industry and size come from reading the site, which is the run VaNi proposed above.</p>
+    </div>
+
+    <div class="card wide">
+      <h2>Enrichment runs</h2>
+      <div class="tablewrap"><table>
+        <tr><th>Run</th><th>Slice</th><th class="num">Records</th><th>Models used</th><th class="num">Moved up a level</th><th class="num">Abstained</th><th>Finished</th></tr>
+        <tr><td>#3</td><td>FTCCI · with a website</td><td class="num">1,000</td><td><span class="mono">groq 71% · openrouter 18% · qwen 6% · haiku 5%</span></td><td class="num">344</td><td class="num">61</td><td>28-Sep-2026</td></tr>
+        <tr><td>#2</td><td>FTCCI · domain from email</td><td class="num">2,912</td><td><span class="mono">code 100%</span></td><td class="num">489</td><td class="num">0</td><td>27-Sep-2026</td></tr>
+      </table></div>
+      <p class="note">Abstained means no model was confident enough, so nothing was written. Those records wait in the review list; nothing is guessed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S1: MODELS ============ -->
+<section class="screen" id="s1">
+  <div class="grid">
+    <div class="card wide">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">Providers</h2><span class="muted">Read from <span class="mono">.env</span>; this screen shows them and never edits them. Keys are never shown.</span>
+      </div>
+      <div class="tablewrap" style="margin-top:8px"><table>
+        <tr><th>Code</th><th>Model</th><th class="num">Window</th><th>Data terms</th><th class="num">Today</th><th class="num">This minute</th><th>State</th></tr>
+        <tr><td><b>groq</b></td><td class="mono">llama-3.3-70b-versatile</td><td class="num">8,000</td><td><span class="tag warn">set from its terms</span></td><td class="num">812 / 1,000</td><td class="num">11 / 30</td><td><span class="tag ok">serving</span></td></tr>
+        <tr><td><b>openrouter</b></td><td class="mono">llama-3.3-70b-instruct:free</td><td class="num">8,000</td><td><span class="tag bad">may_train</span></td><td class="num">200 / 200</td><td class="num">—</td><td><span class="tag warn">quota spent · resets 05:30</span></td></tr>
+        <tr><td><b>qwen</b></td><td class="mono">platform · Vikuna VPS</td><td class="num">16,384</td><td><span class="tag ok">no_training</span></td><td class="num">146</td><td class="num">1 slot</td><td><span class="tag ok">serving</span></td></tr>
+        <tr><td><b>haiku</b></td><td class="mono">claude-haiku-4-5</td><td class="num">200,000</td><td><span class="tag ok">no_training</span></td><td class="num">38</td><td class="num">—</td><td><span class="tag ok">serving · paid</span></td></tr>
+      </table></div>
+    </div>
+    <div class="card">
+      <h2>Routes</h2>
+      <p class="muted">A step declares how hard it is; the route says who serves it, in order.</p>
+      <div class="eyebrow" style="margin-top:8px">HIGH · judgement (industry, offers, domain matches company)</div>
+      <div class="route"><span class="hop">groq</span><span class="arr">→</span><span class="hop">openrouter</span><span class="arr">→</span><span class="hop">qwen</span><span class="arr">→</span><span class="hop">haiku</span></div>
+      <div class="eyebrow" style="margin-top:12px">Same route, for a tenant's list</div>
+      <div class="route"><span class="hop">groq</span><span class="arr">→</span><span class="hop skip">openrouter</span><span class="arr">→</span><span class="hop">qwen</span><span class="arr">→</span><span class="hop">haiku</span></div>
+      <p class="muted">openrouter is skipped: tenant data never goes to a may_train provider.</p>
+      <div class="eyebrow" style="margin-top:12px">MEDIUM · LOW · short extraction, normalising</div>
+      <div class="route"><span class="hop">qwen</span></div>
+      <div class="q"><b>For review:</b> haiku as the last rung of HIGH (shown) replaces the separate failover for routed calls. That's pending decision D-Q16(a).</div>
+    </div>
+    <div class="card">
+      <h2>Today, by route</h2>
+      <div class="tablewrap"><table>
+        <tr><th>Route</th><th class="num">Calls</th><th class="num">Moved on</th><th class="num">Bad answers</th><th class="num">Tokens</th></tr>
+        <tr><td>HIGH</td><td class="num">1,041</td><td class="num">203</td><td class="num">17</td><td class="num">3.4M</td></tr>
+        <tr><td>MEDIUM</td><td class="num">96</td><td class="num">0</td><td class="num">2</td><td class="num">0.2M</td></tr>
+        <tr><td>LOW</td><td class="num">50</td><td class="num">0</td><td class="num">0</td><td class="num">0.1M</td></tr>
+      </table></div>
+      <p class="note">"Moved on" means a limit, timeout or quota sent the call to the next provider; each one is a step in its run. A bad answer is never retried quietly elsewhere: it goes to the next rung or to abstain.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S2: SCORING ============ -->
+<section class="screen" id="s2">
+  <div class="grid">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">Weights</h2>
+        <select id="profile"><option>Platform default · v1 (admin)</option><option>Vikuna · own profile (inherits v1)</option></select>
+      </div>
+      <div class="tablewrap" style="margin-top:8px"><table id="wtab">
+        <tr><th>Part</th><th>What earns it</th><th class="num">Weight</th></tr>
+        <tr><td>Identity</td><td class="muted">name, anchor (CIN/GSTIN/domain/name+PIN), location</td><td class="num"><input type="number" value="20" min="0" max="100"></td></tr>
+        <tr><td>Firmographics</td><td class="muted">industry, size, B2B/B2C, type</td><td class="num"><input type="number" value="20" min="0" max="100"></td></tr>
+        <tr><td>Digital presence</td><td class="muted">live site, LinkedIn/X URLs</td><td class="num"><input type="number" value="10" min="0" max="100"></td></tr>
+        <tr><td>Contact points</td><td class="muted">role email, phone, address</td><td class="num"><input type="number" value="20" min="0" max="100"></td></tr>
+        <tr><td>People</td><td class="muted">a named person with a persona (tenant)</td><td class="num"><input type="number" value="15" min="0" max="100"></td></tr>
+        <tr><td>Research</td><td class="muted">account research done (tenant)</td><td class="num"><input type="number" value="10" min="0" max="100"></td></tr>
+        <tr><td>Signals &amp; response</td><td class="muted">events, replies, visits</td><td class="num"><input type="number" value="5" min="0" max="100"></td></tr>
+        <tr><td><b>Total</b></td><td></td><td class="num"><b id="wsum">100</b></td></tr>
+      </table></div>
+      <div class="actions"><button class="btn primary" id="wsave">Save as v2 and re-score</button><button class="btn">Reset to platform default</button></div>
+      <p class="muted" id="wmsg">Saving re-scores 3,239 pool and 553 Vikuna records. Every score names its version.</p>
+      <div class="q"><b>For review:</b> Contact points took freshness's 5 and is now 20 (D-Q4). Please confirm.</div>
+    </div>
+    <div class="card">
+      <h2>Levels</h2>
+      <div class="tablewrap"><table>
+        <tr><th>Level</th><th class="num">From</th><th>Also needs</th></tr>
+        <tr><td><span class="lvl L0">Raw</span></td><td class="num">0</td><td></td></tr>
+        <tr><td><span class="lvl L1">Identified</span></td><td class="num"><input type="number" value="20"></td><td></td></tr>
+        <tr><td><span class="lvl L2">Qualified</span></td><td class="num"><input type="number" value="40"></td><td class="muted">passes Complete</td></tr>
+        <tr><td><span class="lvl L3">Reachable</span></td><td class="num"><input type="number" value="60"></td><td></td></tr>
+        <tr><td><span class="lvl L4">Campaign-ready</span></td><td class="num"><input type="number" value="75"></td><td class="muted">passes the Exit gate</td></tr>
+        <tr><td><span class="lvl L5">Strong</span></td><td class="num"><input type="number" value="90"></td><td></td></tr>
+      </table></div>
+      <p class="note">The Exit gate is not here: it is a rule, never a weight (D-Q6). A tenant can reweight how a company scores, but cannot change what it takes to be contacted.</p>
+      <div class="eyebrow" style="margin-top:12px">History</div>
+      <div class="row"><span>v1 · platform default</span><span>Charan · 02-Oct-2026</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S3: TOKENS ============ -->
+<section class="screen" id="s3">
+  <div class="grid">
+    <div class="card">
+      <div class="eyebrow">Vikuna · this workspace</div>
+      <h2>Today</h2>
+      <div class="part"><span>Daily base</span><div class="pb"><span style="width:100%"></span></div><span class="muted">100,000</span></div>
+      <div class="part"><span>From top-up</span><div class="pb"><span style="width:24%;background:var(--amber)"></span></div><span class="muted">24,300</span></div>
+      <p class="muted">The base is used, so calls now draw from the top-up balance. The daily limit itself never rises (D-Q12).</p>
+      <h2 style="margin-top:12px">This month</h2>
+      <div class="part"><span>Monthly base</span><div class="pb"><span style="width:61%"></span></div><span class="muted">1.22M / 2M</span></div>
+      <div class="row"><span>Top-up balance</span><span><b>1,475,700</b> tokens</span></div>
+      <div class="row"><span>When both run out</span><span>calls stop with the numbers; nothing is half-written</span></div>
+      <h2 style="margin-top:12px">Where it went today</h2>
+      <div class="row"><span>Enrichment</span><span>98,400</span></div>
+      <div class="row"><span>Smart Profile / Teach VaNi</span><span>14,100</span></div>
+      <div class="row"><span>Research</span><span>11,800</span></div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Admin · all tenants</div>
+      <h2>Top-ups</h2>
+      <div class="tablewrap"><table>
+        <tr><th>Tenant</th><th class="num">Added</th><th class="num">Balance</th><th>By · when</th></tr>
+        <tr><td>Vikuna</td><td class="num">1,500,000</td><td class="num">1,475,700</td><td class="muted">Charan · 02-Oct-2026</td></tr>
+        <tr><td>Analytica Labs</td><td class="num">500,000</td><td class="num">0</td><td class="muted">Charan · 15-Sep-2026</td></tr>
+      </table></div>
+      <div class="decision">
+        <h3>Add a top-up</h3>
+        <div class="actions" style="margin-top:4px"><select><option>Vikuna</option><option>Analytica Labs</option></select><input type="number" value="500000" style="width:110px"><button class="btn primary sm">Add</button></div>
+        <p class="muted" style="margin:6px 0 0">Recorded with who and when. Until billing exists, this is the only way a balance changes.</p>
+      </div>
+      <p class="note">Own-key (BYOK) workspaces are metered but never capped. Limits come from <span class="mono">TENANT_DAILY_TOKEN_LIMIT</span> and <span class="mono">TENANT_MONTHLY_TOKEN_LIMIT</span>; a tenant's own limit can override them.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S4: INDUSTRY MASTER ============ -->
+<section class="screen" id="s4">
+  <div class="grid">
+    <div class="card">
+      <div class="eyebrow">Settings · admin only (moved from the pool, D-Q9)</div>
+      <h2>Industry master</h2>
+      <div class="tree">
+        <div class="n"><span><b>Manufacturing</b></span><span class="muted">NIC 10–33 · 412 aliases</span></div>
+        <div class="n c"><span>Pharmaceuticals</span><span class="muted">NIC 21 · 96 aliases · 318 companies</span></div>
+        <div class="n c"><span>Lab equipment &amp; scientific instruments</span><span class="muted">NIC 2651 · 48 aliases · 74 companies</span></div>
+        <div class="n"><span><b>Technology</b></span><span class="muted">NIC 58–63 · 203 aliases</span></div>
+        <div class="n"><span><b>Trade</b></span><span class="muted">NIC 45–47 · 388 aliases</span></div>
+      </div>
+      <p class="note">Enrichment maps a company onto this list. It never invents a category.</p>
+    </div>
+    <div class="card">
+      <h2>Proposals from enrichment runs</h2>
+      <div class="decision">
+        <h3>New sub-category: "Contract research (CRO)"</h3>
+        <p>31 companies' sites describe contract research for pharma. Today they are mapped to Pharmaceuticals at confidence 0.62.</p>
+        <div class="actions"><button class="btn primary">Approve</button><button class="btn">Keep under Pharmaceuticals</button><button class="btn">Reject</button></div>
+      </div>
+      <p class="note">A model proposes; only an admin creates a category.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+<script>
+var LV=[['Raw','#b9bfb4'],['Identified','#9aa88b'],['Qualified','#6f9a5a'],['Reachable','#3f7a55'],['Campaign-ready','#244f3d'],['Strong','#132e23']];
+function stack(el,counts){var t=counts.reduce(function(a,b){return a+b},0)||1;el.innerHTML=counts.map(function(c,i){return '<i style="width:'+(c*100/t)+'%;background:'+LV[i][1]+'"></i>'}).join('')}
+function legend(el,counts){el.innerHTML=counts.map(function(c,i){return '<span><b style="background:'+LV[i][1]+'"></b>'+LV[i][0]+' '+c.toLocaleString('en-US')+'</span>'}).join('')}
+var before=[212,200,68,0,0,0], after=[31,118,251,80,0,0];
+stack(document.getElementById('t1stack'),before);legend(document.getElementById('t1legend'),before);
+stack(document.getElementById('beforeStack'),before);stack(document.getElementById('afterStack'),before);legend(document.getElementById('t2legend'),before);
+var pool=[1218,1333,276,412,0,0];stack(document.getElementById('a1stack'),pool);legend(document.getElementById('a1legend'),pool);
+
+function show(id){document.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected',x.dataset.s===id?'true':'false')});
+  document.querySelectorAll('.screen').forEach(function(x){x.classList.toggle('on',x.id===id)});window.scrollTo(0,0)}
+document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){show(t.dataset.s)})});
+document.querySelectorAll('[data-go]').forEach(function(b){b.addEventListener('click',function(){show(b.dataset.go)})});
+document.querySelectorAll('#pace .chip').forEach(function(c){c.addEventListener('click',function(){document.querySelectorAll('#pace .chip').forEach(function(x){x.classList.remove('on')});c.classList.add('on')})});
+
+var STEPS=[
+ ['code','Normalised 412 names; 61 domains taken from corporate emails; 288 phones to E.164',null],
+ ['plan','Route HIGH for this tenant list: groq → qwen → haiku (openrouter skipped: may_train)',null],
+ ['read','Kavya Lab Instruments: read /about, /products, /contact','groq:llama-3.3-70b'],
+ ['read','Sai Pharma Chem: read /about, /contact','groq:llama-3.3-70b'],
+ ['move','groq answered 429 (per-minute limit). Cooling down 60s; next call goes to qwen',null],
+ ['read','Deccan Biologics: read /about','qwen:qwen3'],
+ ['abstain','Sri Lakshmi Traders: site is a parked page, so nothing to read. Recorded "no site"; not guessed',null],
+ ['read','Nizam Analytical Services: read /about, /services','qwen:qwen3'],
+ ['bad','Nizam Analytical: industry answer failed validation (not on the master), so it goes to the next rung','qwen:qwen3'],
+ ['read','Nizam Analytical: re-asked','haiku:claude-haiku-4-5'],
+ ['read','groq back: Hitech Glassware: read /about, /contact','groq:llama-3.3-70b'],
+ ['done','412 companies done · 171 moved up a level · 23 abstained · 1,212,400 tokens',null]];
+var running=false;
+document.getElementById('run').addEventListener('click',function(){
+  if(running)return;running=true;this.disabled=true;var feed=document.getElementById('feed');feed.innerHTML='';
+  document.getElementById('runtitle').textContent='Running · enrich hyd-pharma-targets';var i=0;
+  var iv=setInterval(function(){var s=STEPS[i];var d=document.createElement('div');d.className='s';
+    var m=s[2]?'<span class="model">'+s[2]+'</span>':'';var cls=(s[0]==='move'||s[0]==='bad'||s[0]==='abstain')?' class="move"':'';
+    d.innerHTML='<span class="t">'+s[0]+'</span><span'+cls+'>'+s[1]+m+'</span>';feed.appendChild(d);feed.scrollTop=feed.scrollHeight;
+    var f=(i+1)/STEPS.length;document.getElementById('runbar').style.width=(f*100)+'%';
+    document.getElementById('runmeta').textContent=Math.round(412*f)+' of 412 companies · '+Math.round(1212400*f).toLocaleString('en-US')+' tokens';
+    var mid=before.map(function(b,k){return Math.round(b+(after[k]-b)*f)});stack(document.getElementById('afterStack'),mid);legend(document.getElementById('t2legend'),mid);
+    document.getElementById('afterAvg').textContent='avg '+Math.round(27+(46-27)*f);
+    i++;if(i>=STEPS.length){clearInterval(iv);document.getElementById('runtitle').textContent='Finished · 02-Oct-2026';
+      stack(document.getElementById('t1stack'),after);legend(document.getElementById('t1legend'),after);
+      document.getElementById('t1q').innerHTML='331 <small>of 480</small>';document.getElementById('t1avg').innerHTML='46 <small>/ 100</small>';}
+  },700);
+});
+
+var PARTS=[['Identity',20,12,18],['Firmographics',20,6,16],['Digital presence',10,0,8],['Contact points',20,4,14],['People',15,0,0],['Research',10,0,0],['Signals & response',5,3,3]];
+var afterOn=false;
+function drawParts(){var el=document.getElementById('parts');el.innerHTML=PARTS.map(function(p){var now=afterOn?p[3]:p[2];
+  return '<div class="part"><span>'+p[0]+'</span><div class="pb"><em style="width:'+(p[2]*100/p[1])+'%"></em><span style="width:'+(now*100/p[1])+'%"></span></div><span class="muted">'+now+' / '+p[1]+'</span></div>'}).join('');
+  var tot=PARTS.reduce(function(a,p){return a+(afterOn?p[3]:p[2])},0);
+  document.getElementById('cScore').innerHTML=tot+' <small>/ 100</small>';
+  var lv=document.getElementById('cLevel');lv.textContent=afterOn?'Qualified':'Identified';lv.className='lvl '+(afterOn?'L2':'L1');
+  document.getElementById('cRef').textContent=afterOn?'02-Oct-2026 · enrich run #1':'02-Oct-2026 · delivery';
+  document.getElementById('cToggle').textContent=afterOn?'Show before':'Show after enrichment';
+  document.getElementById('resNote').textContent=afterOn?'Qualified, so research is open.':'Opens at Qualified.';
+  document.querySelectorAll('[data-after-ok]').forEach(function(t){if(!t.dataset.before)t.dataset.before=t.textContent;
+    t.textContent=afterOn?t.dataset.afterOk:t.dataset.before;t.className='tag '+(afterOn?'ok':'warn')});
+  document.querySelectorAll('[data-after]').forEach(function(t){if(!t.dataset.before)t.dataset.before=t.textContent;t.textContent=afterOn?t.dataset.after:t.dataset.before});}
+document.getElementById('cToggle').addEventListener('click',function(){afterOn=!afterOn;drawParts()});drawParts();
+
+var ins=document.querySelectorAll('#wtab input');
+function sum(){var s=0;ins.forEach(function(x){s+=Number(x.value)||0});var e=document.getElementById('wsum');e.textContent=s;e.style.color=s===100?'':'var(--red)';
+  document.getElementById('wsave').disabled=s!==100;document.getElementById('wmsg').textContent=s===100?'Saving re-scores 3,239 pool and 553 Vikuna records. Every score names its version.':'The weights must add up to 100 (now '+s+'). Nothing is saved until they do.';}
+ins.forEach(function(x){x.addEventListener('input',sum)});
+</script>
+</body></html>

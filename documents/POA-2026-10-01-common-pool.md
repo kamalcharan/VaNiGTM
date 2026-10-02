@@ -361,7 +361,7 @@ storage, is the memory bottleneck there.
 | Sprint 0 | **0a part 1 built 2026-10-02** (lane priority, runs named by agent, per-call `model_call` step, run stream + nginx, risk classes declared and enforced for skill functions); 0a part 2 (parent_run_id, approvals, telemetry table) awaits the schema decision; 0b (components) awaits the platform-change decision |
 | P0 | **approved 2026-10-01** (S1–S15) |
 | P1 | sprint A **deployed 2026-10-02** · sprint B **built 2026-10-02**: the match ladder, survivorship and the Complete test (`pool-merge.ts`, `complete-test.ts`, worker job `POOL_RESOLVE_REQUESTED`); decisions (company/individual, not a duplicate, junk, restore, retire a delivery); `pool-skill`; the console's pool by state, sources, a delivery's rows with each company's eight checks, the industry master; large CSVs followed live; uploads raised to 200 MB; uploads temporary. Checkout: on the deployed stack after the release in `deploy.txt` |
-| P2–P9 | **re-ordered 2026-10-02** (see §4 head, release train §4a): P2-A prototype and P2-R model router next; P2-R waits on S19 and D-Q16(a) |
+| P2–P9 | **re-ordered 2026-10-02** (see §4 head, release train §4a). **P2-A prototype drawn 2026-10-02** (`documents/prototypes/p2-enrich.html`, eight screens), awaiting Charan's review; P2-R waits on S19 and D-Q16(a) |
 | Ontology v1 | design note written 2026-10-02; ARCH §7b and AGENTS §3/§5/§8b/§9b updated; **S16 awaiting approval** (needed before P3). Account graph with P7; evidence paths and the no-path-no-draft guard with the first sender |
 
 ## 5. Dependencies outside this plan
