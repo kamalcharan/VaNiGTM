@@ -296,6 +296,7 @@ Each skill in `backend/src/skills/<name>/`:
 | model-router-skill | the admin's view of the model router: models, on/off switch per model for enrichment, quotas, routes as they run now, today by route, test a free model (P2-R) | ✅ built 2026-10-02 — admin only |
 | scoring | the 0–100 readiness score: profile in force (own or platform default), save own part weights, platform default (admin), companies by level, re-score, explain one company (release 3) | ✅ built 2026-10-02 |
 | tenant | the tenant context (one read: status, tokens, agents, model, scoring, brand, industry, consent, domains), token budget, top-ups (admin) (release 3) | ✅ built 2026-10-02 |
+| pool-skill (enrichment) | release 4: workbench, enrich_estimate, start_enrich, enrich_run, withdraw_enrich_run; company provenance — the agent is `src/etl/pool-enrich.ts` (`POOL_ENRICH_REQUESTED`) | ✅ built 2026-10-02 — admin only |
 
 ## nginx on api.vikuna.io — the whole API, not an allowlist (2026-09-30)
 
@@ -367,7 +368,7 @@ stay here, because they are worth not re-deciding:
   were first run on production by pasting SQL (2026-09-30) and so were NOT
   recorded; all three are idempotent, and the fix is to let the runner re-apply
   them (`docker exec vani-backend node dist/migrate.js`) — rehearsed on a copy
-  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); **268–271 are reserved** for P2–P5 (P0 §6); **272 written 2026-10-02** (the model router: `gt_llm_calls`, `gt_llm_provider_switch` — S19/S20), **273** (the router counts tokens: `gt_llm_route_state()` gains tokens per minute/day), **274** (scoring profiles S17 + token top-ups S18); next free is **275**. The
+  of that state: 3 applied, 0 pending, data kept.** Next migration is 263 — **263 is RESERVED** for the DPDP notice (draft in `documents/drafts/`); **264–267 written 2026-10-01** (common pool P1: sources and loads, staging lifecycle, golden-record lifecycle + pg_trgm, the industry master); **268–271 are reserved** for P2–P5 (P0 §6); **272 written 2026-10-02** (the model router: `gt_llm_calls`, `gt_llm_provider_switch` — S19/S20), **273** (the router counts tokens: `gt_llm_route_state()` gains tokens per minute/day), **274** (scoring profiles S17 + token top-ups S18), **271** written 2026-10-02 (S16 revised: the pool graph as rows in the existing `gt_kg_nodes`/`_edges`, D-Q20); 268–270 stay reserved; next free is **275**. The
   runner uses `DB_MIGRATE` when set (the owner, once the runtime is the app
   role), else `DB_PRIMARY`. **Two files
   share the number 249** (`249_ki_import_sessions_needs_review.sql` and
@@ -509,6 +510,45 @@ stay here, because they are worth not re-deciding:
       unchanged. Data gate: tenant data only to `no_training` providers;
       people data never to an outside provider (DPDP review pending). BYOK
       tenants never enter a route.
+
+## Enriching the common pool (release 4, P2-C — built 2026-10-02)
+
+Prototype `documents/prototypes/p2c-pool-enrich.html` (approved), built to it:
+workbench on `/agents/gtm/pool`, `/agents/gtm/pool/enrich`, `/agents/gtm/pool/runs/<event id>`,
+the company panel's "Where each value came from".
+
+- A run reads each company's own site: live/parked check and About/Contact/Products
+  by code (`lib/site-reader.ts`), route LOW decides which contacts are the
+  company's own, route HIGH reads what it does, industry (must be on the master),
+  company or individual, B2B/B2C, size and a small graph. `meter: 'pool'`.
+- It writes two ENRICHMENT source rows per company (`crawl` = code, `llm_pass` =
+  model) under two loads per run (`load_kind 'enrichment'`), each value with its
+  page, model and confidence in `raw`. **`rederive` ranks enrichment rows below
+  every delivery whatever the tiers** (E1), and only delivery rows count as a
+  company's linked sources. Only role mailboxes (sales@, info@) on the company's
+  own domain are ever candidates — a person's address is never a pool fact.
+- A run is keyed by its EVENT: a worker restart resumes from the last run's
+  checkpoint. No model left (`LLM_ROUTE_EXHAUSTED`) stops the run and releases
+  the records it did not reach. Withdraw retires both loads, re-derives and
+  re-scores, and takes the run's graph facts back.
+
+## The pool graph lives in the Brain's tables (S16 revised, 2026-10-02)
+
+- `gt_kg_nodes` / `gt_kg_edges` hold BOTH a tenant's Brain (tenant_id set) and
+  pool company graphs (`universe_company_id` set, tenant_id NULL) — exactly one,
+  enforced (migration 271). The isolation policy and every reader's
+  `WHERE tenant_id = $1` keep pool rows out of a tenant's Brain; **never write a
+  KG read without that filter**, or a deck starts pitching pool companies.
+- Pool rows go only through `gt_pool_kg_upsert_node/_edge`, `gt_pool_kg_read`,
+  `gt_pool_kg_withdraw_run` (SECURITY DEFINER) — `src/etl/pool-graph.ts`. The app
+  role cannot insert a tenant-less row directly (the policy refuses it).
+- A tenant whose own website (`vn_tenant_profiles.website`) is a pool company is
+  seeded by COPY when its site is read (`seed_from_pool` step); what it already
+  holds wins; copies carry `properties.from_pool`. One-way: nothing a tenant
+  holds is ever written to the pool. Several live pool companies on one domain
+  → not seeded, said so.
+- Known limit: withdrawing a pool run does not reach copies already seeded into
+  tenants (they are the tenant's rows); they still carry `from_pool.runs`.
 
 ## The model router (release 2, P2-R — built 2026-10-02)
 
@@ -1251,9 +1291,10 @@ file / directory / exhibitor list / Apollo / any provider / any connector
   (SearXNG + LLM check) · liveness · crawl for description and industry ·
   flag shared identifiers · attach a child file to its parent by name key.
   Each step's output is a NEW source row under a `cleanup` source with its
-  own tier, so raw stays raw and the merge weighs the two. **Not started:
-  the `cleanup` source puts model-derived text in the pool for the first time
-  and needs Charan's explicit go.**
+  own tier, so raw stays raw and the merge weighs the two. **Charan's go given 2026-10-02 (POA D-Q19, E1):** model-derived company facts enter
+  the pool as an `enrichment` source ranked below delivered data, labelled
+  (page · model · confidence) and withdrawable run by run. Research output still
+  never does (rule 13).
 - **Why:** staging is the audit trail and the replay point. A bad rule is
   fixed and re-run over the same rows; a bad delivery is retired at the load.
   Neither is possible if a connector lands straight into the pool.

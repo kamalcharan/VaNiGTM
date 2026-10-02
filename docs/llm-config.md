@@ -81,6 +81,23 @@ switch on Settings → Platform models (`gt_llm_provider_switch`; no row = off).
 `LLM_CONTEXT_TOKENS`; `haiku` takes `ANTHROPIC_API_KEY` and
 `LLM_FAILOVER_MODEL`, and a route may name it only when the key is set.
 
+## Common-pool enrichment — from .env, required (release 4, 2026-10-02)
+
+`backend/src/etl/enrich.config.ts`; the API and the worker refuse to start without them.
+
+| Variable | Suggested | What it is |
+|---|---|---|
+| `ENRICH_POOL_DAILY_RECORDS` | 5000 | Companies the pool may read in a UTC day, across every run (D-Q19 E4). Records, not tokens. |
+| `ENRICH_POOL_PAGES` | 3 | Pages read per company besides the home page (About, Contact, Products). |
+| `ENRICH_POOL_MIN_CONFIDENCE` | 0.6 | Below this a model's answer for a field is not written; nothing above it = abstained. |
+| `ENRICH_POOL_READ_TOKENS` | 2000 | Tokens of site text one company's reading carries (route HIGH). Keep it under the smallest window in `LLM_ROUTE_HIGH`, less the answer. |
+| `ENRICH_POOL_HIGH_MAX_TOKENS` | 800 | Answer cap: what it does, industry, type, size, small graph. |
+| `ENRICH_POOL_LOW_MAX_TOKENS` | 300 | Answer cap: which contacts are the company's own. |
+
+Pool calls are routed with `meter: 'pool'`: never checked against or recorded
+to any tenant's token budget, never sent to a tenant's own key, public company
+data only. They are counted in `gt_llm_calls` like every routed call.
+
 ## Approved to stay in code
 
 | Value | Where | Ruling |

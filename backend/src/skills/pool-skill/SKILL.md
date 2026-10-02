@@ -47,7 +47,7 @@ The companies one delivery fed, filtered by state, each with its Complete progre
 One company in full: the Complete test, which source won each field, and every source row behind it.
 - Risk: R0
 - Parameters: company_id (required, string)
-- Returns: { company: {...} | null, sources: [{ source_code, tier, load_label, as_of, method, is_decision, ... }], reason?: 'NOT_FOUND' }
+- Returns: { company: {...} | null, sources: [{ source_code, tier, load_label, load_kind, as_of, method, model, is_decision, ... }], provenance: { rows: [{ field, label, value, from, wins_over? }], enrichment }, reason?: 'NOT_FOUND' }
 
 ### industries
 The one industry master as a tree, with how many pool companies sit under each node.
@@ -72,3 +72,47 @@ Queue the matching job for one delivery or the whole pool; reassess also re-deri
 - Risk: R2
 - Parameters: load_id (optional, string), reassess (optional, boolean)
 - Returns: { event_id, queued }
+
+## Enrichment (release 4 — prototype documents/prototypes/p2c-pool-enrich.html)
+
+Reading pool companies' own websites on the model router (`src/etl/pool-enrich.ts`,
+worker event `POOL_ENRICH_REQUESTED`). Pool first (D-Q19 E3), records not tokens
+(E4, `ENRICH_POOL_DAILY_RECORDS`), only companies with a website (E5), JavaScript-only
+sites named (E6). What a run writes is an ENRICHMENT source — ranked below every
+delivery, labelled with page, model and confidence, withdrawable (E1).
+
+### workbench
+The pool by level, Qualified or better, websites, today's records, the gaps and what fills them, deliveries, runs, and VaNi's suggested slice.
+- Risk: R0
+- Parameters: none
+- Returns: { total, levels, qualified_plus, with_website, website_from_email, profile, limit: { daily, used, left }, gaps: [{ key, label, companies, filled_by, enrich }], deliveries: [{ id, label, companies, qualified_pct, as_of, eligible }], runs: [{ event_id, run_no, delivery_label, records, status, before_avg, after_avg }], suggestion }
+
+### enrich_estimate
+How many companies a slice matches, and what a run of them would take: tokens, companies per model on today's quota, time.
+- Risk: R0
+- Parameters: delivery (optional, string — a delivery id or all), raw_or_identified (optional, boolean, default true), industry_missing (optional, boolean), records (optional, number, default 100)
+- Returns: { slice, matched, estimate: { records, limit, per_company, tokens, providers: [{ code, model, companies, text, off, paid }], unplaced, minutes } | null }
+
+### start_enrich
+Start an enrichment run on a slice. Refused past today's record limit; the estimate is rebuilt from the quota left now.
+- Risk: R2
+- Parameters: delivery (optional, string), raw_or_identified (optional, boolean), industry_missing (optional, boolean), records (required, number)
+- Returns: { event_id, run_no, records, estimate }
+
+### enrich_run
+One run: progress, the feed, before and now; when finished, what it did — by part, models, not read and why.
+- Risk: R0
+- Parameters: event_id (required, string)
+- Returns: { run: { run_no, status, progress, counts, before, now, feed, models, tokens, withdrawn_at, ... } | null }
+
+### withdraw_enrich_run
+Take back everything one run wrote; the companies it touched are re-derived, re-tested and re-scored. Delivered data is untouched.
+- Risk: R2
+- Parameters: event_id (required, string)
+- Returns: { event_id, run_no, companies_rescored, graph }
+
+### stop_enrich_run
+Stop a run between two companies: a queued run never starts; a running one finishes the company it is reading, then stops and releases the rest from today's records. What it wrote stays until withdrawn.
+- Risk: R1
+- Parameters: event_id (required, string)
+- Returns: { event_id, stopped: 'before_start' | 'requested' }

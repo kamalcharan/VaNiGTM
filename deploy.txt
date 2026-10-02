@@ -184,3 +184,42 @@ docker logs vani-backend 2>&1 | grep "Tenant token budget" | tail -1
 #   Industry master → the list (the old pool link redirects here)
 #   Common pool → open a company: the Readiness card shows its score and parts
 
+# =============================================================================
+# RELEASE 4 (P2-C) — enriching the common pool on the model router, the pool
+# graph in the Brain's tables, a tenant whose own site is a pool company seeded
+# from it. Migration 271. Prototype documents/prototypes/p2c-pool-enrich.html.
+# Pool runs are counted in RECORDS a day (ENRICH_POOL_DAILY_RECORDS), never in
+# any tenant's tokens. What a run writes ranks below every delivery and can be
+# withdrawn run by run.
+# Order: A, then 1, 2 (expect 271 pending), B, 4.
+# =============================================================================
+
+# ---- A. BEFORE step 1 (the API and worker refuse to start without these) -----
+COMPOSE_DIR=$(docker inspect vani-backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}')
+E="$COMPOSE_DIR/.env"
+cp "$E" "$E.bak-$(date +%Y%m%d-%H%M)"
+add() { grep -q "^$1=" "$E" || echo "$1=$2" >> "$E"; }
+add ENRICH_POOL_DAILY_RECORDS 5000
+add ENRICH_POOL_PAGES 3
+add ENRICH_POOL_MIN_CONFIDENCE 0.6
+add ENRICH_POOL_READ_TOKENS 2000
+add ENRICH_POOL_HIGH_MAX_TOKENS 800
+add ENRICH_POOL_LOW_MAX_TOKENS 300
+grep -E '^ENRICH_POOL_' "$E"
+
+# ---- then steps 1 and 2 ------------------------------------------------------
+
+# ---- B. AFTER steps 1–2 ------------------------------------------------------
+cd /opt/vikuna/src/vanigtm
+docker exec -i vani-backend node - < deploy/vani-main-vps/checks/2026-10-03-r4.js
+docker exec -i vani-worker  node - < deploy/vani-main-vps/checks/2026-10-03-r4.js
+docker logs vani-worker 2>&1 | grep "Pool enrichment" | tail -1
+# Then in the console (vani.vikuna.io, as the admin):
+#   Settings → Platform models → the models you want enrichment to use are ON
+#   Common pool → the workbench: VaNi's suggestion → "Set up that run" →
+#     start with 10 companies the first time (the estimate's time and tokens
+#     are measured from that run) → watch it live → "what it did"
+#   Open a company the run read: "Where each value came from" names the run,
+#     page and model; a delivered phone still wins
+#   If a run looks wrong: "Withdraw run #N" on its page takes it all back
+

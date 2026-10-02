@@ -262,4 +262,29 @@ d('the model router', () => {
   it('a routed call must say what its data is', async () => {
     await expect(ask({ dataClass: undefined })).rejects.toThrow(/LLM_ROUTE_NO_DATA_CLASS/);
   });
+
+  it("pool work (meter: 'pool') is not the calling tenant's spend: no budget check, no usage recorded (D-Q19 E4)", async () => {
+    await turnOn('groq');
+    // A tenant whose own tokens are spent today …
+    await pool.query(`INSERT INTO gt_tenant_context (tenant_id, daily_token_limit) VALUES ($1, 1)
+                      ON CONFLICT (tenant_id) DO UPDATE SET daily_token_limit = 1`, [TENANT]);
+    try {
+      await expect(ask()).rejects.toThrow(/budget|limit|token/i);   // the control: an ordinary routed call is refused
+      const usage = async () => (await pool.query(`SELECT daily_token_usage FROM gt_tenant_context WHERE tenant_id = $1`, [TENANT])).rows[0].daily_token_usage;
+      const before = await usage();
+      const served: string[] = [];
+      const r = await ask({ meter: 'pool', onServed: (s) => served.push(`${s.provider} · ${s.model}`) });
+      expect(r.provider).toBe('groq');
+      expect(served).toEqual(['groq · llama-groq']);   // the caller learns which model answered
+      expect(await usage()).toEqual(before);           // nothing charged to the tenant
+      expect((await calls()).at(-1)).toMatchObject({ provider_code: 'groq', outcome: 'ok' });   // still metered as a call
+    } finally {
+      await pool.query(`UPDATE gt_tenant_context SET daily_token_limit = NULL, daily_token_usage = '{}'::jsonb WHERE tenant_id = $1`, [TENANT]);
+    }
+  });
+
+  it('pool-metered calls carry public company data only', async () => {
+    await expect(ask({ meter: 'pool', dataClass: 'tenant' })).rejects.toThrow(/LLM_POOL_METER_DATA_CLASS/);
+    await expect(ask({ meter: 'pool', dataClass: 'people' })).rejects.toThrow(/LLM_POOL_METER_DATA_CLASS/);
+  });
 });

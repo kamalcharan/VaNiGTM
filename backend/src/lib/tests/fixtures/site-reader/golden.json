@@ -1,0 +1,115 @@
+{
+  "meta-rich.html": {
+    "extract": {
+      "text": "Kavya Lab Instruments — HPLC columns for QC labs\nKavya Lab makes HPLC columns and lab consumables for quality-control labs across India.\nKavya Lab Instruments\nKavya Lab\nColumns, vials and filters, shipped from Hyderabad.\nHPLC, columns, QC lab, consumables\n\nKavya Lab Instruments — HPLC columns for QC labs \n\n Home About us HPLC columns \n Pricing Case studies LinkedIn \n Brochure Mail Call \n Blog Contact About again \n Columns that hold their resolution\n We make HPLC & UHPLC columns for QC labs &mdash; 400 customers in 12 states.\n\n Plot 4, IDA Uppal, Hyderabad 500039 Phone: +91 40 1234 5678\n\n Why us\n Batch certificates\n Two-day dispatch\n\n &copy; 2026 Kavya Lab Instruments Pvt Ltd 'quoted' \"dq\" <tag>\n\nManufacturer of chromatography columns for pharmaceutical QC labs since 2004.",
+      "health": {
+        "present": [
+          "title",
+          "meta_description",
+          "og_tags",
+          "json_ld",
+          "body_text"
+        ],
+        "missing": [],
+        "summary": "present: title, meta_description, og_tags, json_ld, body_text; missing: none; body: 446 chars"
+      }
+    },
+    "discover": [
+      "https://kavyalab.example/about-us",
+      "https://kavyalab.example/pricing",
+      "https://kavyalab.example/case-studies",
+      "https://kavyalab.example/products/hplc-columns",
+      "https://kavyalab.example/blog/2024/03/some-deep-post"
+    ],
+    "discover2": [
+      "https://kavyalab.example/about-us",
+      "https://kavyalab.example/pricing"
+    ]
+  },
+  "spa-next.html": {
+    "extract": {
+      "text": "Acme Cloud\n\nAcme Cloud \n\n Features How Other js\n\nAcme Cloud runs your payroll in under ten minutes a month\nTrusted by 2,000 small businesses across India and the Gulf\nLine one line two with a \"quote\" and é accent here",
+      "health": {
+        "present": [
+          "title"
+        ],
+        "missing": [
+          "meta_description",
+          "og_tags",
+          "json_ld",
+          "body_text"
+        ],
+        "summary": "present: title; missing: meta_description, og_tags, json_ld, body_text; body: 35 chars"
+      }
+    },
+    "discover": [
+      "https://acme.example/features",
+      "https://acme.example/how-it-works"
+    ],
+    "discover2": [
+      "https://acme.example/features",
+      "https://acme.example/how-it-works"
+    ]
+  },
+  "bare.html": {
+    "extract": {
+      "text": "",
+      "health": {
+        "present": [],
+        "missing": [
+          "title",
+          "meta_description",
+          "og_tags",
+          "json_ld",
+          "body_text"
+        ],
+        "summary": "present: none; missing: title, meta_description, og_tags, json_ld, body_text; body: 0 chars"
+      }
+    },
+    "discover": [],
+    "discover2": []
+  },
+  "reversed-meta.html": {
+    "extract": {
+      "text": "Reversed description order works\n\nShort.\n x y Team QC Deep",
+      "health": {
+        "present": [
+          "meta_description",
+          "og_tags"
+        ],
+        "missing": [
+          "title",
+          "json_ld",
+          "body_text"
+        ],
+        "summary": "present: meta_description, og_tags; missing: title, json_ld, body_text; body: 24 chars"
+      }
+    },
+    "discover": [
+      "https://rev.example/team",
+      "https://rev.example/industries/pharma/qc",
+      "https://rev.example/a/b/c/d"
+    ],
+    "discover2": [
+      "https://rev.example/team",
+      "https://rev.example/industries/pharma/qc"
+    ]
+  },
+  "generated-huge": {
+    "length": 200000,
+    "head": "Paragraph 0 about lab columns and filters.\n Paragraph 1 about lab columns and filters.\n Paragraph 2 about lab columns and filters.\n Paragraph 3 about lab columns and filters.\n Paragraph 4 about lab co",
+    "tail": " and filters.\n Paragraph 4275 about lab columns and filters.\n Paragraph 4276 about lab columns and filters.\n Paragraph 4277 about lab columns and filters.\n Paragraph 4278 about lab columns and filters",
+    "health": {
+      "present": [
+        "body_text"
+      ],
+      "missing": [
+        "title",
+        "meta_description",
+        "og_tags",
+        "json_ld"
+      ],
+      "summary": "present: body_text; missing: title, meta_description, og_tags, json_ld; body: 421888 chars"
+    }
+  }
+}

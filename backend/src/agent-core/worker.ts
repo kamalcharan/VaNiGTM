@@ -27,6 +27,8 @@ import { readLlmConfig, assertLlmConfig } from './llm.config';
 import { readWorkerConfig, assertWorkerConfig } from './worker.config';
 import { assertEtlConfig } from '../etl/etl.config';
 import { assertPoolConfig } from '../etl/pool.config';
+import { assertEnrichConfig } from '../etl/enrich.config';
+import { runPoolEnrichJob } from '../etl/pool-enrich';
 import { assertRouterConfig } from './llm.router.config';
 import { runScoreRefreshJob } from '../scoring/rescore';
 import { runPoolResolveJob } from '../etl/pool-merge';
@@ -115,6 +117,11 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
   // Release 3 — re-score after a profile change or on request (src/scoring/rescore.ts).
   SCORE_REFRESH_REQUESTED: (pool, tenantId, payload, runId) =>
     runScoreRefreshJob(pool, tenantId, payload, runId).then(() => undefined),
+
+  // Release 4 — read pool companies' own sites on the model router; resumable
+  // by event (src/etl/pool-enrich.ts).
+  POOL_ENRICH_REQUESTED: (pool, tenantId, payload, runId) =>
+    runPoolEnrichJob(pool, tenantId, payload, runId),
 
   // FOLDER_CONNECTED fires immediately after OAuth — folder_id may still
   // be null (tenant hasn't picked a folder yet). Guard the sync call so
@@ -387,6 +394,7 @@ export function startWorker(pool: Pool, queue: EventQueue): void {
   assertWorkerConfig();
   assertEtlConfig('Worker');
   assertPoolConfig('Worker');
+  assertEnrichConfig('Worker');
   assertRouterConfig('Worker');
   assertBudgetConfig('Worker');
   console.log(

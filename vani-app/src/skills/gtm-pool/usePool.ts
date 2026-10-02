@@ -50,6 +50,12 @@ export interface CompanyResult {
     source_codes: string[]; admitted_at: string | null;
   }) | null;
   sources: CompanySource[];
+  /** Release 4: where each value came from — a delivery, or an enrichment run's page, model and confidence. */
+  provenance?: {
+    rows: Array<{ field: string; label: string; value: string; from: string; wins_over?: string }>;
+    enrichment: { run_no: number; event_id: string; site: 'live' | 'js_only' | 'not_live'; reason: string | null;
+      before: { score: number; level: string } | null; refreshed_at: string | null } | null;
+  };
   reason?: 'NOT_FOUND';
 }
 

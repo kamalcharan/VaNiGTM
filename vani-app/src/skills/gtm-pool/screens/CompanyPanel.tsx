@@ -16,6 +16,11 @@ import u from '@/platform/shell/ui.module.css';
 import s from '../pool.module.css';
 import { ScoreCard } from '@/skills/scoring/ScoreCard';
 import { JUNK_REASONS, useCompany, usePoolWrites, type Check, type CompanyResult } from '../usePool';
+import Link from 'next/link';
+import e from '../enrich.module.css';
+import { runHref } from '../useEnrich';
+import { LevelBadge } from './EnrichParts';
+import { LEVEL_LABEL, type Level } from '@/skills/scoring/useScoring';
 
 const DOT: Record<Check['status'], string> = { pass: s.dotPass, fail: s.dotFail, pending: s.dotPending, review: s.dotReview, na: s.dotNa };
 const STATE_LABEL: Record<string, string> = { complete: 'In the pool', candidate: 'Waiting for Complete', enriching: 'Being enriched', held: 'Held — needs a person', junk: 'Junk' };
@@ -73,6 +78,59 @@ function Decisions({ c }: { c: NonNullable<CompanyResult['company']> }) {
   );
 }
 
+/**
+ * A pool company after enrichment (prototype p2c-pool-enrich.html, tab 5): the
+ * score and level now and before the run, the three facts the run decides, and
+ * when it was last read.
+ */
+function After({ c, p }: { c: NonNullable<CompanyResult['company']>; p: CompanyResult['provenance'] }) {
+  const en = p?.enrichment ?? null;
+  const level = (c.coverage_parts?.level ?? 'raw') as Level;
+  const site = !c.domain_normalized ? null : !en ? 'not checked yet' : en.site === 'live' ? 'live' : en.site === 'js_only' ? 'live · JavaScript-only' : 'not live';
+  return (
+    <div className={e.card} style={{ padding: 14 }}>
+      <div className={e.eyebrow}>Pool company · {(c.source_codes ?? []).map((x) => x.toUpperCase()).join(' · ') || 'no source'}</div>
+      <div className={e.scoreRow}>
+        <div className={e.big}>{c.coverage_score ?? '—'} <small>/ 100</small></div>
+        <LevelBadge level={level} />
+        {en?.before && <span className={e.muted}>was {en.before.score} · {LEVEL_LABEL[(en.before.level ?? 'raw') as Level] ?? en.before.level}</span>}
+      </div>
+      <div className={e.check}><span>Industry</span><span className={`${u.tag} ${c.industry_name ? u.tagOk : u.tagWarn}`}>{c.industry_name ?? 'not mapped yet'}</span></div>
+      <div className={e.check}><span>Company or individual</span><span className={`${u.tag} ${c.is_individual === false ? u.tagOk : c.is_individual ? u.tagBad : u.tagWarn}`}>{c.is_individual === false ? 'company' : c.is_individual ? 'individual' : 'not decided yet'}</span></div>
+      <div className={e.check}><span>Domain lookup</span><span className={`${u.tag} ${site === 'live' || site?.startsWith('live') ? u.tagOk : c.domain_normalized ? u.tagWarn : u.tagDim}`}>{c.domain_normalized ? `${c.domain_normalized} · ${site}` : 'no website — domain lookup later (E5)'}</span></div>
+      <p className={e.muted} style={{ marginTop: 8 }}>
+        {en ? <>Last refreshed {formatDate(en.refreshed_at)} · <Link href={runHref(en.event_id)}>enrichment run #{en.run_no}</Link>{en.site === 'not_live' && en.reason ? ` — ${en.reason}` : ''}</>
+          : c.domain_normalized ? 'Not read by an enrichment run yet — start one from the pool page.' : 'Not readable until it has a website.'}
+      </p>
+    </div>
+  );
+}
+
+/** Where each value came from: a delivery, or a run's page, model and confidence; a delivery wins and the site's value is named. */
+function Provenance({ c, p }: { c: NonNullable<CompanyResult['company']>; p: CompanyResult['provenance'] }) {
+  const shown = new Set((p?.rows ?? []).map((r) => r.field));
+  const rest = Object.entries(c.field_sources ?? {}).filter(([f]) => !shown.has(f) && f !== 'industry_raw');
+  return (
+    <>
+      <div className={s.dSecTitle}>Where each value came from</div>
+      <div className={e.tableWrap}><table className={e.table}>
+        <thead><tr><th>Field</th><th>Value</th><th>From</th></tr></thead>
+        <tbody>
+          {(p?.rows ?? []).map((r) => (
+            <tr key={r.field}><td>{r.label}</td><td>{r.value}</td>
+              <td><span className={e.mono}>{r.from}{r.wins_over && <> — <b className={e.wins}>wins</b> over the site&apos;s {r.wins_over}</>}</span></td></tr>
+          ))}
+          {rest.map(([f, w]) => (
+            <tr key={f}><td>{FIELD_LABEL[f] ?? f}</td><td>{String((f === 'industry_id' ? c.industry_name : c[f]) ?? '—')}</td>
+              <td><span className={e.mono}>{w.via ? `${w.source} (${w.via})` : `${w.source} delivery`}{w.as_of ? ` · ${formatDate(w.as_of)}` : ''}</span></td></tr>
+          ))}
+        </tbody>
+      </table></div>
+      <p className={e.note}>Where a delivery and the site disagree, the delivery wins (it ranks higher) and both are kept. The mini knowledge graph is drawn here in the second half of the release.</p>
+    </>
+  );
+}
+
 export function CompanyPanel({ companyId, onClose }: { companyId: string; onClose: () => void }) {
   const q = useCompany(companyId);
   return (
@@ -93,6 +151,7 @@ export function CompanyPanel({ companyId, onClose }: { companyId: string; onClos
                   </div>
                   <button type="button" className={s.dClose} onClick={onClose} aria-label="Close">×</button>
                 </div>
+                <After c={c} p={d.provenance} />
                 <span className={`${u.tag} ${STATE_TAG[c.lifecycle_state] ?? u.tagDim}`}>{STATE_LABEL[c.lifecycle_state] ?? c.lifecycle_state}</span>
 
                 <div style={{ marginTop: 12 }}><ScoreCard companyId={c.id} /></div>
@@ -113,12 +172,7 @@ export function CompanyPanel({ companyId, onClose }: { companyId: string; onClos
 
                 <Decisions c={c} />
 
-                <div className={s.dSecTitle}>Which source won each field</div>
-                {Object.entries(c.field_sources ?? {}).map(([f, w]) => (
-                  <div key={f} className={s.field}><span className={s.fk}>{FIELD_LABEL[f] ?? f}</span>
-                    <span className={s.fv}>{String((f === 'industry_id' ? c.industry_name : c[f]) ?? '—')} <span className={s.muted}>· {w.via ? `${w.source} (${w.via})` : w.source}{w.as_of ? ` · ${formatDate(w.as_of)}` : ''}</span></span>
-                  </div>
-                ))}
+                <Provenance c={c} p={d.provenance} />
 
                 <div className={s.dSecTitle}>Every row behind it</div>
                 {d.sources.map((r) => (

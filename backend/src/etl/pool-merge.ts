@@ -118,7 +118,7 @@ export async function rederive(client: PoolClient, companyIds: string[]): Promis
   const r = await client.query(
     `SELECT s.*, s.id::text AS sid, s.company_id::text AS cid, ds.code AS source_code,
             COALESCE(l.tier_override, ds.tier) AS eff_tier,
-            COALESCE(s.source_as_of, l.as_of) AS as_of, l.default_industry_id
+            COALESCE(s.source_as_of, l.as_of) AS as_of, l.default_industry_id, l.load_kind
        FROM gt_universe_company_sources s
        JOIN gt_source_loads l ON l.id = s.load_id AND l.status = 'active'
        JOIN gt_data_sources ds ON ds.id = s.source_id
@@ -134,7 +134,12 @@ export async function rederive(client: PoolClient, companyIds: string[]): Promis
   // ONE field only; it never competes for any other.
   const speaksFor = (x: any, f: string) => !x.raw?.decision || x.raw.decision === f;
   for (const [cid, rows] of byCompany) {
-    rows.sort((a, b) => (b.eff_tier - a.eff_tier) || (asTime(b.as_of) - asTime(a.as_of)) || (Number(b.sid) - Number(a.sid)));
+    // What an enrichment run read (a site, a model) ranks below anything a
+    // delivery said, whatever the tiers (D-Q19 E1): the site's phone never
+    // replaces the directory's, both are kept, and the run can be withdrawn.
+    // A person's decision is not an enrichment reading and keeps its tier.
+    const read = (x: any) => (x.load_kind === 'enrichment' && !x.raw?.decision ? 1 : 0);
+    rows.sort((a, b) => (read(a) - read(b)) || (b.eff_tier - a.eff_tier) || (asTime(b.as_of) - asTime(a.as_of)) || (Number(b.sid) - Number(a.sid)));
     const set: Record<string, unknown> = {};
     const fieldSources: Record<string, unknown> = {};
     const present = (v: unknown) => v !== null && v !== undefined && !(typeof v === 'string' && v.trim() === '');
@@ -180,7 +185,9 @@ export async function assess(client: PoolClient, companyIds: string[]): Promise<
     `SELECT c.*, c.id::text AS cid,
             (SELECT count(*) FROM gt_universe_company_sources s
                JOIN gt_source_loads l ON l.id = s.load_id AND l.status = 'active'
-              WHERE s.company_id = c.id AND NOT (s.raw ? 'decision'))::int AS linked_sources
+              -- Deliveries only: a decision or an enrichment reading is not a
+              -- source the company was matched from.
+              WHERE s.company_id = c.id AND l.load_kind = 'delivery' AND NOT (s.raw ? 'decision'))::int AS linked_sources
        FROM gt_universe_companies c WHERE c.id = ANY($1::bigint[])`, [companyIds]);
   for (const c of r.rows) {
     const result = completeTest(c as GoldenForTest);

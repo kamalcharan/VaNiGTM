@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>VaNi GTM · Release 4 · Pool enrichment</title>
+<style>
+:root{--bg:#f5f5ef;--paper:#fffef9;--ink:#213e34;--muted:#68766f;--line:#dce1d6;--green:#244f3d;--lime:#deeca8;--amber:#9a601d;--soft:#f6edda;--red:#a33a2b;--rsoft:#f6e1dc;--blue:#2d5a7a;--bsoft:#e2edf4;font:15px 'Segoe UI',Arial,sans-serif;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg)}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+.eyebrow{font:600 11px/1.4 'Segoe UI',Arial;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 28px/1.15 Georgia,serif;margin:6px 0 4px}h1 em{color:var(--amber)}
+h2{font:600 18px/1.3 Georgia,serif;margin:0 0 6px}h3{font-size:15px;margin:0 0 4px}
+p{line-height:1.6;color:#3d5249;margin:0 0 10px}.muted{color:var(--muted);font-size:13px}
+.note{font-size:12px;color:var(--muted);background:var(--soft);border-radius:8px;padding:8px 10px;margin-top:10px}
+.q{font-size:12px;color:var(--blue);background:var(--bsoft);border-radius:8px;padding:8px 10px;margin-top:10px}
+.q b{color:var(--blue)}
+.group{font:600 11px 'Segoe UI';letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:0 6px;align-self:center;white-space:nowrap}
+.tabs{display:flex;gap:4px;overflow-x:auto;margin:16px 0 18px;border-bottom:1px solid var(--line)}
+.tab{border:0;background:none;padding:10px 12px;font:600 12px 'Segoe UI';letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.tab[aria-selected=true]{color:var(--green);border-bottom-color:var(--green)}
+.screen{display:none}.screen.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.wide{grid-column:1/-1}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}.row:last-child{border:0}
+.row span:last-child{color:var(--muted);text-align:right}
+.tag{display:inline-block;font:600 11px 'Segoe UI';letter-spacing:.05em;padding:3px 8px;border-radius:20px;background:#eef0e8;color:var(--muted);white-space:nowrap}
+.ok{background:var(--lime);color:var(--green)}.warn{background:var(--soft);color:var(--amber)}.bad{background:var(--rsoft);color:var(--red)}.info{background:var(--bsoft);color:var(--blue)}
+.btn{border:1px solid var(--green);background:var(--paper);color:var(--green);border-radius:8px;padding:7px 12px;font:600 13px 'Segoe UI';cursor:pointer}
+.btn.primary{background:var(--green);color:#fff}.btn.sm{padding:4px 9px;font-size:12px}.btn:disabled{opacity:.45;cursor:default}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.agent{display:flex;gap:12px;align-items:flex-start;background:#eef3e4;border:1px solid #cfdcb7;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.agent .av{width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:700;flex-shrink:0}
+.bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin:8px 0}.bar span{display:block;height:100%;background:var(--green);transition:width .6s}
+.stack{display:flex;height:14px;border-radius:6px;overflow:hidden;margin:8px 0;background:var(--line)}.stack i{display:block;transition:width .8s}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.legend b{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}.chip{border:1px solid var(--line);background:var(--paper);border-radius:20px;padding:5px 11px;font-size:13px;cursor:pointer}.chip.on{background:var(--green);color:#fff;border-color:var(--green)}
+.check{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
+.mono{font:12px Consolas,monospace;color:var(--muted)}
+.decision{border:1px solid #e3c68f;background:#fffaf0;border-radius:12px;padding:14px;margin-top:10px}
+.big{font:600 34px/1 Georgia,serif}.big small{font-size:14px;color:var(--muted);font-family:'Segoe UI'}
+.lvl{display:inline-block;font:600 11px 'Segoe UI';padding:3px 9px;border-radius:20px;color:#fff}
+.L0{background:#b9bfb4}.L1{background:#9aa88b}.L2{background:#6f9a5a}.L3{background:#3f7a55}.L4{background:#244f3d}.L5{background:#132e23}
+.part{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;font-size:13px;padding:5px 0}
+.part .pb{height:8px;background:var(--line);border-radius:6px;overflow:hidden;position:relative}
+.part .pb span{position:absolute;left:0;top:0;bottom:0;background:var(--green);border-radius:6px;transition:width .8s}
+.part .pb em{position:absolute;left:0;top:0;bottom:0;background:#c9d7b5;border-radius:6px}
+.feed{font-size:13px;max-height:340px;overflow:auto}
+.feed .s{display:grid;grid-template-columns:62px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.feed .s .t{color:var(--muted);font:12px Consolas,monospace}
+.feed .model{font:11px Consolas,monospace;color:var(--blue);background:var(--bsoft);border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap}
+.feed .move{color:var(--amber)}
+input[type=number]{width:64px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;font:13px 'Segoe UI';background:#fff;color:var(--ink)}
+select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;font:13px 'Segoe UI';background:#fff;color:var(--ink)}
+.kg{width:100%;height:auto;display:block}
+.kg text{font:12px 'Segoe UI',Arial;fill:var(--ink)}
+.kg .lbl{font-size:10px;fill:var(--muted)}
+.route{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px}
+.route .hop{border:1px solid var(--line);border-radius:8px;padding:4px 9px;background:#fff}
+.route .hop.skip{opacity:.5;text-decoration:line-through}
+.route .arr{color:var(--muted)}
+.tree .n{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}.tree .c{padding-left:22px}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center}
+@media(max-width:820px){.grid,.grid3{grid-template-columns:1fr}.wide{grid-column:auto}h1{font-size:23px}.part{grid-template-columns:110px 1fr 56px}}
+</style></head><body><div class="wrap">
+
+</head><body><div class="wrap">
+<div class="eyebrow">Release 4 · sprint A prototype · for review · admin only · 02-Oct-2026</div>
+<h1>The common pool, <em>enriched</em> — one run end to end</h1>
+<p class="muted">How the admin sees what the pool lacks, starts an enrichment run on a slice, watches it, and judges what it did. Pool first (E3), records not tokens (E4), only companies with a website (E5), unreadable sites named (E6). Numbers are illustrative unless tagged <span class="tag ok">measured</span>. Company names are invented.</p>
+
+<div class="tabs" role="tablist">
+  <button class="tab" role="tab" aria-selected="true" data-s="w">1 · Workbench</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="n">2 · New run</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="l">3 · Live</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="r">4 · What it did</button>
+  <button class="tab" role="tab" aria-selected="false" data-s="c">5 · A company after</button>
+</div>
+
+<!-- W -->
+<section class="screen on" id="w">
+  <div class="agent"><div class="av">V</div><div>
+    <h3>VaNi: "1,410 FTCCI companies have a website but no industry or contact page read yet. Reading their sites would move most of them out of Identified. Start with 100 to measure the cost?"</h3>
+    <div class="actions"><button class="btn primary" data-go="n">Set up that run →</button><button class="btn">Pick another slice</button></div>
+  </div></div>
+  <div class="grid">
+    <div class="card wide">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Common pool · 3,239 companies</h2><span class="muted">Platform default v1 · company side only</span></div>
+      <div class="stack" id="wstack"></div><div class="legend" id="wlegend"></div>
+      <div class="grid3" style="margin-top:14px">
+        <div><div class="eyebrow">Qualified or better</div><div class="big">276 <small>of 3,239</small></div><p class="muted">Pass Complete. A tenant can research these.</p></div>
+        <div><div class="eyebrow">Have a website</div><div class="big">2,063 <small>FTCCI</small> <span class="tag ok">measured</span></div><p class="muted">489 of them found from a work email.</p></div>
+        <div><div class="eyebrow">Today's record limit</div><div class="big">5,000 <small>left</small></div><p class="muted">ENRICH_POOL_DAILY_RECORDS · not anyone's tokens</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>What's missing, and what fills it</h2>
+      <div class="tablewrap"><table>
+        <tr><th>Gap</th><th class="num">Companies</th><th>Filled by</th><th></th></tr>
+        <tr><td>Industry not mapped</td><td class="num">2,580</td><td><span class="tag info">site read</span></td><td><button class="btn sm" data-go="n">Enrich</button></td></tr>
+        <tr><td>Company or individual unknown</td><td class="num">2,960</td><td><span class="tag info">site read</span></td><td><button class="btn sm" data-go="n">Enrich</button></td></tr>
+        <tr><td>No company email / phone from the site</td><td class="num">1,900</td><td><span class="tag info">site read (contact)</span></td><td><button class="btn sm" data-go="n">Enrich</button></td></tr>
+        <tr><td>No website at all</td><td class="num">849</td><td><span class="tag">domain lookup · not yet (E5)</span></td><td></td></tr>
+      </table></div>
+      <p class="note">"Company or individual" and "Industry" are two of the eight Complete checks — they are why most of the pool sits at Identified.</p>
+    </div>
+    <div class="card">
+      <h2>Deliveries</h2>
+      <div class="tablewrap"><table>
+        <tr><th>Delivery</th><th class="num">Companies</th><th class="num">Qualified+</th><th>Last refreshed</th></tr>
+        <tr><td>FTCCI · Members</td><td class="num">2,912 <span class="tag ok">measured</span></td><td class="num">8%</td><td>Oct-2023 · delivery</td></tr>
+        <tr><td>analytica · Exhibitors</td><td class="num">327 <span class="tag ok">measured</span></td><td class="num">12%</td><td>01-Oct-2026 · delivery</td></tr>
+      </table></div>
+      <h2 style="margin-top:14px">Runs</h2>
+      <div class="empty"><p style="margin:0 0 8px">No enrichment run yet. Start with 100 companies — the run measures the real cost per company before you commit to more.</p><button class="btn primary sm" data-go="n">Set up a run</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- N -->
+<section class="screen" id="n">
+  <div class="grid">
+    <div class="card">
+      <div class="eyebrow">1 · Which companies</div>
+      <div class="chips"><span class="chip on">FTCCI</span><span class="chip">analytica</span><span class="chip">All deliveries</span></div>
+      <div class="chips"><span class="chip on">Has a website</span><span class="chip on">Raw or Identified</span><span class="chip">Industry missing</span></div>
+      <p><b>1,410</b> match. <b>This run: </b><span class="chips" style="display:inline-flex;margin:0"><span class="chip on">100</span><span class="chip">500</span><span class="chip">All 1,410</span></span></p>
+      <div class="eyebrow" style="margin-top:6px">2 · What it does to each</div>
+      <div class="tablewrap"><table>
+        <tr><th>Step</th><th>Who</th><th>Cost</th></tr>
+        <tr><td>Check the website is live (and not a parked page)</td><td><span class="tag ok">code</span></td><td>free</td></tr>
+        <tr><td>Read About, Contact and Products pages</td><td><span class="tag ok">code</span></td><td>free</td></tr>
+        <tr><td>What it does, its industry, company or individual, B2B/B2C, size hints</td><td><span class="tag info">route HIGH</span></td><td>~3,000 tokens</td></tr>
+        <tr><td>Company emails, phones, LinkedIn / X links</td><td><span class="tag info">route LOW</span></td><td>~600 tokens</td></tr>
+      </table></div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">3 · Estimate</div>
+      <div class="row"><span>Records</span><span><b>100</b> of today's 5,000</span></div>
+      <div class="row"><span>Model tokens</span><span>≈ 360,000 (not charged to any tenant)</span></div>
+      <div class="row"><span>Groq · gpt-oss-120b</span><span>≈ 55 companies before its 200K tokens/day run out</span></div>
+      <div class="row"><span>OpenRouter · gemma-4-31b</span><span>≈ 25 companies (50 free requests a day)</span></div>
+      <div class="row"><span>qwen · Vikuna VPS</span><span>the rest, one at a time ≈ 40 s each</span></div>
+      <div class="row"><span>Haiku</span><span>off — nothing is paid</span></div>
+      <div class="row"><span>Time</span><span>≈ 35 minutes</span></div>
+      <div class="decision">
+        <h3>What this run writes</h3>
+        <p>Facts read from each company's own site, as an <b>enrichment</b> source — ranked below what a delivery said, labelled with the page, model and confidence. The whole run can be withdrawn later; nothing is overwritten.</p>
+        <div class="actions"><button class="btn primary" id="go">Start the run</button><button class="btn" data-go="w">Cancel</button></div>
+      </div>
+      <p class="note">The free models' limits are the bottleneck, not your record limit. The estimate is rebuilt from the real quota left when you press Start.</p>
+    </div>
+  </div>
+</section>
+
+<!-- L -->
+<section class="screen" id="l">
+  <div class="grid">
+    <div class="card">
+      <h2 id="ltitle">Run #1 · FTCCI · 100 companies</h2>
+      <div class="bar"><span id="lbar" style="width:0%"></span></div>
+      <p class="muted" id="lmeta">Press "Start the run" on tab 2.</p>
+      <div class="feed" id="feed"></div>
+    </div>
+    <div class="card">
+      <h2>As it goes</h2>
+      <div class="part"><span>Before</span><div class="stack" id="lb" style="margin:0"></div><span class="muted">avg 24</span></div>
+      <div class="part"><span>Now</span><div class="stack" id="la" style="margin:0"></div><span class="muted" id="lavg">avg 24</span></div>
+      <div class="legend" id="llegend" style="margin-top:8px"></div>
+      <div class="grid3" style="margin-top:12px">
+        <div><div class="eyebrow">Read</div><div class="big" id="kRead">0</div></div>
+        <div><div class="eyebrow">Unreadable</div><div class="big" id="kUnr">0</div></div>
+        <div><div class="eyebrow">Abstained</div><div class="big" id="kAbs">0</div></div>
+      </div>
+      <p class="note">You can leave this page. The run continues on the worker and resumes where it stopped if the worker restarts.</p>
+    </div>
+  </div>
+</section>
+
+<!-- R -->
+<section class="screen" id="r">
+  <div class="grid">
+    <div class="card wide">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0">Run #1 — what it did</h2><span class="muted">02-Oct-2026 · 34 min · 100 records · 352,400 tokens · ₹0</span></div>
+      <div class="part"><span>Before</span><div class="stack" id="rb" style="margin:0"></div><span class="muted">avg 24</span></div>
+      <div class="part"><span>After</span><div class="stack" id="ra" style="margin:0"></div><span class="muted">avg 47</span></div>
+      <div class="legend" id="rlegend"></div>
+    </div>
+    <div class="card">
+      <h2>By part, average</h2>
+      <div class="part"><span>Identity</span><div class="pb"><em style="width:60%"></em><span style="width:85%"></span></div><span class="muted">12 → 17</span></div>
+      <div class="part"><span>Firmographics</span><div class="pb"><em style="width:15%"></em><span style="width:70%"></span></div><span class="muted">3 → 14</span></div>
+      <div class="part"><span>Digital presence</span><div class="pb"><em style="width:40%"></em><span style="width:80%"></span></div><span class="muted">4 → 8</span></div>
+      <div class="part"><span>Contact points</span><div class="pb"><em style="width:25%"></em><span style="width:40%"></span></div><span class="muted">5 → 8</span></div>
+      <p class="muted" style="margin-top:8px">People, research and signals are earned in a tenant's own copy.</p>
+    </div>
+    <div class="card">
+      <h2>Models</h2>
+      <div class="row"><span>groq · gpt-oss-120b</span><span>54 companies · 196,800 tokens</span></div>
+      <div class="row"><span>openrouter · gemma-4-31b</span><span>17 companies (then quota spent)</span></div>
+      <div class="row"><span>qwen · VPS</span><span>15 companies</span></div>
+      <div class="row"><span>Bad answers moved on</span><span>4 (2 groq, 2 openrouter)</span></div>
+      <p class="note">Every value names the model that read it. Release 5 adds the test set each model must pass per step.</p>
+    </div>
+    <div class="card wide">
+      <h2>Not read — and why</h2>
+      <div class="tablewrap"><table>
+        <tr><th>Reason</th><th class="num">Companies</th><th>Next</th></tr>
+        <tr><td>Site is JavaScript-only — nothing to read without a browser (E6)</td><td class="num">8</td><td class="muted">the headless reader, later</td></tr>
+        <tr><td>Site down or a parked domain</td><td class="num">5</td><td class="muted">marked "website not live"; domain lookup later (E5)</td></tr>
+        <tr><td>Read, but no model was sure enough — nothing written</td><td class="num">1</td><td class="muted">waits for a person in the review list</td></tr>
+      </table></div>
+      <div class="decision">
+        <h3>Withdraw this run?</h3>
+        <p>Takes back every value this run wrote and re-scores the 86 companies it touched. Delivered data is untouched. The run stays in the history, marked withdrawn.</p>
+        <div class="actions"><button class="btn">Withdraw run #1</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- C -->
+<section class="screen" id="c">
+  <div class="grid">
+    <div class="card">
+      <div class="eyebrow">Pool company · FTCCI</div>
+      <h2>Kavya Lab Instruments Pvt Ltd</h2>
+      <div style="display:flex;gap:14px;align-items:center;margin:6px 0 10px"><div class="big">56 <small>/ 100</small></div><span class="lvl L2">Qualified</span><span class="muted">was 25 · Identified</span></div>
+      <div class="check"><span>Industry</span><span class="tag ok">Lab equipment</span></div>
+      <div class="check"><span>Company or individual</span><span class="tag ok">company</span></div>
+      <div class="check"><span>Domain lookup</span><span class="tag ok">kavyalab.example · live</span></div>
+      <p class="muted">Last refreshed 02-Oct-2026 · enrichment run #1</p>
+    </div>
+    <div class="card">
+      <h2>Where each value came from</h2>
+      <div class="tablewrap"><table>
+        <tr><th>Field</th><th>Value</th><th>From</th></tr>
+        <tr><td>Industry</td><td>Lab equipment</td><td><span class="mono">run #1 · /about · groq gpt-oss-120b · 0.91</span></td></tr>
+        <tr><td>Industry (raw)</td><td>"Chemicals &amp; Scientific"</td><td><span class="mono">FTCCI delivery · kept as delivered</span></td></tr>
+        <tr><td>Company email</td><td>sales@kavyalab.example</td><td><span class="mono">run #1 · /contact · page text</span></td></tr>
+        <tr><td>Phone</td><td>+91 40 2345 6789</td><td><span class="mono">FTCCI delivery — <b>wins</b> over the site's +91 40 2345 0000</span></td></tr>
+        <tr><td>What it does</td><td>HPLC columns and lab consumables for QC labs</td><td><span class="mono">run #1 · /products · groq · 0.88</span></td></tr>
+        <tr><td>LinkedIn</td><td>linkedin.com/company/kavya-lab</td><td><span class="mono">run #1 · site footer · code</span></td></tr>
+      </table></div>
+      <p class="note">Where a delivery and the site disagree, the delivery wins (it ranks higher) and both are kept. The mini knowledge graph is drawn here in the second half of the release.</p>
+    </div>
+  </div>
+</section>
+</div>
+<script>
+var LV=[['Raw','#b9bfb4'],['Identified','#9aa88b'],['Qualified','#6f9a5a'],['Reachable','#3f7a55'],['Campaign-ready','#244f3d'],['Strong','#132e23']];
+function stack(id,c){var t=c.reduce(function(a,b){return a+b},0)||1;document.getElementById(id).innerHTML=c.map(function(n,i){return '<i style="width:'+(n*100/t)+'%;background:'+LV[i][1]+'"></i>'}).join('')}
+function legend(id,c){document.getElementById(id).innerHTML=c.map(function(n,i){return '<span><b style="background:'+LV[i][1]+'"></b>'+LV[i][0]+' '+n.toLocaleString('en-US')+'</span>'}).join('')}
+stack('wstack',[1218,1333,276,412,0,0]);legend('wlegend',[1218,1333,276,412,0,0]);
+var B=[22,78,0,0,0,0],A=[9,40,33,18,0,0];
+stack('lb',B);stack('la',B);legend('llegend',B);stack('rb',B);stack('ra',A);legend('rlegend',A);
+function show(id){document.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected',x.dataset.s===id?'true':'false')});document.querySelectorAll('.screen').forEach(function(x){x.classList.toggle('on',x.id===id)});window.scrollTo(0,0)}
+document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){show(t.dataset.s)})});
+document.querySelectorAll('[data-go]').forEach(function(b){b.addEventListener('click',function(){show(b.dataset.go)})});
+var S=[['plan','Route HIGH for pool company facts: groq → openrouter → qwen (haiku off). 100 records of today\'s 5,000.',null],
+['check','Kavya Lab Instruments: kavyalab.example is live',null],
+['read','Kavya Lab Instruments: /about, /contact, /products','groq · gpt-oss-120b'],
+['check','Sri Lakshmi Traders: lakshmitraders.example is a parked page — marked "website not live"',null],
+['read','Deccan Biologics: /about, /contact','groq · gpt-oss-120b'],
+['skip','Nizam Analytical: site is JavaScript-only — nothing to read without a browser (E6)',null],
+['move','groq: today\'s tokens spent (198,400/200,000) — next companies go to openrouter',null],
+['read','Hitech Glassware: /about, /products','openrouter · gemma-4-31b'],
+['bad','Hitech Glassware: industry answer not on the master — asking qwen',null],
+['read','Hitech Glassware: re-asked','qwen · VPS'],
+['move','openrouter: 50 free requests used — the rest go to qwen, one at a time',null],
+['read','Aryan Pharma Chem: /about, /contact','qwen · VPS'],
+['done','100 done · 86 read · 8 JavaScript-only · 5 not live · 1 abstained · 48 moved up a level',null]];
+var on=false;
+document.getElementById('go').addEventListener('click',function(){if(on)return;on=true;show('l');var f=document.getElementById('feed');f.innerHTML='';var i=0;
+ var iv=setInterval(function(){var s=S[i];var d=document.createElement('div');d.className='s';var cls=(s[0]==='move'||s[0]==='bad'||s[0]==='skip')?' class="move"':'';
+  d.innerHTML='<span class="t">'+s[0]+'</span><span'+cls+'>'+s[1]+(s[2]?'<span class="model">'+s[2]+'</span>':'')+'</span>';f.appendChild(d);f.scrollTop=f.scrollHeight;
+  var p=(i+1)/S.length;document.getElementById('lbar').style.width=(p*100)+'%';document.getElementById('lmeta').textContent=Math.round(100*p)+' of 100 companies';
+  var m=B.map(function(b,k){return Math.round(b+(A[k]-b)*p)});stack('la',m);legend('llegend',m);document.getElementById('lavg').textContent='avg '+Math.round(24+23*p);
+  document.getElementById('kRead').textContent=Math.round(86*p);document.getElementById('kUnr').textContent=Math.round(13*p);document.getElementById('kAbs').textContent=Math.round(1*p);
+  i++;if(i>=S.length){clearInterval(iv);document.getElementById('ltitle').textContent='Run #1 · finished · 34 min';}},650);});
+</script>
+</body></html>

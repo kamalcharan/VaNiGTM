@@ -226,6 +226,7 @@ async function callOnProvider(options: LLMCallOptions, p: RouterProvider, rung: 
       rung, provider: p, outcome: 'ok', promptTokens: res.inputTokens, answerTokens: res.outputTokens,
       truncated: res.truncated, latencyMs: Date.now() - started,
     });
+    options.onServed?.({ provider: p.code, model: p.model, inputTokens: res.inputTokens, outputTokens: res.outputTokens });
     return { ...res, provider: p.code, model: p.model };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -277,12 +278,19 @@ async function prepare(options: LLMCallOptions): Promise<Prepared> {
   if (!options.dataClass) {
     throw new Error('LLM_ROUTE_NO_DATA_CLASS: a routed call must say what its prompt carries (public_company · tenant · people) — the data gate will not guess.');
   }
-  const tenantProvider = await resolveProvider(options.pool, options.tenantId);
-  if (tenantProvider.posture === 'byok') return { cfg: null as never, plan: { eligible: [], skipped: [] }, byok: tenantProvider };
-
-  // Platform posture: the tenant's budget first, exactly as an unrouted call.
   const maxTokens = options.maxTokens ?? readLlmConfig().defaultMaxTokens;
-  await checkTokenBudget(options.pool, options.tenantId, maxTokens);
+  if (options.meter === 'pool') {
+    // Common-pool work (D-Q19 E4) is the platform's, not the calling tenant's:
+    // no tenant key, no tenant budget. Only public company facts qualify.
+    if (options.dataClass !== 'public_company') {
+      throw new Error(`LLM_POOL_METER_DATA_CLASS: pool-metered calls carry public company data only, not ${options.dataClass}.`);
+    }
+  } else {
+    const tenantProvider = await resolveProvider(options.pool, options.tenantId);
+    if (tenantProvider.posture === 'byok') return { cfg: null as never, plan: { eligible: [], skipped: [] }, byok: tenantProvider };
+    // Platform posture: the tenant's budget first, exactly as an unrouted call.
+    await checkTokenBudget(options.pool, options.tenantId, maxTokens);
+  }
 
   const cfg = readRouterConfig();
   const state = await readRouteState(options.pool, options.purpose ?? 'enrichment');

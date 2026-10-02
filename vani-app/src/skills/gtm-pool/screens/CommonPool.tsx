@@ -1,6 +1,8 @@
 'use client';
 /**
- * /agents/gtm/pool — the common pool, admin tenants only. The retired
+ * /agents/gtm/pool — the common pool, admin tenants only. Since release 4 it
+ * opens on the enrichment workbench (prototype p2c-pool-enrich.html, tab 1);
+ * what follows is unchanged. The retired
  * /common-pool page (RecordsPage, scope 'pool'), ported (2026-09-26), plus
  * the two things it pointed elsewhere for: the deliveries behind the rows
  * (prospect-skill.get_loads) and the door to add one (the import wizard in
@@ -29,6 +31,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ImportWizard } from '@/skills/gtm-audience/screens/ImportWizard';
 import type { RecordRow } from '@/skills/gtm-audience/mock-data';
 import { PoolCrumbs, PoolDeliveries, PoolSources, PoolStates } from './PoolParts';
+import { Workbench } from './Workbench';
 
 /** A pool row: what the view carries beyond the list columns. */
 interface PoolRecord extends RecordRow {
@@ -123,6 +126,12 @@ export default function CommonPool() {
         <p className={u.lede}>The directory data every tenant draws on. Fed here by importing a delivery as a common-pool dataset; read by tenants through the hot list, never written by them.</p>
       </div>
 
+      <Workbench />
+
+      <div style={{ marginTop: 10 }}>
+        <div className={u.eyebrow}>// MANAGE THE POOL</div>
+        <p className={s.secWhat} style={{ marginTop: 4 }}>The states, sources and deliveries the workbench counts — add or retire a delivery, match rows, open any company.</p>
+      </div>
       <PoolStates />
       <PoolSources />
 
