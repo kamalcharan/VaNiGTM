@@ -156,9 +156,11 @@ deploy/vani-main-vps/ — the VPS: compose, Dockerfile, deploy script, nginx
   (resolved from JWT, never the request body).
 
 ### RLS — current reality (important)
-- ⚠️ **Checked on the VPS 2026-09-30 ~23:40: the runtime is `vikuna_admin` — the switch below
-  is NOT in effect, RLS is NOT enforced in production** (DEPLOY.md §4b warning). Local
-  `.env`s may still use `vanigtm_app`, so a laptop can pass what production never checks.
+- ✅ **Production runs as `vanigtm_app` since 2026-10-02 (Charan) — RLS ENFORCED**,
+  proven in the container (DEPLOY.md §4b). Exception: the 31 `vani_*`/`vara_*`
+  tables are OWNED by `vanigtm_app` and unforced, so the owner bypass applies
+  there and isolation is the code's `WHERE tenant_id` only (VPS task 7). A laptop
+  `.env` holding the `vikuna_admin` production URL still bypasses everything.
 - **Intended: the runtime connects as `vanigtm_app` (DEPLOY.md §4b) — RLS ENFORCED.** A raw `pool.query` against an RLS
   table now returns nothing; every tenant read goes through `withTenantClient`
   / `createTenantDb`. Application-layer `WHERE tenant_id` filters stay as the
@@ -767,7 +769,7 @@ Commands for 1 are in `deploy.txt`; DEPLOY.md explains them. Tick here when done
    262 if it never ran) → 3 nginx (upload location 200m) → B release check
    (every line OK) → 4 verify. Then in the console: import a small CSV, and
    Runs → Events shows nothing stuck.
-2. [ ] **Redo the runtime role switch** (DEPLOY.md §4b). Checked 2026-09-30
+2. [x] **Redo the runtime role switch** — DONE 2026-10-02: `vanigtm_app`, NOSUPERUSER, NOBYPASSRLS; migrations via `DB_MIGRATE` (owner); console used with no permission errors. (DEPLOY.md §4b). Checked 2026-09-30
    23:40: production runs as `vikuna_admin`, so RLS is NOT enforced. Edit the
    `DB_*` lines only — never copy a whole file over `.env` (that is how the
    switch was lost). Walk the §4b console test list afterwards.
@@ -789,6 +791,18 @@ Commands for 1 are in `deploy.txt`; DEPLOY.md explains them. Tick here when done
    limit:** `ETL_UPLOAD_DIR` from `.env`, one host folder mounted in BOTH
    containers, and a retention rule for originals (they hold personal data —
    DPDP) — pending Charan's retention period.
+   **DECIDED 2026-10-02 (Charan): files are temporary.** Delete the file once
+   its rows are staged; keep only the metadata (`ki_file_uploads`: name, date,
+   size, kind, sha256; row count on the session). The same CONTENT is refused
+   (fingerprint, not name — renaming does not bypass; retire the earlier
+   import to re-import). A failed import never blocks its own file; rows that
+   overlap earlier ones are duplicates ("already held"), not a refusal. No
+   schema change.
+7. [ ] **Force RLS on the `vani_*`/`vara_*` spine.** Preflight check 7
+   (2026-10-02) lists 31 tables owned by `vanigtm_app`, RLS on, not forced —
+   the app bypasses their policies as owner. Extend `rls-two-tenant-test.sql`
+   to the spine FIRST, then force in a migration (`docs/db/rls-status.md`
+   §11–13); forcing blind broke Vara before.
 
 ## Main VPS — known broken, DEFERRED (recorded 2026-08-17)
 
