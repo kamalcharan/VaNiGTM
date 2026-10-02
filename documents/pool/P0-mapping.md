@@ -315,6 +315,7 @@ its phase lands.
 | 268 | `268_pool_enrichment.sql` | P2 | `gt_enrichment_requests`, `_items`, `_usage`; FK from loads (renumbered 2026-10-01: P1's four come first so the runner applies them in order) |
 | 269 | `269_pool_company_signals.sql` | P4 | `gt_company_signals` |
 | 270 | `270_gt_cleanup_gap.sql` | P5 | `gt_cleanup_gap` |
+| 271 | `271_ontology_pool_graph.sql` | before P3 (S16) | `gt_universe_kg_nodes` / `_edges`, `gt_concepts`, `gt_concept_aliases` — written only once S16 is approved |
 
 Each guarded and idempotent, applied with the runner on the VPS, `--status`
 clean at checkout. Pool tables keep RLS **off by design** (no tenant_id, as
@@ -342,9 +343,10 @@ clean at checkout. Pool tables keep RLS **off by design** (no tenant_id, as
 | S13 | The rotation policy of §9, including its rule-12 exception (free → Haiku escalation, declared and capped per run) | yes |
 | S14 | `model` on source rows; `provider/model/escalated_from/cost_inr/confidence` on enrichment items; `last_enriched_at` on `gt_prospects`; re-enrichment cadences in `.env` | yes |
 | S15 | Budgets as §10: tenant = 100,000 tokens/day + 2,000,000/month (all intelligence, every lane); admin = records per run; BYOK uncapped; + `gt_tenant_context.monthly_token_limit` | **values DECIDED 2026-10-01**; the column is part of this approval |
+| S16 | Ontology v1 (`documents/design-notes-ontology.md`): the pool company graph `gt_universe_kg_nodes` / `_edges` (no tenant_id, RLS off by design, platform-written; node/edge contract of the note §7 — concept_id, evidence, confidence, method, model, load_id, observed_at, valid_until, ontology_version) and the concept catalogs `gt_concepts` / `gt_concept_aliases` (model proposes, admin approves). Migration 271. Needed before P3 | **PENDING** (added 2026-10-02) |
 | — | P7–P9 tables (§2.8) | approved at their own phase |
 
-Approving S1–S15 lets P1 start. Sprint 0 (the agentic foundation) needs no
+Approving S1–S15 lets P1 start; S16 is needed before P3 and does not block P1–P2. Sprint 0 (the agentic foundation) needs no
 schema and can start in parallel once its platform change is approved
 (`vani-app/CLAUDE.md` §5).
 

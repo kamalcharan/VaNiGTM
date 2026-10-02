@@ -15,6 +15,12 @@
 > be handheld by an agent"): §6a risk boundaries, §7 eval tiers, §8a
 > self-awareness, §8b the improvement loop, §9a agentic IX. AG-UI is NOT
 > adopted as a dependency; its event vocabulary is borrowed (§9a).
+>
+> Added 2026-10-02 (Charan: "enriched data will have ontologies for agents to
+> understand … without these the Story Teller cannot harness properly, and
+> outreach becomes a normal cold email"): the ontology and `account.context`
+> in §3, graph extraction contracts in §5, path signatures in §8b, §9b
+> evidence paths. Design: `documents/design-notes-ontology.md`.
 
 ## 1. What an agent is
 
@@ -65,6 +71,20 @@ Stated once, at registration; the platform reads it, never re-asks.
   **metering** and **audit** through the platform's append-only spines.
 - **Search** through `search.client.ts` (SearXNG), chosen by the agent's code,
   never by the model.
+- **The ontology**, from `agent-core/ontology.ts` (intended, with S16 — see
+  `documents/design-notes-ontology.md`): the labels, relationships, homes,
+  evidence and decay rules, and the version. An agent that writes or reads a
+  graph takes its vocabulary from there; it never invents a label or a
+  relationship name in a prompt or a parser. [deviation → the file does not
+  exist yet; the Brain's v0 vocabulary is spread across ingestion's prompt
+  and parser.]
+- **Knowledge about an account**, through `account.context(purpose)`
+  (intended, beside `brain.context`): it reads the pool company graph, the
+  tenant's account graph and the typed rows, and renders the best few
+  **evidence paths** (§9b) under a character budget, reporting what it
+  trimmed. Cross-home context is assembled THERE, never by an agent joining
+  the three homes itself. The Brain is still read only through
+  `brain.context`; the two are separate on purpose (ARCH §7b).
 
 ## 4. The harness — what a run is
 
@@ -138,6 +158,15 @@ Rules:
   instruction, declared as `LLM_PRIMARY_SYSTEM_SUFFIX` in .env (platform only).
 - **Prompt changes are versioned** (append-only, one active per scope) and run
   the fixtures before they go live (§7).
+- **Graph extraction has a contract per ontology version and per home.** It
+  names the labels and relationships that may be written in that home, with
+  fixtures for each relationship, and is built on the extract primitive (the
+  evidence must be verbatim in the source). The pool contract refuses
+  Person, Team and KNOWS; the account contract is the only one that may write
+  them. A node or edge carries the version that wrote it, its evidence,
+  confidence, method, model and `observed_at` / `valid_until`
+  (ontology note §7). A new label or relationship is a new ontology version:
+  fixtures, the eval run, and Charan's approval — never a prompt edit.
 
 ## 6. Failure, failover, and rule 12
 
@@ -301,6 +330,13 @@ online signals ─► weakest prompt/field ─► candidate version ─► offli
   those change by a human editing the declaration.
 - Every promotion is a new version with its eval report attached; rollback is
   choosing the previous version.
+- **For outreach, the unit of learning is the path signature** (§9b):
+  offering, pain concept, signal kind, angle, persona. Outcomes (reply,
+  meeting, ignore, unsubscribe) attach to the signature, and an aggregate by
+  segment ("pharma hiring QA after a trade show answers the compliance
+  angle") is a PROPOSAL a person approves, like every other change here.
+  Outcomes are tenant data: the learning stays inside the tenant and never
+  reaches the pool (rule 13).
 
 ## 9. Visibility — what every run owes a person
 
@@ -346,6 +382,38 @@ platform layer, used by every pathway — a logged platform change
 
 [deviation → none of the transport or components exist yet; the console polls
 in 7 places. Built as Sprint 0 of the common pool POA.]
+
+## 9b. Evidence paths — no path, no draft
+
+An outreach draft is only as specific as the path behind it. A **path** runs
+from one of the tenant's Offerings to a target account (and, with people data,
+a Person), crossing the three homes through shared concept ids:
+
+```
+Brain: Offering ─SOLVES→ PainPoint(c)
+Pool:  Company ─HIRING_FOR→ Role ; JobPosting ─MENTIONS→ PainPoint(c)
+Acct:  Person ─WORKS_AT(as Role)→ Company ; Role ─CARES_ABOUT→ PainPoint(c)
+```
+
+- Paths are ranked by evidence strength × freshness × fit to the ICP and
+  handed to the model by `account.context(purpose)` (§3) — the best few with
+  their evidence, not the graph.
+- Every claim in a draft cites a fact id it was given (the draft primitive's
+  `UNKNOWN_FACT_ID` / `NO_FACTS_CITED`, story-skill's R-S1).
+- **Guard: no evidence path, no outreach draft.** The agent says "not enough
+  basis on this account — research first" and proposes the research. It does
+  not write generic copy; a cold email with the company's name pasted in is
+  the failure this exists to prevent (rule 12: degraded output is never
+  passed off as the real thing).
+- **Story evidence coverage** — the share of drafts with at least one fresh
+  path — is an online eval of the Storyteller (§7), reported with its
+  acceptance rate.
+- Expired evidence (past `valid_until`, e.g. a job posting after ~90 days)
+  does not make a path fresh.
+
+[deviation → none of this exists: no pool or account graph, no concept
+catalog, no path assembly. Phasing in the ontology note §14; the guard lands
+with the first sender.]
 
 ## 10. Orchestration — the event bus, and pathways
 
@@ -403,3 +471,9 @@ in 7 places. Built as Sprint 0 of the common pool POA.]
 12. Runs report inputs, gaps, confidence (with abstain), cost and budget left
     (§8a); the decision card shows its track record.
 13. An eval report at all three tiers (§7) attached to the phase checkout.
+14. Writes a graph only through its home's extraction contract for the current
+    ontology version (§5); labels and relationships come from
+    `agent-core/ontology.ts`, never from the prompt.
+15. Reads an account through `account.context`, the tenant through
+    `brain.context`; an outreach agent refuses to draft without an evidence
+    path (§9b) and reports story evidence coverage.

@@ -228,12 +228,19 @@ Everything after it runs agents in front of a person; build the frame once.
   limits hold under a forced overrun. **External UX audit #1.**
 
 ### P3 — Enrichment engine: the model
+- **Prerequisite: S16 approved** — ontology v1, the pool company graph and the
+  concept catalogs (`documents/design-notes-ontology.md`, P0 §7, migration 271).
 - **A:** Haiku classification (industry, B2B/B2C, is_individual, domain-name
   relation) with fixtures; `charBudgetFor`; `truncated` checked; offline eval.
+  `agent-core/ontology.ts` v1; the pool extraction contract with fixtures per
+  relationship; concept seeding from the tenants' Brains.
 - **B:** shadow eval on 100 hand-labelled FTCCI rows; online acceptance
   recorded; confidence and abstain on the decision card.
+- **B (graph):** pool graph extraction on demand (a segment, a hotlist, an
+  adopted company), inside the admin's records-per-run budget; unresolved
+  concepts queued as `taxonomy_proposal`.
 - **Checkout:** agreement measured and recorded; abstentions visible, not
-  guessed.
+  guessed; the pool contract refuses Person/Team/KNOWS (tested).
 
 ### P4 — Government data and signals (parallel to P2–P3)
 - **A:** MCA RoC CSV keyed on CIN; Udyam OGD pull by state, resumable, rows
@@ -288,6 +295,7 @@ Everything after it runs agents in front of a person; build the frame once.
 | P0 | **approved 2026-10-01** (S1–S15) |
 | P1 | sprint A in progress: migrations 264–267 ✓, prototype `documents/prototypes/p1-sources.html` ✓ (awaiting review), licence gate ✓, junk/held/restore on staged rows ✓, chunked CSV staging on the worker (`IMPORT_STAGE_REQUESTED`, resumable) ✓ — sprint B: the Complete test, the screens on real data, re-landing FTCCI/analytica/prospector, raising the upload limit once the console shows staging |
 | P2–P9 | not started |
+| Ontology v1 | design note written 2026-10-02; ARCH §7b and AGENTS §3/§5/§8b/§9b updated; **S16 awaiting approval** (needed before P3). Account graph with P7; evidence paths and the no-path-no-draft guard with the first sender |
 
 ## 5. Dependencies outside this plan
 
