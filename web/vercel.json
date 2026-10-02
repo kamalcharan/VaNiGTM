@@ -1,25 +1,54 @@
 {
   "functions": {
-    "api/advisor.js": { "maxDuration": 60 },
-    "api/health.js": { "maxDuration": 30 }
+    "api/advisor.js": {
+      "maxDuration": 60
+    },
+    "api/health.js": {
+      "maxDuration": 30
+    }
   },
   "headers": [
     {
       "source": "/ai-advisory-playground.html",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
       ]
     },
     {
       "source": "/proposals/(.*)",
       "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
-        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/decks/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
       ]
     }
   ],
   "rewrites": [
-    { "source": "/((?!api|assets|favicon|.*\\..*).*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api|assets|favicon|.*\\..*).*)",
+      "destination": "/index.html"
+    }
   ],
   "redirects": [
     {
