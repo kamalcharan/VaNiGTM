@@ -138,15 +138,15 @@ function Overview({ data }: { data: RouterOverview }) {
                   </td>
                   <td>
                     <div className={s.actions}>
-                      {/* The lit side IS the state. A single button labelled with its action
+                      {/* A switch: its position IS the state. A button labelled with its action
                           ("Switch off" on a model that is on) was read as the state, and models
                           were switched on that were meant to be off (2026-10-02). */}
-                      <div className={m.seg} role="group" aria-label={`${p.code} for enrichment: ${p.enabled ? 'on' : 'off'}`}>
-                        <button type="button" className={`${m.segBtn} ${p.enabled ? m.segOn : ''}`} aria-pressed={p.enabled}
-                          disabled={toggle.isPending || p.enabled} onClick={() => flip(p, true)}>On</button>
-                        <button type="button" className={`${m.segBtn} ${!p.enabled ? m.segOff : ''}`} aria-pressed={!p.enabled}
-                          disabled={toggle.isPending || !p.enabled} onClick={() => flip(p, false)}>Off</button>
-                      </div>
+                      <label className={m.switch}>
+                        <button type="button" role="switch" aria-checked={p.enabled} className={`${m.track} ${p.enabled ? m.trackOn : ''}`}
+                          disabled={toggle.isPending} onClick={() => flip(p, !p.enabled)}
+                          aria-label={`${p.code} for enrichment`}><span className={m.knob} /></button>
+                        <span className={m.switchLabel}>{p.enabled ? 'On' : 'Off'}</span>
+                      </label>
                       {!p.paid && (
                         <button type="button" className={s.btn} disabled={test.isPending} onClick={() => runTest(p.code)}>
                           {test.isPending ? <InlineLoader size="sm" message="Testing…" /> : 'Test'}

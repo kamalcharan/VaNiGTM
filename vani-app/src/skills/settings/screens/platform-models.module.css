@@ -33,10 +33,12 @@
 .confirm { border: 1px solid var(--line2); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
 .result { font-size: var(--fs-sm); color: var(--tx2); margin-top: 4px; }
 
-/* On | Off — the lit side is the state, never the action. */
-.seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 8px; overflow: hidden; }
-.segBtn { font: inherit; font-size: var(--fs-ui); font-weight: 600; padding: 6px 14px; border: 0; background: var(--surf); color: var(--tx3); cursor: pointer; }
-.segBtn + .segBtn { border-left: 1px solid var(--line2); }
-.segBtn:disabled { cursor: default; }
-.segOn { background: var(--ok); color: var(--surf); }
-.segOff { background: var(--tx2); color: var(--surf); }
+/* A switch — its position is the state. */
+.switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.track { position: relative; width: 40px; height: 22px; border-radius: 11px; border: 0; padding: 0; background: var(--line2); cursor: pointer; transition: background .15s; flex-shrink: 0; }
+.track:disabled { opacity: .5; cursor: default; }
+.track:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.trackOn { background: var(--ac); }
+.knob { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--surf); box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+.trackOn .knob { transform: translateX(18px); }
+.switchLabel { font-size: var(--fs-ui); font-weight: 600; color: var(--tx); min-width: 24px; }
