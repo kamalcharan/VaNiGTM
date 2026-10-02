@@ -1251,9 +1251,10 @@ file / directory / exhibitor list / Apollo / any provider / any connector
   (SearXNG + LLM check) · liveness · crawl for description and industry ·
   flag shared identifiers · attach a child file to its parent by name key.
   Each step's output is a NEW source row under a `cleanup` source with its
-  own tier, so raw stays raw and the merge weighs the two. **Not started:
-  the `cleanup` source puts model-derived text in the pool for the first time
-  and needs Charan's explicit go.**
+  own tier, so raw stays raw and the merge weighs the two. **Charan's go given 2026-10-02 (POA D-Q19, E1):** model-derived company facts enter
+  the pool as an `enrichment` source ranked below delivered data, labelled
+  (page · model · confidence) and withdrawable run by run. Research output still
+  never does (rule 13).
 - **Why:** staging is the audit trail and the replay point. A bad rule is
   fixed and re-run over the same rows; a bad delivery is retired at the load.
   Neither is possible if a connector lands straight into the pool.
