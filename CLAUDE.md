@@ -516,6 +516,9 @@ stay here, because they are worth not re-deciding:
 - A prompt is never trimmed for a smaller window: that provider is skipped
   and the skip says why. Builders that paste variable text should budget for
   the smallest window in their route.
+- **Deployed 2026-10-02** with release 2026-10-02b (migrations 272 + 273, both
+  check scripts OK). Groq `openai/gpt-oss-120b` answers; OpenRouter
+  `google/gemma-4-31b-it:free` hit its free 50-a-day cap while testing.
 - Nothing calls a route yet — the enrichment agent (P2-C) is the first
   caller. Use `route` + `dataClass` + `step` + `purpose: 'enrichment'`.
 
@@ -818,7 +821,7 @@ Commands for 1 are in `deploy.txt`; DEPLOY.md explains them. Tick here when done
    shown, but rotation is cheap. Update the compose `.env` and every laptop
    `.env` that holds them, then recreate both containers.
 5. [x] **Confirm 262 is recorded** — DONE 2026-10-02 (release check).
-6. [ ] **Uploaded files are not persisted** (found 2026-10-02). **CODE BUILT 2026-10-02** (`src/etl/temp-files.ts`, 6 tests): ships in release 2026-10-02b in `deploy.txt` (host folder, `.env` lines, the mount in both services) together with P1-B and Sprint 0a part 1. Multer writes
+6. [x] **Uploaded files are not persisted** — DONE 2026-10-02: release 2026-10-02b deployed with release 2 (host folder mounted in both containers, release checks OK). (found 2026-10-02). **CODE BUILT 2026-10-02** (`src/etl/temp-files.ts`, 6 tests): ships in release 2026-10-02b in `deploy.txt` (host folder, `.env` lines, the mount in both services) together with P1-B and Sprint 0a part 1. Multer writes
    to `/app/uploads` inside `vani-backend` with no volume: every deploy deletes
    the originals (staged rows survive — `raw_data` is in Postgres), and
    `vani-worker` has its own empty `/app/uploads`, so the large-CSV worker path
