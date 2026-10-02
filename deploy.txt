@@ -8,7 +8,8 @@ git fetch origin && git checkout main && git pull origin main
 git log --oneline -1
 bash deploy/vani-main-vps/deploy-vani.sh
 
-# ---- 2. MIGRATIONS -----------------------------------------------------------
+# ---- 2. MIGRATIONS -- right after step 1, before anyone uses the console -------
+# (new code + old schema = errors like: column "..." does not exist)
 docker exec vani-backend node dist/migrate.js --status
 docker exec vani-backend node dist/migrate.js
 docker exec vani-backend node dist/migrate.js --status | tail -3
