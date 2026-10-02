@@ -42,6 +42,23 @@ Judgement calls Charan delegated ("I will leave the best judgement to you"):
 
 ---
 
+## 0b. Decisions (Charan, 2026-10-02) — enrichment first; supersede where they conflict
+
+| # | Decision |
+|---|---|
+| D-Q1 | **Order: upload → stage → ENRICH (qualify) → research → … The same order for a tenant's own upload and for the pool.** Matching across sources is a LATER stage; with one source per company it is a no-op and it never leads the screen. (P1-B built the matching first — that was the wrong order; the code stays underneath as the anchor each record's mini KG hangs on, and runs silently.) |
+| D-Q2 | **Enrichment reuses the Smart Profile agent** — the same site reader, pointed at a company in the list — and writes that company's **mini knowledge graph** (ontology v1) plus its typed fields. Homes: the pool company graph (admin, R2) and a tenant's **account graph** keyed to `gt_prospects` (tenant, R1) — needed now, not at P7. |
+| D-Q3 | **The common pool screen is the admin's enrichment workbench**: how much is ready for Exit, what is missing, which enrichment fills it, and the percentages rising after each run. Admin only; tenants never see it. |
+| D-Q4 | **Score 0–100 in seven parts** (weights agreed): Identity 20 · Firmographics 20 · Digital presence 10 · Contact points 20 · People 15 · Research 10 · Signals & response 5. People, research and response are tenant-side, so a pool company tops out near 70. *(Contact points took freshness's 5 — confirm.)* |
+| D-Q5 | **Levels:** Raw 0–19 · Identified 20–39 · Qualified 40–59 (passes Complete) · Reachable 60–74 · Campaign-ready 75–89 (and the Exit gate passes) · Strong 90–100. |
+| D-Q6 | **Exit is a gate, never a score** (§1.2): company Complete/active/not junk/no open duplicate; a named person with a persona and lawful basis; a verified channel; `mayContact` + a governor slot. Not configurable. |
+| D-Q7 | **Weights and level boundaries are configurable**: a platform default (admin) and an optional per-tenant profile (owner/admin), versioned, re-scored on change, every score naming its version. The pool always uses the platform default. (S17) |
+| D-Q8 | **Freshness is not scored.** Every record and delivery shows "Last refreshed" (the later of its delivery date and its last enrichment run). |
+| D-Q9 | **The industry master moves to Settings, admin only.** |
+| D-Q10 | **One tenant context** (`tenant.context`), read by agents, routes and the console: commercial status, tokens, agents, model, scoring profile, brand, industry (→ the master), consent, domains. Read-only aggregation over the owners' tables; the Brain stays separate. |
+| D-Q11 | **Commercial:** the product will be paid by tenants; billing is not built, so every tenant is active and treated as paid. `vani_tenant.status` (active/suspended) is the switch. |
+| D-Q12 | **Tokens:** 100,000 a day and 2,000,000 a month per tenant (`.env` defaults; a tenant's own limit overrides). The daily limit never rises. **A top-up is a balance**: once the day's (or month's) base is used, calls draw from the top-up until it is spent, then stop with the numbers. Admin adds top-ups by hand until billing exists (S18). Own-key (BYOK) tenants are not capped; usage is always metered. Today NO cap is enforced (migration 217 cleared them) — this decision is built in P2-B. |
+
 ## 1. The three tests
 
 Every record is judged three ways. Only the first two are gates.
@@ -193,6 +210,20 @@ A sprint checks out when Charan says so, after every line below is true:
 
 ## 4. Phases and sprints
 
+> **Revised 2026-10-02 (D-Q1–D-Q12).** The order below replaces P2–P5 as
+> first written; the original sections stay underneath as the record of what
+> each phase was meant to contain.
+>
+> | Step | What | Needs |
+> |---|---|---|
+> | R | Release 2026-10-02b on the VPS (uploads temporary, P1-B, Sprint 0a part 1) | Charan: deploy as is, or with the pool screen reverted to its earlier form |
+> | **P2-A** | **Prototype**: a tenant's upload → enrich → score rising → a record with its mini KG; the admin pool workbench (readiness, coverage, deliveries); Settings → Scoring, Industry master, Tokens & top-ups | review |
+> | **P2-B** | **Foundations**: `tenant.context`; tokens (S15 build: `.env` defaults, monthly check; S18 top-ups ledger, consumed after the base); the scoring engine + S17 profiles; score and parts per record (pool + tenant copy), "last refreshed"; Settings screens; industry master moved | S17, S18 |
+> | **P2-C** | **Enrich**: the site reader pulled out of the Smart Profile unchanged (proof: identical Smart Profile output); the enrichment agent (select → estimate → confirm → run live, batch lane, cost per run); the mini KG (S16 widened: pool graph + tenant account graph + concepts); before/after on every run; the pool workbench and the tenant's Companies screen rebuilt on it | S16 widened |
+> | P3 | Model enrichment at scale: the rotation (free pools → Haiku batch), industry mapping and company-or-individual decided by model with abstain | S12–S13 (approved) |
+> | P4 | Research on qualified records only (the existing account research, gated by level) | — |
+> | later | Matching across sources and the merge review · government data · review queue · people (P7) · verification and providers (P8) · segments and Exit (P9) | their own approvals |
+
 ### Sprint 0 — Agentic foundation (0a, 0b)
 Everything after it runs agents in front of a person; build the frame once.
 - **0a:** SSE run stream (`/api/v1/runs/:id/stream`, nginx with buffering
@@ -304,7 +335,7 @@ storage, is the memory bottleneck there.
 | Sprint 0 | **0a part 1 built 2026-10-02** (lane priority, runs named by agent, per-call `model_call` step, run stream + nginx, risk classes declared and enforced for skill functions); 0a part 2 (parent_run_id, approvals, telemetry table) awaits the schema decision; 0b (components) awaits the platform-change decision |
 | P0 | **approved 2026-10-01** (S1–S15) |
 | P1 | sprint A **deployed 2026-10-02** · sprint B **built 2026-10-02**: the match ladder, survivorship and the Complete test (`pool-merge.ts`, `complete-test.ts`, worker job `POOL_RESOLVE_REQUESTED`); decisions (company/individual, not a duplicate, junk, restore, retire a delivery); `pool-skill`; the console's pool by state, sources, a delivery's rows with each company's eight checks, the industry master; large CSVs followed live; uploads raised to 200 MB; uploads temporary. Checkout: on the deployed stack after the release in `deploy.txt` |
-| P2–P9 | not started |
+| P2–P9 | **re-ordered 2026-10-02** (see §4 head): P2-A prototype next |
 | Ontology v1 | design note written 2026-10-02; ARCH §7b and AGENTS §3/§5/§8b/§9b updated; **S16 awaiting approval** (needed before P3). Account graph with P7; evidence paths and the no-path-no-draft guard with the first sender |
 
 ## 5. Dependencies outside this plan
