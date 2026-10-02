@@ -29,9 +29,9 @@ export interface RunSummary {
   created_at: string; attempted: number; before_avg: number | null; after_avg: number | null;
 }
 
-function statusOf(run: { status: string } | null, cp: Record<string, any> | null): RunSummary['status'] {
+function statusOf(run: { status: string } | null, cp: Record<string, any> | null, eventStatus?: string): RunSummary['status'] {
   if (cp?.withdrawn_at) return 'withdrawn';
-  if (!run) return 'queued';
+  if (!run) return eventStatus === 'failed' ? 'stopped' : 'queued';   // stopped before a worker took it
   if (run.status === 'completed') return cp?.stopped ? 'stopped' : 'finished';
   if (run.status === 'failed') return 'failed';
   return run.status === 'queued' ? 'queued' : 'running';
@@ -39,13 +39,13 @@ function statusOf(run: { status: string } | null, cp: Record<string, any> | null
 
 export async function listRuns(pool: Pool, limit = 20): Promise<RunSummary[]> {
   const rows = (await pool.query<any>(
-    `SELECT e.id::text AS event_id, e.payload, e.created_at, r.status, r.checkpoint
+    `SELECT e.id::text AS event_id, e.payload, e.created_at, e.status AS event_status, r.status, r.checkpoint
        FROM gt_events e
        LEFT JOIN LATERAL (SELECT status, checkpoint FROM gt_agent_runs WHERE event_id = e.id ORDER BY id DESC LIMIT 1) r ON true
       WHERE e.event_type = $1 ORDER BY e.created_at DESC LIMIT $2`, [EVENT, limit])).rows;
   return rows.map((r) => ({
     event_id: r.event_id, run_no: Number(r.payload.run_no), delivery_label: r.payload.delivery_label, records: Number(r.payload.records),
-    status: statusOf(r.status ? { status: r.status } : null, r.checkpoint), created_at: r.created_at,
+    status: statusOf(r.status ? { status: r.status } : null, r.checkpoint, r.event_status), created_at: r.created_at,
     attempted: Number(r.checkpoint?.attempted ?? 0), before_avg: r.checkpoint?.before?.avg ?? null, after_avg: r.checkpoint?.after?.avg ?? null,
   }));
 }
@@ -115,7 +115,7 @@ const KINDS = new Set(['plan', 'check', 'read', 'skip', 'move', 'bad', 'done', '
 
 export async function runView(pool: Pool, tenantId: string, eventId: string) {
   const ev = (await pool.query<any>(
-    `SELECT id::text, payload, created_at, status FROM gt_events WHERE id = $1 AND event_type = $2`, [eventId, EVENT])).rows[0];
+    `SELECT id::text, payload, created_at, status, error FROM gt_events WHERE id = $1 AND event_type = $2`, [eventId, EVENT])).rows[0];
   if (!ev) return null;
   const runs = (await pool.query<any>(
     `SELECT id::text, status, steps, checkpoint, started_at, completed_at, duration_ms, error_trace
@@ -123,7 +123,7 @@ export async function runView(pool: Pool, tenantId: string, eventId: string) {
   const last = runs[runs.length - 1] ?? null;
   const cp = last?.checkpoint ?? null;
   const ids: string[] = (ev.payload.company_ids ?? []).map(String);
-  const status = statusOf(last, cp);
+  const status = statusOf(last, cp, ev.status);
   const finished = ['finished', 'stopped', 'withdrawn'].includes(status);
   const done: Record<string, CompanyResult> = cp?.done ?? {};
   const c = counts({ done });
@@ -165,10 +165,11 @@ export async function runView(pool: Pool, tenantId: string, eventId: string) {
     status, created_at: ev.created_at, started_at: started, finished_at: finished ? ended : null,
     duration_ms: started && ended ? new Date(ended).getTime() - new Date(started).getTime() : null,
     progress: { done: Object.keys(done).length, total: ids.length },
-    counts: { ...c, unreadable: c.js_only + c.not_live, not_reached: cp?.stopped ? ids.length - Object.keys(done).length : 0 },
+    counts: { ...c, unreadable: c.js_only + c.not_live, not_reached: status === 'stopped' ? ids.length - Object.keys(done).length : 0 },
     before, now,
     feed, models, bad_answers: models.reduce((n, m) => n + m.bad, 0), tokens, paid_tokens: paidTokens,
-    estimate: ev.payload.estimate ?? null, stopped: cp?.stopped ?? null,
+    estimate: ev.payload.estimate ?? null, stopped: cp?.stopped ?? (!last && ev.status === 'failed' ? ev.error ?? 'STOPPED_BY_PERSON' : null),
+    stop_requested_at: cp?.stop_requested_at ?? null,
     error: last?.status === 'failed' ? String(last.error_trace ?? '').split('\n')[0].slice(0, 400) : null,
     withdrawn_at: cp?.withdrawn_at ?? null, touched,
     abstained: Object.entries(done).filter(([, r]) => r.outcome === 'abstained').map(([id, r]) => ({ company_id: id, name: r.name })),

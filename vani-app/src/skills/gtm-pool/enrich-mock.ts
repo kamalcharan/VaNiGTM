@@ -77,7 +77,7 @@ function run(eventId: string): RunView {
       { provider: 'openrouter', model: 'google/gemma-4-31b-it:free', companies: 17, tokens: 61200, bad: 2, quota_spent: true },
       { provider: 'qwen', model: 'qwen3', companies: 15, tokens: 94400, bad: 0, quota_spent: false },
     ],
-    bad_answers: 4, tokens: 352400, paid_tokens: 0, estimate: null, stopped: null, error: null,
+    bad_answers: 4, tokens: 352400, paid_tokens: 0, estimate: null, stopped: null, stop_requested_at: null, error: null,
     withdrawn_at: null, touched: 86, abstained: [{ company_id: '1204', name: 'Sri Venkateswara Agencies' }],
   };
 }
@@ -102,6 +102,7 @@ export const ENRICH_MOCK_READS: Record<string, (p: Record<string, unknown>) => u
 export const ENRICH_MOCK_WRITES: Record<string, (p: Record<string, unknown>) => unknown> = {
   'pool-skill.start_enrich': (p) => ({ event_id: 'mock-live-run', run_no: 1, records: Number(p.records ?? 100) }),
   'pool-skill.withdraw_enrich_run': () => ({ event_id: 'mock-run-1', run_no: 1, companies_rescored: 86 }),
+  'pool-skill.stop_enrich_run': () => ({ event_id: 'mock-live-run', stopped: 'requested' }),
 };
 /** The mock company (Kavya, after run #1) for tab 5. */
 export const ENRICH_MOCK_PROVENANCE = PROVENANCE;

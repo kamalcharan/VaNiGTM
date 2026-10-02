@@ -16,7 +16,7 @@ import { LevelLegend, LevelStack } from './EnrichParts';
 
 const RUN_TAG: Record<RunSummary['status'], [string, string]> = {
   queued: ['queued', u.tagDim], running: ['running', u.tagWarn], finished: ['finished', u.tagOk],
-  stopped: ['stopped — no model left', u.tagWarn], failed: ['failed', u.tagBad], withdrawn: ['withdrawn', u.tagDim],
+  stopped: ['stopped', u.tagWarn], failed: ['failed', u.tagBad], withdrawn: ['withdrawn', u.tagDim],
 };
 
 function Suggestion({ d }: { d: Wb }) {

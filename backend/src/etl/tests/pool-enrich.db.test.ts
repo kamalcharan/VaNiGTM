@@ -78,6 +78,8 @@ import { enrich_estimate } from '../../skills/pool-skill/functions/enrich-estima
 import { start_enrich } from '../../skills/pool-skill/functions/start-enrich';
 import { enrich_run } from '../../skills/pool-skill/functions/enrich-run';
 import { withdraw_enrich_run } from '../../skills/pool-skill/functions/withdraw-enrich-run';
+import { stop_enrich_run } from '../../skills/pool-skill/functions/stop-enrich-run';
+import { saveCheckpoint } from '../../agent-core/agent.runner';
 import { company } from '../../skills/pool-skill/functions/company';
 import { createTenantDb } from '../../db';
 
@@ -278,6 +280,33 @@ d('enriching the common pool', () => {
     expect(run.stopped).toMatch(/LLM_ROUTE_EXHAUSTED/);
     expect(run.counts.not_reached).toBe(1);
     expect(await recordsUsedToday(app)).toBe(5);   // run 2 reached nobody
+  });
+
+  it('a run stopped before a worker takes it never starts, and uses no records', async () => {
+    const before = await recordsUsedToday(app);
+    const r: any = await start_enrich({ delivery, records: 1 }, ctx());
+    expect(await recordsUsedToday(app)).toBe(before + 1);
+    expect(await stop_enrich_run({ event_id: r.event_id }, ctx())).toMatchObject({ stopped: 'before_start' });
+    expect(await recordsUsedToday(app)).toBe(before);
+    const { run }: any = await enrich_run({ event_id: r.event_id }, ctx());
+    expect(run.status).toBe('stopped');
+    expect((await owner.query(`SELECT status FROM gt_events WHERE id = $1`, [r.event_id])).rows[0].status).toBe('failed');   // the worker will not claim it
+  });
+
+  it('a running run stops before the next company, and says a person stopped it', async () => {
+    const r: any = await start_enrich({ delivery, records: 1 }, ctx());
+    const payload = (await app.query(`SELECT payload FROM gt_events WHERE id = $1`, [r.event_id])).rows[0].payload;
+    const runId = await createRun(app, ADMIN_T, 'POOL_ENRICH_REQUESTED', r.event_id, payload);
+    await app.query(`UPDATE gt_agent_runs SET status = 'running', started_at = now() WHERE id = $1`, [runId]);
+    expect(await stop_enrich_run({ event_id: r.event_id }, ctx())).toMatchObject({ stopped: 'requested' });
+    await runPoolEnrichJob(app, ADMIN_T, payload, runId);
+    await app.query(`UPDATE gt_agent_runs SET status = 'completed', completed_at = now() WHERE id = $1`, [runId]);
+    const { run }: any = await enrich_run({ event_id: r.event_id }, ctx());
+    expect(run).toMatchObject({ status: 'stopped', progress: { done: 0, total: 1 } });
+    expect(run.stopped).toMatch(/STOPPED_BY_PERSON/);
+    expect(run.counts.not_reached).toBe(1);
+    await expect(stop_enrich_run({ event_id: r.event_id }, ctx())).rejects.toThrow(/NOT_RUNNING/);
+    void saveCheckpoint;
   });
 
   it('withdraw takes every value and graph fact back; delivered data stays', async () => {

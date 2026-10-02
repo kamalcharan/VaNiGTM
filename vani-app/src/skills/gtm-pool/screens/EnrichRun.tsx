@@ -54,7 +54,26 @@ function Live({ r }: { r: RunView }) {
           <div><div className={e.eyebrow}>Abstained</div><div className={e.big}>{fmt(r.counts.abstained)}</div></div>
         </div>
         <p className={e.note}>You can leave this page. The run continues on the worker and resumes where it stopped if the worker restarts.</p>
+        <Stop r={r} />
       </div>
+    </div>
+  );
+}
+
+/** Stop between two companies: the one being read finishes; what was written stays until withdrawn. */
+function Stop({ r }: { r: RunView }) {
+  const { stop } = useEnrichWrites();
+  const [confirming, setConfirming] = useState(false);
+  if (r.stop_requested_at) return <p className={e.muted} style={{ marginTop: 10 }}>Stopping since {formatDateTime(r.stop_requested_at)} — the company being read finishes, then the run stops.</p>;
+  return (
+    <div className={e.actions}>
+      {!confirming
+        ? <button type="button" className={e.btn} onClick={() => setConfirming(true)}>Stop the run</button>
+        : <>
+            <button type="button" className={`${e.btn} ${e.btnBad}`} disabled={stop.isPending} onClick={async () => { await stop.mutate({ event_id: r.event_id }); setConfirming(false); }}>{stop.isPending ? 'Stopping…' : 'Yes — stop after this company'}</button>
+            <button type="button" className={e.btn} disabled={stop.isPending} onClick={() => setConfirming(false)}>Keep running</button>
+            <span className={e.muted}>What it already wrote stays; withdraw it afterwards if you want it gone.</span>
+          </>}
     </div>
   );
 }
@@ -97,7 +116,9 @@ function WhatItDid({ r, onOpen }: { r: RunView; onOpen: (id: string) => void }) 
           <span className={e.muted}>{formatDate(r.started_at ?? r.created_at)}{mins != null ? ` · ${fmt(mins)} min` : ''} · {fmt(r.progress.done)} records · {fmt(r.tokens)} tokens · {r.paid_tokens ? `${fmt(r.paid_tokens)} paid tokens (Haiku)` : '₹0'}</span>
         </div>
         <BeforeAfter before={r.before} after={r.now} afterLabel="After" />
-        {r.stopped && <p className={e.note} style={{ color: 'var(--warn)' }}>Stopped early: no model was left for this route today. {fmt(r.counts.not_reached)} companies were not reached and were released from today&apos;s records. {r.stopped.split(' — ')[1]?.split('. Nothing')[0] ?? ''}</p>}
+        {r.stopped && <p className={e.note} style={{ color: 'var(--warn)' }}>
+          {/^LLM_ROUTE_EXHAUSTED/.test(r.stopped) ? <>Stopped early: no model was left for this route today. {r.stopped.replace(/^LLM_ROUTE_EXHAUSTED: /, '').split('. Nothing')[0]}.</> : <>Stopped by a person.</>}
+          {' '}{fmt(r.counts.not_reached)} companies were not reached and were released from today&apos;s records.</p>}
       </div>
       <div className={e.card}>
         <h2 className={e.h2}>By part, average</h2>
@@ -122,7 +143,7 @@ function WhatItDid({ r, onOpen }: { r: RunView; onOpen: (id: string) => void }) 
             <tr><td>Read, but no model was sure enough — nothing written</td><td className={e.num}>{fmt(r.counts.abstained)}</td>
               <td className={e.muted}>waits for a person in the review list{r.abstained.length > 0 && <>: {r.abstained.slice(0, 8).map((a, i) => <span key={a.company_id}>{i ? ', ' : ''}<button type="button" className={s.link} onClick={() => onOpen(a.company_id)}>{a.name}</button></span>)}{r.abstained.length > 8 ? ` +${r.abstained.length - 8}` : ''}</>}</td></tr>
             {r.counts.failed > 0 && <tr><td>Failed — the step said why in the run</td><td className={e.num}>{fmt(r.counts.failed)}</td><td className={e.muted}>each one is a &quot;bad&quot; line in the feed</td></tr>}
-            {r.counts.not_reached > 0 && <tr><td>Not reached — no model left today</td><td className={e.num}>{fmt(r.counts.not_reached)}</td><td className={e.muted}>start another run when a quota resets</td></tr>}
+            {r.counts.not_reached > 0 && <tr><td>Not reached — {r.stopped && /^LLM_ROUTE_EXHAUSTED/.test(r.stopped) ? 'no model left today' : 'the run was stopped'}</td><td className={e.num}>{fmt(r.counts.not_reached)}</td><td className={e.muted}>start another run when a quota resets</td></tr>}
           </tbody>
         </table></div>
         <Withdraw r={r} />

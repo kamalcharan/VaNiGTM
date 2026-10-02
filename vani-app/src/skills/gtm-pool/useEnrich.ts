@@ -42,7 +42,7 @@ export interface RunView {
   counts: { read: number; js_only: number; not_live: number; abstained: number; failed: number; moved_up: number; unreadable: number; not_reached: number };
   before: Snapshot | null; now: Snapshot | null;
   feed: FeedItem[]; models: RunModel[]; bad_answers: number; tokens: number; paid_tokens: number;
-  estimate: Estimate | null; stopped: string | null; error: string | null;
+  estimate: Estimate | null; stopped: string | null; stop_requested_at: string | null; error: string | null;
   withdrawn_at: string | null; touched: number; abstained: Array<{ company_id: string; name: string }>;
 }
 
@@ -71,7 +71,12 @@ export function useEnrichWrites() {
     errorMessage: 'The run was not withdrawn.',
     onSuccess: refresh,
   });
-  return { start, withdraw };
+  const stop = useSkillMutation<{ stopped: 'before_start' | 'requested' }>('pool-skill', 'stop_enrich_run', {
+    successMessage: (r) => r.stopped === 'before_start' ? 'Stopped — the run never started; its records are released.' : 'Stopping — the company being read finishes, then the run stops.',
+    errorMessage: 'The run was not stopped.',
+    onSuccess: refresh,
+  });
+  return { start, withdraw, stop };
 }
 
 export const fmt = (n: number | null | undefined) => (n == null ? '—' : Number(n).toLocaleString('en-US'));

@@ -110,3 +110,9 @@ Take back everything one run wrote; the companies it touched are re-derived, re-
 - Risk: R2
 - Parameters: event_id (required, string)
 - Returns: { event_id, run_no, companies_rescored, graph }
+
+### stop_enrich_run
+Stop a run between two companies: a queued run never starts; a running one finishes the company it is reading, then stops and releases the rest from today's records. What it wrote stays until withdrawn.
+- Risk: R1
+- Parameters: event_id (required, string)
+- Returns: { event_id, stopped: 'before_start' | 'requested' }

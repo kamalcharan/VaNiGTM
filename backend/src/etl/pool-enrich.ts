@@ -119,7 +119,9 @@ async function sliceIds(pool: Pool, slice: Slice, limit: number): Promise<string
  */
 export async function recordsUsedToday(pool: Pool): Promise<number> {
   const rows = (await pool.query<{ records: number; status: string | null; attempted: number | null }>(
-    `SELECT (e.payload->>'records')::int AS records, r.status, (r.checkpoint->>'attempted')::int AS attempted
+    `SELECT (e.payload->>'records')::int AS records,
+            CASE WHEN r.status IS NULL AND e.status = 'failed' THEN 'failed' ELSE r.status END AS status,
+            (r.checkpoint->>'attempted')::int AS attempted
        FROM gt_events e
        LEFT JOIN LATERAL (SELECT status, checkpoint FROM gt_agent_runs WHERE event_id = e.id ORDER BY id DESC LIMIT 1) r ON true
       WHERE e.event_type = $1
@@ -343,6 +345,15 @@ export async function runPoolEnrichJob(pool: Pool, tenantId: string, payload: Re
   const ind = await industryList(pool);
   for (const id of ids) {
     if (st.done[id]) continue;
+    // A person may stop the run (pool-skill.stop_enrich_run): checked before
+    // every company, so the one being read finishes and nothing is cut halfway.
+    const stop = (await pool.query<{ at: string | null; by: string | null }>(
+      `SELECT checkpoint->>'stop_requested_at' AS at, checkpoint->>'stop_requested_by' AS by FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    if (stop?.at) {
+      st.stopped = `STOPPED_BY_PERSON: stopped at ${stop.at}`;
+      await appendStep(pool, runId, { step_name: 'move', action: `Stopped by a person — ${fmt(ids.length - Object.keys(st.done).length)} companies not reached, released from today's records`, status: 'ok' });
+      break;
+    }
     let res: CompanyResult;
     try {
       res = await enrichOne(pool, tenantId, runIdS, st, id, cfg, ind);
@@ -586,4 +597,31 @@ export async function withdrawRun(pool: Pool, eventId: string, userId: string) {
   });
   await saveCheckpoint(pool, last.id, { withdrawn_at: new Date().toISOString(), withdrawn_by: userId });
   return { event_id: eventId, run_no: last.checkpoint.run_no, ...out };
+}
+
+/* ── Stop (tab 3) ──────────────────────────────────────────────────────── */
+
+/**
+ * Stop a run between two companies. Queued (no worker has it yet): the event
+ * is closed and nothing is read. Running: a stop is asked for; the company
+ * being read finishes, the run ends "stopped", and the companies it did not
+ * reach are released from today's records. What it already wrote stays — it
+ * is withdrawn separately, if wanted.
+ */
+export async function stopRun(pool: Pool, eventId: string, userId: string) {
+  const ev = (await pool.query<{ status: string }>(`SELECT status FROM gt_events WHERE id = $1 AND event_type = $2`, [eventId, EVENT])).rows[0];
+  if (!ev) throw new EnrichError('NOT_FOUND', 'No enrichment run has this id.');
+  const run = (await pool.query<{ id: string; status: string; checkpoint: Record<string, unknown> | null }>(
+    `SELECT id::text, status, checkpoint FROM gt_agent_runs WHERE event_id = $1 ORDER BY id DESC LIMIT 1`, [eventId])).rows[0];
+  if (!run) {
+    const closed = (await pool.query(
+      `UPDATE gt_events SET status = 'failed', processed_at = now(), error = $2 WHERE id = $1 AND status = 'pending' RETURNING id`,
+      [eventId, `STOPPED_BY_PERSON: stopped before it started (${userId})`])).rowCount;
+    if (closed) return { event_id: eventId, stopped: 'before_start' as const };
+    throw new EnrichError('STARTING', 'The worker is picking this run up right now — try Stop again in a few seconds.');
+  }
+  if (run.status !== 'running' && run.status !== 'queued') throw new EnrichError('NOT_RUNNING', 'This run has already finished.');
+  if (run.checkpoint?.stop_requested_at) return { event_id: eventId, stopped: 'requested' as const };
+  await saveCheckpoint(pool, run.id, { stop_requested_at: new Date().toISOString(), stop_requested_by: userId });
+  return { event_id: eventId, stopped: 'requested' as const };
 }
