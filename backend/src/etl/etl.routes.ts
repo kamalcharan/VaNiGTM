@@ -786,6 +786,11 @@ export function createEtlRouter(pool: Pool): Router {
       if (session.destination === 'universe_companies' && session.load_id) {
         await emitEvent(pool, auth.tenant_id, 'POOL_RESOLVE_REQUESTED', 'human',
           { load_id: Number(session.load_id) }, `load-${session.load_id}`);
+      } else {
+        // A tenant's own companies landed: score them (release 3 — arithmetic,
+        // no model, so it runs on the worker without spending tokens).
+        await emitEvent(pool, auth.tenant_id, 'SCORE_REFRESH_REQUESTED', 'human',
+          { scope: 'tenant', reason: `import ${sessionId}` }, `score-${auth.tenant_id}`);
       }
       res.json(result);
     } catch (err: any) {

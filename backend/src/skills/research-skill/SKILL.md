@@ -190,8 +190,8 @@ When a cap IS set, three rules:
 - **It never fails over to Claude.** The approved exception (CLAUDE.md rule 12)
   is for TRANSPORT failures — the VPS down or erroring. `TOKEN_BUDGET_EXCEEDED`
   is a cap we set working as intended, and failing over to a paid API to get
-  around our own limit means the limit silently stops being one. Raise it
-  deliberately (`set_budget`) or wait for midnight UTC.
+  around our own limit means the limit silently stops being one. An admin
+  adds a top-up (Settings → Tokens), or wait for midnight UTC.
 
 ### Fit is not the same question as what to open with (migration 212)
 
@@ -292,7 +292,7 @@ Today's token budget, converted into the unit the person pressing the button thi
 - Returns: { limit, used, remaining, capped, tracked, cost_per_company, cost_per_rescore, affordable_companies, affordable_rescores, recipe: 'budget-card' }
 
 ### set_budget
-Set or REMOVE the daily token cap for this tenant. `null`/`0`/empty removes it, which is also the default state (migration 217). Deliberately manual — a cap that lifts itself when it binds is not a cap, and one applied by default is not per-tenant.
+Set this tenant's OWN daily token limit, LOWER than the platform's (`TENANT_DAILY_TOKEN_LIMIT`), or `null`/`0`/empty to go back to the platform's. Since release 3 (D-Q12) every platform tenant is capped daily and monthly; the limit never rises — more work is paid for with a top-up, spent after the base (Settings → Tokens, admin). BYOK tenants are metered, never capped.
 - Parameters: daily_token_limit (required, number 10,000–100,000,000 — or null/0 for no cap)
 - Returns: { daily_token_limit, capped, message, recipe: 'budget-card' }
 

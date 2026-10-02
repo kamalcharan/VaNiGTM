@@ -40,6 +40,8 @@ export type EventType =
   // Common pool P1-B — source rows matched into golden companies, then the
   // Complete test (src/etl/pool-merge.ts)
   | 'POOL_RESOLVE_REQUESTED'
+  // Release 3 — re-score the pool or a tenant's companies (src/scoring/rescore.ts)
+  | 'SCORE_REFRESH_REQUESTED'
   | 'URL_SUBMITTED'
   | 'KNOWLEDGE_UPDATED'
   | 'FOLDER_CONNECTED'

@@ -25,6 +25,7 @@ const AGENT_OF: Record<string, string> = {
   FUNNEL_SITE_SUBMITTED: 'Website preview',
   IMPORT_STAGE_REQUESTED: 'Import staging',
   POOL_RESOLVE_REQUESTED: 'Pool matching',
+  SCORE_REFRESH_REQUESTED: 'Scoring',
   'brand-skill.generate': 'Brand',
   'profile-skill.offers.generate': 'Offer drafting',
 };

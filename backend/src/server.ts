@@ -1,3 +1,4 @@
+import { assertBudgetConfig } from './agent-core/token.budget';
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -71,6 +72,7 @@ async function main() {
   assertEtlConfig('VaNi-GTM');
   assertPoolConfig('VaNi-GTM');
   assertRouterConfig('VaNi-GTM');
+  assertBudgetConfig('VaNi-GTM');
   assertRunStreamConfig('VaNi-GTM');
 
   // Initialize DB pool

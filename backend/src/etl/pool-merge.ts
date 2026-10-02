@@ -24,6 +24,7 @@
  */
 import type { Pool, PoolClient } from 'pg';
 import { appendStep } from '../agent-core/agent.runner';
+import { scorePoolCompanies } from '../scoring/rescore';
 import { completeTest, type GoldenForTest } from './complete-test';
 import { readPoolConfig, type PoolConfig } from './pool.config';
 
@@ -196,6 +197,9 @@ export async function assess(client: PoolClient, companyIds: string[]): Promise<
         WHERE id = $1`,
       [c.cid, state, JSON.stringify({ passed: result.passed, total: result.total, checks: result.checks, at: new Date().toISOString() })]);
   }
+  // Re-tested, so re-scored: the readiness score reads the lifecycle just set
+  // (release 3, platform default — the pool is never scored by a tenant's profile).
+  await scorePoolCompanies(client, companyIds);
 }
 
 /**

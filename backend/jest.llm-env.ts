@@ -65,6 +65,9 @@ const TEST_LLM_ENV: Record<string, string> = {
   LLM_ROUTE_MEDIUM: 'qwen',
   LLM_ROUTE_LOW: 'qwen',
   LLM_ROUTER_COOLDOWN_SECONDS: '60',
+  // Tenant token budget (token.budget.ts).
+  TENANT_DAILY_TOKEN_LIMIT: '100000',
+  TENANT_MONTHLY_TOKEN_LIMIT: '2000000',
 };
 for (const [k, v] of Object.entries(TEST_LLM_ENV)) {
   if (process.env[k] === undefined) process.env[k] = v;
