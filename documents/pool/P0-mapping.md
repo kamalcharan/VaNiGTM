@@ -473,7 +473,14 @@ tier, xAI (Grok) where credits apply. **Quotas and data terms change often —
 each is read from the provider's current terms when it is added, written into
 `.env`, and re-checked at every phase checkout; none is taken from memory.**
 
-`.env` (no defaults in code):
+> **Superseded 2026-10-02 (POA D-Q14):** the router is platform-wide (P2-R),
+> and its settings use Charan's shape — `LLM_PROVIDERS`, `LLM_<CODE>_URL /
+> _KEY / _MODEL / _CTX / _RPM / _DAILY / _DATA_TERMS`, and routes
+> `LLM_ROUTE_HIGH / _MEDIUM / _LOW` naming providers in order (`qwen` = the
+> platform model, `haiku` = the Claude settings). The `ENRICH_*` audit,
+> confidence and mode settings below still apply. Usage is counted in S19.
+
+`.env` as first proposed (no defaults in code):
 
 | Variable | Meaning |
 |---|---|
@@ -503,6 +510,20 @@ refresh run for the affected set (the person starts it).
 | classification | when the description changed, or the taxonomy version changed |
 | email verification (P8) | `ENRICH_REFRESH_VERIFY_DAYS` — 180 |
 | domain lookup "none found" | `ENRICH_REFRESH_DOMAIN_DAYS` — 180 |
+
+---
+
+### 9.7 S19 — one usage row per model call (PENDING approval)
+
+Proposed `gt_llm_calls`: tenant_id (nullable for pool/admin work), run_id,
+step, route (`high/medium/low`), rung, provider code, model, data class,
+prompt and answer tokens, outcome (`ok · rate_limited · timeout · error ·
+refused_data_terms · refused_context · invalid`), latency, created_at.
+Per-minute and per-day quotas, cooldown evidence, the tenant token budget
+(D-Q12, S15/S18) and per-provider cost are all counted from it. It replaces
+S13's `gt_enrichment_usage` and the per-call telemetry table of Sprint 0a
+part 2 (C4) — one table, not three. Tenant-scoped RLS with the pool rows
+(tenant_id NULL) readable by admin only. Retention from `.env`.
 
 ---
 

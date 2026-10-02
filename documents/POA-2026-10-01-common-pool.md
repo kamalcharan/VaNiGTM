@@ -58,6 +58,10 @@ Judgement calls Charan delegated ("I will leave the best judgement to you"):
 | D-Q10 | **One tenant context** (`tenant.context`), read by agents, routes and the console: commercial status, tokens, agents, model, scoring profile, brand, industry (→ the master), consent, domains. Read-only aggregation over the owners' tables; the Brain stays separate. |
 | D-Q11 | **Commercial:** the product will be paid by tenants; billing is not built, so every tenant is active and treated as paid. `vani_tenant.status` (active/suspended) is the switch. |
 | D-Q12 | **Tokens:** 100,000 a day and 2,000,000 a month per tenant (`.env` defaults; a tenant's own limit overrides). The daily limit never rises. **A top-up is a balance**: once the day's (or month's) base is used, calls draw from the top-up until it is spent, then stop with the numbers. Admin adds top-ups by hand until billing exists (S18). Own-key (BYOK) tenants are not capped; usage is always metered. Today NO cap is enforced (migration 217 cleared them) — this decision is built in P2-B. |
+| D-Q13 | **Enrichment does not complete without the model rotation (Charan, 2026-10-02):** "only qwen and haiku won't be sufficient". The rotation moves from P3 to **P2-R, ahead of the enrichment agent**. It lives in `agent-core` under `callLLM`, not inside enrichment, so the reused Smart Profile agent goes through it without knowing it exists. |
+| D-Q14 | **Providers and routes come from `.env`, in Charan's shape:** `LLM_PROVIDERS=groq,openrouter`; per provider `LLM_<CODE>_URL / _KEY / _MODEL / _CTX`, plus `_RPM`, `_DAILY`, `_DATA_TERMS` (`no_training · may_train · unknown`); routes `LLM_ROUTE_HIGH / _MEDIUM / _LOW` = ordered provider codes. `qwen` in a route means the existing platform model (`LLM_PRIMARY_*`) and `haiku` the existing Claude settings — never defined twice. Each step declares its class (HIGH = judgement: industry from a description, domain-matches-company; MEDIUM/LOW = short extraction, normalising). Startup refuses a route naming an undeclared provider, a provider missing any setting, or an empty route. Supersedes the `LLMPOOL_*` names in P0 §9.5. |
+| D-Q15 | **How a route moves:** a 429, a timeout or a spent quota moves the call to the next provider, cools the first one down, and shows as a step in the run. A bad answer (validation failed) is not retried silently elsewhere — it goes to the next rung or to abstain (P0 §9.1). Before each call the data gate skips `may_train`/`unknown` providers for tenant data and people data. Every answer carries `provider:model`. Every token counts against the tenant's budget (D-Q12), whichever provider served it. BYOK tenants never enter the routes. |
+| D-Q16 | **Pending (Charan):** (a) Haiku as the explicit last rung of the HIGH route, replacing the separate failover for routed calls; (b) **S19** — one usage row per model call (provider, model, step, route, rung, tokens, outcome, latency), from which quotas, cooldown evidence and tenant usage are counted; it absorbs the per-call telemetry table of Sprint 0a part 2 and S13's `gt_enrichment_usage`. |
 
 ## 1. The three tests
 
@@ -217,12 +221,34 @@ A sprint checks out when Charan says so, after every line below is true:
 > | Step | What | Needs |
 > |---|---|---|
 > | R | Release 2026-10-02b on the VPS (uploads temporary, P1-B, Sprint 0a part 1) | Charan: deploy as is, or with the pool screen reverted to its earlier form |
-> | **P2-A** | **Prototype**: a tenant's upload → enrich → score rising → a record with its mini KG; the admin pool workbench (readiness, coverage, deliveries); Settings → Scoring, Industry master, Tokens & top-ups | review |
+> | **P2-A** | **Prototype** (runs in parallel with P2-R): a tenant's upload → enrich → score rising → a record with its mini KG; the admin pool workbench (readiness, coverage, deliveries); Settings → Scoring, Industry master, Tokens & top-ups | review |
+> | **P2-R** | **Model router** (D-Q13–D-Q16): providers and routes from `.env`; quotas per minute and per day held in Postgres across the API and the worker; cooldown on 429; data gate; route class per step; per-provider window so a prompt is rebuilt when the rung changes; `provider:model` on every call; S19 usage rows; admin Settings → Models (providers, quota left today, cooldowns, calls by route) | S19; D-Q16(a) |
 > | **P2-B** | **Foundations**: `tenant.context`; tokens (S15 build: `.env` defaults, monthly check; S18 top-ups ledger, consumed after the base); the scoring engine + S17 profiles; score and parts per record (pool + tenant copy), "last refreshed"; Settings screens; industry master moved | S17, S18 |
 > | **P2-C** | **Enrich**: the site reader pulled out of the Smart Profile unchanged (proof: identical Smart Profile output); the enrichment agent (select → estimate → confirm → run live, batch lane, cost per run); the mini KG (S16 widened: pool graph + tenant account graph + concepts); before/after on every run; the pool workbench and the tenant's Companies screen rebuilt on it | S16 widened |
-> | P3 | Model enrichment at scale: the rotation (free pools → Haiku batch), industry mapping and company-or-individual decided by model with abstain | S12–S13 (approved) |
+> | P3 | Model enrichment at scale on the router: golden-set admission of each provider per step, the audit sample, Anthropic batch mode, the 100-record cost trial; industry mapping and company-or-individual decided by model with abstain | S12–S13 (approved) |
 > | P4 | Research on qualified records only (the existing account research, gated by level) | — |
 > | later | Matching across sources and the merge review · government data · review queue · people (P7) · verification and providers (P8) · segments and Exit (P9) | their own approvals |
+
+### 4a. The release train — to "enrichment complete" (2026-10-02)
+
+One train, six releases. Each release ships something a person can see, and
+leaves only after its checkout (§3.2). Approvals named in a row gate that
+release, not the ones before it.
+
+| # | Release | What is achieved — what Charan sees | Gated on | Checkout |
+|---|---|---|---|---|
+| 0 | **R — 2026-10-02b** | Uploads are temporary (metadata kept, same content refused even renamed); large CSVs staged by the worker and followed live; the pool engine (Complete test, decisions, retire a delivery) underneath; runs stream live; risk classes enforced | Charan: deploy as is, or revert the pool screen first | release check All OK in both containers; an import lands; stream answers 401 without a token |
+| 1 | **P2-A — the prototype** | Clickable, mock data: a tenant uploads → enriches → watches the score rise by level → opens a record with its mini KG; the admin pool workbench (ready for Exit, what is missing, which enrichment fills it, before/after); Settings → Models, Scoring, Industry master, Tokens & top-ups | — | Charan reviews the prototype; changes folded in before 3 and 4 are built |
+| 2 | **P2-R — the model router** | Several models serve the platform: Groq and OpenRouter free models, qwen, Haiku, by route. A call that hits a limit moves on and the run says so; tenant and people data never reach a provider that may train on it; every answer names its model; Settings → Models shows each provider's quota left today and any cooldown | S19; D-Q16(a); provider keys rotated and in `.env` | with today's single provider configured nothing changes (regression); a provider killed mid-run → visible move; a forced 429 → cooldown; a tenant-data call aimed at a `may_train` provider is refused (test); quotas hold across API + worker |
+| 3 | **P2-B — the foundations** | `tenant.context` (status, tokens, agents, model, scoring, brand, industry, consent, domains) read everywhere; 100k/day and 2M/month enforced, top-ups drawn after the base, counted from the router's usage rows; a score 0–100 in seven parts and a level on every record (pool and tenant copy), "last refreshed"; Settings → Scoring (platform + per-tenant, versioned), Tokens & top-ups, Industry master (admin) | S17, S18; confirm Contact points = 20 | a forced overrun stops with the numbers and draws a top-up; changing a weight re-scores and names the version; pool always on the platform profile |
+| 4 | **P2-C — enrichment** | The Smart Profile site reader pulled out unchanged and pointed at a list: select → estimate → confirm → run live on the router; each company gets its typed fields and its mini KG (pool graph for the admin, account graph for a tenant); before/after on every run — the percentages rise; the pool workbench and the tenant's Companies screen built on it | S16 widened | Smart Profile output identical before/after the extraction; an analytica/FTCCI run moves records up a level on screen; nothing personal in the pool graph (tested) |
+| 5 | **P3 — enrichment at scale** | Each free provider admitted per step only after its golden set; the audit sample re-asks Haiku and pauses a provider whose agreement falls, with an alert; Anthropic batch mode for bulk; industry and company-or-individual decided by model or abstained visibly; the measured cost per 1,000 records | — (S12–S13 approved) | agreement per provider per step recorded; the 100-record trial's cost and free-share on record; abstentions in the review list, not guessed |
+
+**"Enrichment complete" = release 5's checkout passed:** a list (tenant or
+pool) can be enriched end to end, on several models, within the tenant's token
+budget or the admin's record budget, each value naming its source and model,
+and the screen showing how much of the list is now Qualified, Reachable and
+ready for Exit. Research on qualified records (P4) is the next train.
 
 ### Sprint 0 — Agentic foundation (0a, 0b)
 Everything after it runs agents in front of a person; build the frame once.
@@ -335,7 +361,7 @@ storage, is the memory bottleneck there.
 | Sprint 0 | **0a part 1 built 2026-10-02** (lane priority, runs named by agent, per-call `model_call` step, run stream + nginx, risk classes declared and enforced for skill functions); 0a part 2 (parent_run_id, approvals, telemetry table) awaits the schema decision; 0b (components) awaits the platform-change decision |
 | P0 | **approved 2026-10-01** (S1–S15) |
 | P1 | sprint A **deployed 2026-10-02** · sprint B **built 2026-10-02**: the match ladder, survivorship and the Complete test (`pool-merge.ts`, `complete-test.ts`, worker job `POOL_RESOLVE_REQUESTED`); decisions (company/individual, not a duplicate, junk, restore, retire a delivery); `pool-skill`; the console's pool by state, sources, a delivery's rows with each company's eight checks, the industry master; large CSVs followed live; uploads raised to 200 MB; uploads temporary. Checkout: on the deployed stack after the release in `deploy.txt` |
-| P2–P9 | **re-ordered 2026-10-02** (see §4 head): P2-A prototype next |
+| P2–P9 | **re-ordered 2026-10-02** (see §4 head, release train §4a): P2-A prototype and P2-R model router next; P2-R waits on S19 and D-Q16(a) |
 | Ontology v1 | design note written 2026-10-02; ARCH §7b and AGENTS §3/§5/§8b/§9b updated; **S16 awaiting approval** (needed before P3). Account graph with P7; evidence paths and the no-path-no-draft guard with the first sender |
 
 ## 5. Dependencies outside this plan
