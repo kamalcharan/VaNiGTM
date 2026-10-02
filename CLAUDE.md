@@ -495,6 +495,26 @@ console reports "Cannot reach the VaNi service" — see the CORS section.
 Ollama for dev LLM: pre-warm `qwen3:8b` with `keep_alive:"24h"` before
 testing conversation flows (`curl localhost:11434/api/ps` to verify).
 
+Ports: API **3002**, console **http://localhost:3100**, website
+**http://localhost:5173** (Vite's default; `web/vite.config.ts` sets none).
+
+**A laptop `.env` copied from before 2026-09-30 will not start.** Every LLM,
+worker and ETL setting is required with no default; build `backend/.env` from
+`backend/.env.example` (it lists every name) and keep only your own secrets and
+URLs. Lines for the retired `frontend/` (`NEXT_PUBLIC_*`, `VANI_MOCK`) do
+nothing here — the console's one setting lives in `vani-app/.env.local`. On
+Windows, never append with PowerShell 5's `>>` (it writes UTF-16, which dotenv
+cannot read); use an editor or `Add-Content -Encoding ascii`.
+
+⚠️ **A laptop pointed at the production database is not a dev setup.** Seen
+2026-10-02: a local `backend/.env` with `DB_PRIMARY` = production as
+`vikuna_admin`. Then `dev:api` writes real tenants' data with RLS bypassed,
+`dev:worker` competes with the VPS worker for production's queue (laptop code,
+laptop model settings, runs recorded in production), and `db:migrate` from a
+Windows checkout records CRLF checksums. Develop against a local Postgres
+(`db:migrate` + `db:seed`); if production must be read from a laptop, never
+start the worker and never migrate.
+
 ## Testing
 ```bash
 cd backend && npm test          # jest across skills/*/tests
@@ -737,6 +757,30 @@ npm run packs -- --drafts          # legacy runs parked before 2026-09-17
 
 A reason may be several words — the old `--reject` read `args[i+2]` and
 silently kept only the first, which PowerShell made easy to hit.
+
+## VPS — pending tasks (recorded 2026-10-02, in this order)
+
+Commands for 1 are in `deploy.txt`; DEPLOY.md explains them. Tick here when done.
+
+1. [ ] **Deploy P1-A** — `deploy.txt` release block: A (three `ETL_*` lines in
+   the compose `.env`) → 1 deploy → 2 migrations (expect 264–267 pending, and
+   262 if it never ran) → 3 nginx (upload location 200m) → B release check
+   (every line OK) → 4 verify. Then in the console: import a small CSV, and
+   Runs → Events shows nothing stuck.
+2. [ ] **Redo the runtime role switch** (DEPLOY.md §4b). Checked 2026-09-30
+   23:40: production runs as `vikuna_admin`, so RLS is NOT enforced. Edit the
+   `DB_*` lines only — never copy a whole file over `.env` (that is how the
+   switch was lost). Walk the §4b console test list afterwards.
+3. [ ] **Close Postgres to the internet.** The database answers on the VPS's
+   public IP at 5432 (a laptop connects to it directly). Restrict it to the
+   docker network / localhost. Before closing, list who connects from outside
+   (laptops, `mcp-db.dristiq.com`) so nothing is cut off unannounced.
+4. [ ] **Rotate the Anthropic API key and the llm.dristiq.com key.**
+   Fragments of both were pasted into a chat on 2026-10-02 — not usable as
+   shown, but rotation is cheap. Update the compose `.env` and every laptop
+   `.env` that holds them, then recreate both containers.
+5. [ ] **Confirm 262 is recorded** (`migrate.js --status`) — written
+   2026-09-30 with "apply with the runner"; release check B reports it.
 
 ## Main VPS — known broken, DEFERRED (recorded 2026-08-17)
 
