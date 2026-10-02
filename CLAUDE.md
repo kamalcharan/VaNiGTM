@@ -782,7 +782,7 @@ Commands for 1 are in `deploy.txt`; DEPLOY.md explains them. Tick here when done
    shown, but rotation is cheap. Update the compose `.env` and every laptop
    `.env` that holds them, then recreate both containers.
 5. [x] **Confirm 262 is recorded** — DONE 2026-10-02 (release check).
-6. [ ] **Uploaded files are not persisted** (found 2026-10-02). Multer writes
+6. [ ] **Uploaded files are not persisted** (found 2026-10-02). **CODE BUILT 2026-10-02** (`src/etl/temp-files.ts`, 6 tests): awaiting the VPS release in `deploy.txt` (host folder, two `.env` lines, the mount in both services). Multer writes
    to `/app/uploads` inside `vani-backend` with no volume: every deploy deletes
    the originals (staged rows survive — `raw_data` is in Postgres), and
    `vani-worker` has its own empty `/app/uploads`, so the large-CSV worker path

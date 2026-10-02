@@ -82,6 +82,7 @@ VaNiGTM/
 | compose dir *(confirm)* | where the running compose files and `.env` live. Read it off the container rather than remembering it: `docker inspect vani-backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}'` (historically `/opt/vikuna/docker/vani`) |
 | `/opt/vikuna/docker/docker/config/nginx/conf.d/` | nginx site configs, bind-mounted to `vikuna-nginx:/etc/nginx/conf.d/` |
 | `/opt/vikuna/docker/docker/config/nginx/nginx.conf` | nginx main config → `/etc/nginx/nginx.conf` |
+| `/opt/vikuna/data/vani-uploads` | upload temp folder, mounted at `/app/uploads` in **both** `vani-backend` and `vani-worker`. Files are deleted once their rows are staged (ruling 2026-10-02); anything left is in flight or awaiting the TTL sweep. Not backed up, by design |
 | `/etc/letsencrypt/live/api.vikuna.io/` | TLS cert for the API |
 | `/var/lib/docker/volumes/docker_nginx_logs/_data` | nginx logs → `vani_access.log`, `vani_error.log` |
 
@@ -356,7 +357,7 @@ touches most:
 | Worker — **required**, checked at worker start | `WORKER_POLL_MS`, `WORKER_BATCH_SIZE`, `WORKER_HEARTBEAT_MS`, `WORKER_STALE_CLAIM_SECONDS`, `WORKER_MAX_ATTEMPTS` |
 | Embeddings (checked at call time) | `EMBED_URL`, `EMBED_MODEL`, `EMBED_TIMEOUT_MS`, `EMBED_DIM`, `EMBED_KEY` |
 | Integrations | `SEARXNG_URL`, `N8N_RENDER_URL`, `N8N_RENDER_SECRET`, `N8N_ENV`, `GDRIVE_*` |
-| Import pipeline — **required**, checked at API and worker start | `ETL_UPLOAD_MAX_BYTES` (nginx's `/api/v1/etl/upload` location must allow as much — 200m today), `ETL_SYNC_MAX_BYTES`, `ETL_STAGE_CHUNK_ROWS` |
+| Import pipeline — **required**, checked at API and worker start | `ETL_UPLOAD_MAX_BYTES` (nginx's `/api/v1/etl/upload` location must allow as much — 200m today), `ETL_SYNC_MAX_BYTES`, `ETL_STAGE_CHUNK_ROWS`, `ETL_UPLOAD_DIR` (`/app/uploads` — the host folder below, mounted in BOTH containers), `ETL_UPLOAD_TEMP_TTL_HOURS` |
 | CORS (dev only) | `CORS_ORIGIN` — comma-separated; production uses nginx instead |
 
 Never commit a value. Never print `.env` into a chat.

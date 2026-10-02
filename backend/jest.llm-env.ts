@@ -9,6 +9,9 @@
  * Only fills what the environment has not already set, so a developer running
  * the suite against a real endpoint still can.
  */
+import os from 'os';
+import path from 'path';
+
 const TEST_LLM_ENV: Record<string, string> = {
   LLM_PRIMARY_URL: 'http://llm.test.invalid/v1',
   LLM_PRIMARY_MODEL: 'test-model',
@@ -44,6 +47,8 @@ const TEST_LLM_ENV: Record<string, string> = {
   ETL_UPLOAD_MAX_BYTES: '10485760',
   ETL_SYNC_MAX_BYTES: '10485760',
   ETL_STAGE_CHUNK_ROWS: '1000',
+  ETL_UPLOAD_DIR: path.join(os.tmpdir(), 'vani-etl-test-uploads'),
+  ETL_UPLOAD_TEMP_TTL_HOURS: '24',
 };
 for (const [k, v] of Object.entries(TEST_LLM_ENV)) {
   if (process.env[k] === undefined) process.env[k] = v;

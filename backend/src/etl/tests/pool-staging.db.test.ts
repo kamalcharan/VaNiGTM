@@ -1,9 +1,12 @@
 /**
  * Common pool P1-A against the REAL schema (every migration) and the REAL
  * router over HTTP: the licence gate, the worker path for large CSVs with a
- * crash in the middle, the workbook refusal, and junk · held · restore.
+ * crash in the middle, the workbook refusal, and junk · held · restore —
+ * and uploads as TEMPORARY files (Charan, 2026-10-02): gone once staged, the
+ * same content refused even renamed, a failed import never blocking its file.
  */
 import { execSync } from 'child_process';
+import fs from 'fs';
 import path from 'path';
 import express from 'express';
 import type { AddressInfo } from 'net';
@@ -226,5 +229,105 @@ d('common pool P1-A — staging', () => {
 
     // Another workspace cannot reach these rows at all.
     expect((await state(ids[1], { state: 'restore' }, other.token)).status).toBe(404);
+  });
+});
+
+d('uploads are temporary files (Charan, 2026-10-02)', () => {
+  const fileRow = async (id: number) => (await pool.query(
+    'SELECT original_filename, file_size, file_hash, file_path, processing_status FROM ki_file_uploads WHERE id = $1', [id])).rows[0];
+  const ownImport = (file_id: number) => call('POST', '/sessions', { file_id, import_type: 'company' });
+
+  it('a file staged in the request is deleted; its metadata stays', async () => {
+    process.env.ETL_SYNC_MAX_BYTES = '10485760';
+    const up = await upload(admin.token, 'temp-sync.csv', csvOf(4));
+    const before = await fileRow(up.body.file_id);
+    expect(fs.existsSync(before.file_path)).toBe(true);
+    const r = await ownImport(up.body.file_id);
+    expect(r.status).toBe(201);
+    const after = await fileRow(up.body.file_id);
+    expect(fs.existsSync(after.file_path)).toBe(false);
+    expect(after).toMatchObject({ original_filename: 'temp-sync.csv', processing_status: 'completed' });
+    expect(Number(after.file_size)).toBeGreaterThan(0);
+    expect(after.file_hash).toMatch(/^[0-9a-f]{64}$/);
+    const st = await pool.query('SELECT total_records FROM ki_import_sessions WHERE id = $1', [r.body.session_id]);
+    expect(st.rows[0].total_records).toBe(5);   // the row count lives on the session
+  });
+
+  it('a file staged by the worker is deleted when the job finishes', async () => {
+    process.env.ETL_SYNC_MAX_BYTES = '10';
+    process.env.ETL_STAGE_CHUNK_ROWS = '1000';
+    const up = await upload(admin.token, 'temp-worker.csv', csvOf(20));
+    const sid = (await ownImport(up.body.file_id)).body.session_id;
+    expect(fs.existsSync((await fileRow(up.body.file_id)).file_path)).toBe(true);   // the worker still needs it
+    const ev = await pool.query(`SELECT payload FROM gt_events WHERE event_type = 'IMPORT_STAGE_REQUESTED' AND source_id = $1`, [String(sid)]);
+    await runStageJob(pool, admin.tenant, ev.rows[0].payload, 0);
+    const after = await fileRow(up.body.file_id);
+    expect(fs.existsSync(after.file_path)).toBe(false);
+    expect(after.processing_status).toBe('completed');
+  });
+
+  it('the same content is refused once staged — renaming does not get it through', async () => {
+    process.env.ETL_SYNC_MAX_BYTES = '10485760';
+    const body = csvOf(3);
+    const first = await upload(admin.token, 'original.csv', body);
+    expect((await ownImport(first.body.file_id)).status).toBe(201);
+    for (const name of ['original.csv', 'renamed copy.csv']) {
+      const again = await upload(admin.token, name, body);
+      expect(again.status).toBe(409);
+      expect(again.body.error.code).toBe('ALREADY_IMPORTED');
+      expect(again.body.error.message).toMatch(/renaming it does not change that/);
+    }
+    // An edited file is a new delivery; its overlapping rows are duplicates, not a refusal.
+    const edited = await upload(admin.token, 'original.csv', body + 'One more Co,onemore.in,Pune,411001\n');
+    expect(edited.status).toBe(201);
+  });
+
+  it('a failed import never blocks its own file', async () => {
+    process.env.ETL_SYNC_MAX_BYTES = '10';
+    process.env.ETL_STAGE_CHUNK_ROWS = '10';
+    const body = csvOf(30, 25);
+    const up = await upload(admin.token, 'fails.csv', body);
+    const sid = (await ownImport(up.body.file_id)).body.session_id;
+    const ev = await pool.query(`SELECT payload FROM gt_events WHERE event_type = 'IMPORT_STAGE_REQUESTED' AND source_id = $1`, [String(sid)]);
+    await expect(runStageJob(pool, admin.tenant, ev.rows[0].payload, 0)).rejects.toThrow(/not valid CSV/);
+    const failed = await fileRow(up.body.file_id);
+    expect(fs.existsSync(failed.file_path)).toBe(false);
+    expect(failed.processing_status).toBe('failed');
+
+    // The same bytes come back in, and a new import is created from them.
+    const again = await upload(admin.token, 'fails.csv', body);
+    expect(again.status).toBe(201);
+    const second = await ownImport(again.body.file_id);
+    expect(second.status).toBe(202);
+    const loads = await pool.query(
+      `SELECT l.status FROM ki_import_sessions s JOIN gt_source_loads l ON l.id = s.load_id WHERE s.id = ANY($1::int[]) ORDER BY s.id`,
+      [[sid, second.body.session_id]]);
+    expect(loads.rows.map((r) => r.status)).toEqual(['retired', 'active']);   // the failed one stepped aside
+  });
+
+  it('a file that is gone says so, and may be uploaded again', async () => {
+    process.env.ETL_SYNC_MAX_BYTES = '10485760';
+    const body = csvOf(2);
+    const up = await upload(admin.token, 'vanished.csv', body);
+    fs.unlinkSync((await fileRow(up.body.file_id)).file_path);   // a deploy, or the sweep
+    const h = await call('GET', `/headers/${up.body.file_id}`, undefined);
+    expect(h.status).toBe(410);
+    expect(h.body.error.code).toBe('FILE_GONE');
+    expect((await ownImport(up.body.file_id)).status).toBe(410);
+    expect((await upload(admin.token, 'vanished.csv', body)).status).toBe(201);
+  });
+
+  it('an upload never staged is swept after the TTL; one being staged is not', async () => {
+    process.env.ETL_SYNC_MAX_BYTES = '10';
+    const abandoned = await upload(admin.token, 'abandoned.csv', csvOf(2));
+    const inFlight = await upload(admin.token, 'in-flight.csv', csvOf(2));
+    await ownImport(inFlight.body.file_id);   // 202: the worker has not run yet
+    await pool.query(`UPDATE ki_file_uploads SET created_at = now() - interval '25 hours' WHERE id = ANY($1::int[])`,
+      [[abandoned.body.file_id, inFlight.body.file_id]]);
+    await upload(admin.token, 'trigger.csv', csvOf(1));   // each upload sweeps
+    const a = await fileRow(abandoned.body.file_id);
+    expect(fs.existsSync(a.file_path)).toBe(false);
+    expect(a.processing_status).toBe('failed');
+    expect(fs.existsSync((await fileRow(inFlight.body.file_id)).file_path)).toBe(true);
   });
 });

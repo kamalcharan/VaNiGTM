@@ -54,6 +54,11 @@ services:
     # No `ports:` — internal only, reached through vikuna-nginx (or whatever
     # the existing reverse proxy container is) over the shared network
     # below, same pattern as ProKey's backend service.
+    # Uploads wait here until their rows are staged, then are deleted
+    # (ETL_UPLOAD_DIR=/app/uploads). The worker mounts the SAME folder, or it
+    # cannot read a large CSV it was asked to stage.
+    volumes:
+      - /opt/vikuna/data/vani-uploads:/app/uploads
     networks:
       - vikuna_shared
     mem_limit: 450m
@@ -81,6 +86,8 @@ services:
       # mem_limit below, never one alone.
       - NODE_OPTIONS=--max-old-space-size=200
     command: ["node", "dist/agent-core/worker.js"]
+    volumes:
+      - /opt/vikuna/data/vani-uploads:/app/uploads   # the same folder as vani-backend
     networks:
       - vikuna_shared
     mem_limit: 300m

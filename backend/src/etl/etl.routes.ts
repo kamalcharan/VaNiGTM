@@ -35,15 +35,18 @@ import {
 } from './mapping-plan';
 import { landSession } from './landing';
 import { resolveAuth, type AuthContext } from '../auth/auth-context';
-
-const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
+import {
+  uploadDir, fileIsGone, discardUpload, sweepAbandonedUploads, blockingLoadFor, releaseFailedLoads,
+} from './temp-files';
 
 /* ── Multer config ─────────────────────────────────── */
 
 const storage = multer.diskStorage({
+  // ETL_UPLOAD_DIR — a temp folder: the file is deleted once staged (temp-files.ts).
   destination: (_req, _file, cb) => {
-    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    cb(null, UPLOAD_DIR);
+    const dir = uploadDir();
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
   },
   filename: (_req, file, cb) => {
     const ts = Date.now();
@@ -64,6 +67,15 @@ const makeUpload = () => multer({
     else cb(new Error('Only .xlsx, .xls, .csv files are allowed'));
   },
 });
+
+/* ── A temp file that is no longer there ─────────────── */
+// Files are temporary (temp-files.ts): one that was never staged is removed
+// after ETL_UPLOAD_TEMP_TTL_HOURS, and a deploy may have taken it. Nothing was
+// staged from it, so uploading it again is allowed.
+function fileGone(file: { original_filename: string }) {
+  return { error: { code: 'FILE_GONE',
+    message: `"${file.original_filename}" is no longer held — uploads are kept only until their rows are staged. Upload it again; nothing was staged from it, so it will be accepted.` } };
+}
 
 /* ── Auth ───────────────────────────────────────────── */
 // Resolved by the one shared resolver (auth/auth-context.ts). This file used
@@ -133,6 +145,10 @@ export function createEtlRouter(pool: Pool): Router {
       const file = req.file;
       if (!file) { res.status(400).json({ error: { code: 'NO_FILE', message: 'No file uploaded' } }); return; }
 
+      // Housekeeping of the temp folder. Its failure must not cost the person
+      // their upload, so it is logged loudly and the upload carries on.
+      await sweepAbandonedUploads(pool).catch((e) => console.error('[ETL:temp] sweep failed:', e.message));
+
       const importType = req.body.import_type || 'company';
       if (!['customer', 'company'].includes(importType)) {
         res.status(400).json({ error: { code: 'UNSUPPORTED_TYPE', message: `Import type "${importType}" is not supported. Use "company" for prospects and the common pool.` } });
@@ -151,23 +167,17 @@ export function createEtlRouter(pool: Pool): Router {
       // still loads; its row-level clashes are settled in the merge review.
       // gt_source_loads carries a matching unique index (migration 202), so
       // this cannot be raced past.
-      const prior = await pool.query(
-        `SELECT l.id, l.label, l.loaded_at
-         FROM   gt_source_loads l
-         WHERE  l.file_checksum = $1
-           AND  l.status = 'active'
-           AND  (l.tenant_id = $2 OR l.tenant_id IS NULL)
-         ORDER BY l.loaded_at DESC
-         LIMIT 1`,
-        [fileHash, auth.tenant_id],
-      );
-      if (prior.rows.length > 0) {
-        const p = prior.rows[0] as any;
+      //
+      // Renaming does not make a new delivery (Charan, 2026-10-02: content
+      // decides). A FAILED import does not block its own file: its rows that
+      // overlap come back as duplicates, not as a refusal (temp-files.ts).
+      const p = await blockingLoadFor(pool, fileHash, auth.tenant_id);
+      if (p) {
         fs.unlink(file.path, () => {});   // do not keep a file we refused
         res.status(409).json({
           error: {
             code: 'ALREADY_IMPORTED',
-            message: `This exact file has already been imported as "${p.label}". Nothing in it has changed, so there is nothing new to import. Upload an updated file, or retire the earlier load if you need to import it again.`,
+            message: `This exact file has already been imported as "${p.label}". Nothing in it has changed, so there is nothing new to import — renaming it does not change that. Upload an updated file, or retire the earlier import if you need to bring the same content in again.`,
           },
         });
         return;
@@ -207,6 +217,7 @@ export function createEtlRouter(pool: Pool): Router {
       if (fileResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } }); return; }
 
       const file = fileResult.rows[0] as any;
+      if (fileIsGone(file.file_path)) { res.status(410).json(fileGone(file)); return; }
       const { headers, sampleRows, totalRows } = await readHeadersAndSample(file.file_path);
 
       // What is actually IN this file. The detector groups columns by entity —
@@ -515,6 +526,10 @@ export function createEtlRouter(pool: Pool): Router {
   /* ── POST /sessions — Phase 1: Stage ────────────── */
 
   router.post('/sessions', async (req, res) => {
+    // Set once the session exists, so a staging failure can close it and
+    // discard the temp file (a failed import never blocks its own file).
+    let stagingSessionId: number | null = null;
+    let stagingFile: { id: number; file_path: string } | null = null;
     try {
       const auth = extractAuth(req);
       if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
@@ -570,6 +585,7 @@ export function createEtlRouter(pool: Pool): Router {
       }
 
       const file = fileResult.rows[0] as any;
+      if (fileIsGone(file.file_path)) { res.status(410).json(fileGone(file)); return; }
       const tenantId = auth.tenant_id;
       const mappings = field_mappings
         || (import_type === 'company' ? COMPANY_FIELD_MAP : CUSTOMER_FIELD_MAP);
@@ -604,6 +620,10 @@ export function createEtlRouter(pool: Pool): Router {
         });
         return;
       }
+      // An earlier attempt with this content that failed still holds an
+      // active load; retire it so this attempt can take the (tenant, checksum)
+      // slot. The upload guard already let this file through on that basis.
+      await releaseFailedLoads(pool, file.file_hash, dest === 'universe_companies' ? null : tenantId);
       const load = await pool.query(
         `INSERT INTO gt_source_loads (source_id, label, region, as_of, tenant_id, file_checksum, loaded_by)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
@@ -668,6 +688,8 @@ export function createEtlRouter(pool: Pool): Router {
         ],
       );
       const sessionId = (sessionResult.rows[0] as any).id;
+      stagingSessionId = sessionId;
+      stagingFile = { id: file.id, file_path: file.file_path };
 
       // Did the human assign the columns themselves? If so that wins over any
       // detection — the file's format is whatever they say it is.
@@ -685,12 +707,14 @@ export function createEtlRouter(pool: Pool): Router {
         if (!/\.csv$/i.test(file.file_path)) {
           await pool.query(`UPDATE ki_import_sessions SET status = 'cancelled', error_summary = $1 WHERE id = $2`,
             ['A workbook this large cannot be read in parts — save it as CSV and upload again.', sessionId]);
+          await discardUpload(pool, file.id, file.file_path, 'failed');
           res.status(413).json({ error: { code: 'WORKBOOK_TOO_LARGE',
             message: `This workbook is ${size} bytes; above ${etlCfg.syncMaxBytes} bytes only CSV can be staged (in parts, by the worker). Save it as CSV and upload again.` } });
           return;
         }
         await emitEvent(pool, tenantId, 'IMPORT_STAGE_REQUESTED', 'human',
           { session_id: sessionId, field_mappings: field_mappings ?? null }, String(sessionId));
+        stagingSessionId = null;   // the worker owns it from here, file included
         res.status(202).json({ session_id: sessionId, status: 'staging', total_records: null, import_type });
         return;
       }
@@ -711,6 +735,9 @@ export function createEtlRouter(pool: Pool): Router {
          WHERE id = $2`,
         [rows.length, sessionId],
       );
+      // Staged: the rows hold everything the file said. The file goes.
+      stagingSessionId = null;
+      await discardUpload(pool, file.id, file.file_path, 'completed');
 
       res.status(201).json({
         session_id: sessionId,
@@ -720,6 +747,11 @@ export function createEtlRouter(pool: Pool): Router {
       });
     } catch (err: any) {
       console.error('[ETL:create-session]', err);
+      if (stagingSessionId !== null && stagingFile) {
+        await pool.query(`UPDATE ki_import_sessions SET status = 'failed', error_summary = $1 WHERE id = $2`,
+          [err.message || 'Staging failed', stagingSessionId]).catch(() => {});
+        await discardUpload(pool, stagingFile.id, stagingFile.file_path, 'failed').catch(() => {});
+      }
       res.status(500).json({ error: { code: 'SESSION_FAILED', message: err.message || 'Failed to create session' } });
     }
   });

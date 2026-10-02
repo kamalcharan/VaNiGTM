@@ -36,20 +36,34 @@ git checkout main
 
 
 # =============================================================================
-# RELEASE 2026-10-02 — common pool P1-A (migrations 264-267, ETL settings)
-# Order: A, then 1, 2, 3, B, 4.
+# RELEASE 2026-10-02b — uploads are temporary (ETL_UPLOAD_DIR, shared folder)
+# No migrations. Order: A, then 1, B, 4.
 # =============================================================================
 
-# ---- A. BEFORE step 1: add the three ETL settings (skips any already set) ----
+# ---- A. BEFORE step 1 --------------------------------------------------------
+# A1. The shared temp folder on the host.
+mkdir -p /opt/vikuna/data/vani-uploads
+
+# A2. Two settings (skips any already set).
 COMPOSE_DIR=$(docker inspect vani-backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}')
 cp "$COMPOSE_DIR/.env" "$COMPOSE_DIR/.env.bak-$(date +%Y%m%d-%H%M)"
-grep -q '^ETL_UPLOAD_MAX_BYTES=' "$COMPOSE_DIR/.env" || echo 'ETL_UPLOAD_MAX_BYTES=10485760' >> "$COMPOSE_DIR/.env"
-grep -q '^ETL_SYNC_MAX_BYTES='   "$COMPOSE_DIR/.env" || echo 'ETL_SYNC_MAX_BYTES=10485760'   >> "$COMPOSE_DIR/.env"
-grep -q '^ETL_STAGE_CHUNK_ROWS=' "$COMPOSE_DIR/.env" || echo 'ETL_STAGE_CHUNK_ROWS=1000'     >> "$COMPOSE_DIR/.env"
-grep -c '^ETL_' "$COMPOSE_DIR/.env"
+grep -q '^ETL_UPLOAD_DIR='            "$COMPOSE_DIR/.env" || echo 'ETL_UPLOAD_DIR=/app/uploads'       >> "$COMPOSE_DIR/.env"
+grep -q '^ETL_UPLOAD_TEMP_TTL_HOURS=' "$COMPOSE_DIR/.env" || echo 'ETL_UPLOAD_TEMP_TTL_HOURS=24'      >> "$COMPOSE_DIR/.env"
+grep -E '^ETL_UPLOAD_(DIR|TEMP_TTL_HOURS)=' "$COMPOSE_DIR/.env"
 
-# ---- B. AFTER steps 1-3: release check (read-only, every line must say OK) ---
-cd /opt/vikuna/src/vanigtm
-docker logs vani-backend 2>&1 | grep "ETL:"
-docker logs vani-worker 2>&1 | grep "ETL:"
-docker exec -i vani-backend node - < deploy/vani-main-vps/checks/2026-10-02-p1a-pool.js
+# A3. Mount the folder in BOTH services of the live compose file.
+#     This prints the file(s) compose uses:
+docker inspect vani-backend --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}'
+#     Open it (nano <that path>) and add, under vani-backend: AND under vani-worker:
+#       volumes:
+#         - /opt/vikuna/data/vani-uploads:/app/uploads
+#     (if a service already has volumes:, add only the "- ..." line to it).
+#     The repo's deploy/vani-main-vps/docker-compose.vani.yml shows the result.
+
+# ---- B. AFTER step 1: both containers see the same folder --------------------
+docker inspect vani-backend --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
+docker inspect vani-worker  --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
+docker logs vani-backend 2>&1 | grep "ETL:" | tail -1
+docker logs vani-worker  2>&1 | grep "ETL:" | tail -1
+# Then in the console: import a small CSV, stage it; afterwards this is empty:
+ls -la /opt/vikuna/data/vani-uploads
