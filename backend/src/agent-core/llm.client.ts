@@ -44,7 +44,7 @@ import { createTenantDb } from '../db';
 import { appendStep } from './agent.runner';
 import { resolveProvider, type ResolvedProvider } from './llm.provider';
 import { readLlmConfig } from './llm.config';
-import { withLlmSlot, checkContext, contextError, noteObservedTokens, noteContextOverflow, noteObservedSpeed, tokensPerSec, estimateTokens, charsPerToken } from './llm.gate';
+import { withLlmSlot, type LlmPriority, checkContext, contextError, noteObservedTokens, noteContextOverflow, noteObservedSpeed, tokensPerSec, estimateTokens, charsPerToken, platformContextTokens } from './llm.gate';
 
 const charsPerTokenLabel = (model?: string) => charsPerToken(model).toFixed(2);
 
@@ -95,6 +95,12 @@ export interface LLMCallOptions {
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
   maxTokens?: number;
   temperature?: number;
+  /**
+   * Is a person waiting on this call? Interactive (the default) goes ahead of
+   * batch work in the model lane (llm.gate.ts). Enrichment and other bulk
+   * jobs pass 'batch'.
+   */
+  priority?: LlmPriority;
 }
 
 export interface LLMResult {
@@ -323,6 +329,7 @@ async function callEndpoint(
   const neededMs = Math.ceil(((promptTokens / (tps * prefillFactor())) + (maxTokens / tps)) * 1000) + cfgNow.timeoutSlackMs;
   const timeoutMs = Math.max(provider.timeoutMs, neededMs);
   const startedAt = Date.now();
+  let queuedMs = 0;
 
   let response: Response;
   try {
@@ -338,6 +345,7 @@ async function callEndpoint(
         signal:  AbortSignal.timeout(timeoutMs),
       }),
       (waitedMs, depth, where) => {
+        queuedMs += waitedMs;
         // Visible, because a run that sits for two minutes with no explanation
         // reads as hung. stdout is where the worker's story is told.
         console.log(where === 'shared'
@@ -347,6 +355,7 @@ async function callEndpoint(
             + `call(s) in this process for ${provider.model} at ${provider.url}`);
       },
       options.pool,
+      options.priority ?? 'interactive',
     );
   } catch (err) {
     const timedOut = /timeout|aborted/i.test(String(err));
@@ -405,8 +414,50 @@ async function callEndpoint(
   // Recorded on both postures. Metering is not capping: what a run cost is a
   // question a BYOK tenant will ask, and the only place to answer it is here.
   await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'vps');
+  await noteCallInRun(pool, options.runId, {
+    model: provider.model, posture: provider.posture, priority: options.priority ?? 'interactive',
+    inputTokens, outputTokens, maxTokens, elapsedMs, queuedMs, truncated,
+    window: provider.posture === 'platform' ? platformContextTokens() : 0,
+  });
 
   return { text, inputTokens, outputTokens, source: 'vps', truncated };
+}
+
+/* ── The context report: one step per model call (AGENTS.md §4b) ─────────── */
+
+/**
+ * Every model call leaves one line in its run's step feed: which model, how
+ * full the window was, how long it waited in the lane and how long it took,
+ * and whether the answer was cut off. Until per-call telemetry has its own
+ * table (C4, pending approval), this is how "why was this run slow, what did
+ * it use" is answered from the console instead of from the worker's stdout.
+ *
+ * Never fails the call: a run that cannot be written to (no run, a test with
+ * run 0) loses the note, not the answer.
+ */
+export async function noteCallInRun(
+  pool: Pool, runId: string | number | undefined,
+  c: {
+    model: string; posture: string; priority: LlmPriority;
+    inputTokens: number; outputTokens: number; maxTokens: number;
+    elapsedMs: number; queuedMs: number; truncated: boolean; window: number;
+  },
+): Promise<void> {
+  if (runId === undefined || runId === null || runId === '' || Number(runId) === 0) return;
+  const fill = c.window > 0 ? ` · ${Math.round(((c.inputTokens + c.maxTokens) / c.window) * 100)}% of the ${c.window.toLocaleString('en-IN')}-token window` : '';
+  const wait = c.queuedMs >= 1000 ? ` · waited ${Math.round(c.queuedMs / 1000)}s in the ${c.priority} lane` : '';
+  try {
+    await appendStep(pool, runId, {
+      step_name: 'model_call',
+      action: `${c.model}${c.posture === 'escalation' ? ' (failover)' : ''}: ${c.inputTokens.toLocaleString('en-IN')} prompt + `
+        + `${c.outputTokens.toLocaleString('en-IN')} answer tokens${fill}${wait} · ${(c.elapsedMs / 1000).toFixed(1)}s`
+        + (c.truncated ? ' · CUT OFF at the answer limit' : ''),
+      status: c.truncated ? 'error' : 'ok',
+      duration_ms: c.elapsedMs,
+    });
+  } catch (e) {
+    console.warn('[LLM] Could not record the model_call step:', (e as Error).message);
+  }
 }
 
 /* ── Failover: Claude API call ──────────────────────────────────────────── */
@@ -428,6 +479,7 @@ async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
     ? system.trimEnd().slice(0, -suffix.length)
     : system).trim();
   const model = failoverModel();
+  const startedAt = Date.now();
 
   const response = await client.messages.create({
     model,
@@ -445,6 +497,11 @@ async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
   const outputTokens = response.usage.output_tokens;
 
   await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'escalation');
+  await noteCallInRun(pool, options.runId, {
+    model, posture: 'escalation', priority: options.priority ?? 'interactive',
+    inputTokens, outputTokens, maxTokens, elapsedMs: Date.now() - startedAt, queuedMs: 0,
+    truncated: response.stop_reason === 'max_tokens', window: 0,
+  });
 
   return { text, inputTokens, outputTokens, source: 'escalation', truncated: response.stop_reason === 'max_tokens' };
 }

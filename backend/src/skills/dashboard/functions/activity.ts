@@ -1,4 +1,5 @@
 import { SkillContext } from '../../../types/skill.types';
+import { agentOf } from '../../../agent-core/agent-names';
 
 export async function activity(params: Record<string, unknown>, ctx: SkillContext) {
   const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
@@ -25,7 +26,7 @@ export async function activity(params: Record<string, unknown>, ctx: SkillContex
         : row.status === 'failed' ? `failed${said ? ` at ${step.step_name ?? said}` : ''}`
         : row.status === 'running' ? `running${said ? ` — ${said}` : ''}`
         : said ?? row.status;
-      return { id: `run-${row.id}`, at: row.at, agent: row.event_type ?? row.agent_name, text, run: row.id };
+      return { id: `run-${row.id}`, at: row.at, agent: agentOf(row.event_type ?? row.agent_name), text, run: row.id };
     }),
   };
 }

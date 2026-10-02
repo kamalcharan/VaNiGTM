@@ -25,6 +25,8 @@ import { assertRegistryMatches, HANDLED_EVENT_TYPES } from './handled-events';
 import { readLlmConfig, assertLlmConfig } from './llm.config';
 import { readWorkerConfig, assertWorkerConfig } from './worker.config';
 import { assertEtlConfig } from '../etl/etl.config';
+import { assertPoolConfig } from '../etl/pool.config';
+import { runPoolResolveJob } from '../etl/pool-merge';
 import { runStageJob } from '../etl/stage-job';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
@@ -102,6 +104,10 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
   // Common pool P1 — a large CSV staged in chunks, resumable (src/etl/stage-job.ts).
   IMPORT_STAGE_REQUESTED: (pool, tenantId, payload, runId) =>
     runStageJob(pool, tenantId, payload, runId).then(() => undefined),
+
+  // Common pool P1-B — match, derive, Complete test; resumable (src/etl/pool-merge.ts).
+  POOL_RESOLVE_REQUESTED: (pool, tenantId, payload, runId) =>
+    runPoolResolveJob(pool, tenantId, payload, runId).then(() => undefined),
 
   // FOLDER_CONNECTED fires immediately after OAuth — folder_id may still
   // be null (tenant hasn't picked a folder yet). Guard the sync call so
@@ -373,6 +379,7 @@ export function startWorker(pool: Pool, queue: EventQueue): void {
   assertLlmConfig('Worker');
   assertWorkerConfig();
   assertEtlConfig('Worker');
+  assertPoolConfig('Worker');
   console.log(
     `[Worker] Starting — polling every ${workerCfg().pollMs}ms, batch size ${workerCfg().batchSize}`,
   );

@@ -90,6 +90,34 @@ describe('taking turns', () => {
   });
 });
 
+describe('interactive before batch (AGENTS §4 rule 5)', () => {
+  it('a person-facing call queued after batch work still goes first; batch stays in order', async () => {
+    const order: string[] = [];
+    let release!: () => void;
+    const holder = withLlmSlot(URL_A, 'platform', () => new Promise<void>((r) => { release = r; }));
+    await new Promise((r) => setTimeout(r, 5));            // the slot is taken
+    const job = (name: string, p: 'interactive' | 'batch') =>
+      withLlmSlot(URL_A, 'platform', async () => { order.push(name); }, undefined, undefined, p);
+    const all = [job('batch-1', 'batch'), job('batch-2', 'batch'), job('person-1', 'interactive'), job('person-2', 'interactive')];
+    release();
+    await holder;
+    await Promise.all(all);
+    expect(order).toEqual(['person-1', 'person-2', 'batch-1', 'batch-2']);
+  });
+
+  it('a call that names no priority is interactive', async () => {
+    const order: string[] = [];
+    let release!: () => void;
+    const holder = withLlmSlot(URL_A, 'platform', () => new Promise<void>((r) => { release = r; }));
+    await new Promise((r) => setTimeout(r, 5));
+    const b = withLlmSlot(URL_A, 'platform', async () => { order.push('batch'); }, undefined, undefined, 'batch');
+    const plain = withLlmSlot(URL_A, 'platform', async () => { order.push('plain'); });
+    release();
+    await Promise.all([holder, b, plain]);
+    expect(order).toEqual(['plain', 'batch']);
+  });
+});
+
 describe('the context budget', () => {
   it('counts the answer against the window, not on top of it', () => {
     // 8192 - 200 overhead = 7992 usable. A 7000-token prompt fits alone and

@@ -82,6 +82,7 @@ VaNiGTM/
 | compose dir *(confirm)* | where the running compose files and `.env` live. Read it off the container rather than remembering it: `docker inspect vani-backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}'` (historically `/opt/vikuna/docker/vani`) |
 | `/opt/vikuna/docker/docker/config/nginx/conf.d/` | nginx site configs, bind-mounted to `vikuna-nginx:/etc/nginx/conf.d/` |
 | `/opt/vikuna/docker/docker/config/nginx/nginx.conf` | nginx main config → `/etc/nginx/nginx.conf` |
+| `/opt/vikuna/data/vani-uploads` | upload temp folder, mounted at `/app/uploads` in **both** `vani-backend` and `vani-worker`. Files are deleted once their rows are staged (ruling 2026-10-02); anything left is in flight or awaiting the TTL sweep. Not backed up, by design |
 | `/etc/letsencrypt/live/api.vikuna.io/` | TLS cert for the API |
 | `/var/lib/docker/volumes/docker_nginx_logs/_data` | nginx logs → `vani_access.log`, `vani_error.log` |
 
@@ -197,7 +198,7 @@ EOF
 
 ## 4b. Switching the runtime role to `vanigtm_app` (decided 2026-09-30)
 
-> ⚠️ **CHECKED 2026-09-30 ~23:40 on the VPS: the runtime is `vikuna_admin` again** (`select current_user` inside vani-backend). The compose `.env` had no `DB_MIGRATE` and its `DB_PRIMARY` is the owner, so either step 5 below was never applied on the box or a later whole-file `.env` swap (the Haiku/qwen `cp`) restored the old line. RLS is therefore NOT enforced in production; isolation is the code's `WHERE tenant_id` only. `DB_MIGRATE` was added (owner URL) the same night so migrations run through the runner. Redo §4b step 5 deliberately, and swap LLM settings by editing the `LLM_*` lines, never by copying a whole file over `.env`.
+> ✅ **DONE 2026-10-02 (Charan): the runtime is `vanigtm_app`** — proven inside vani-backend (`current_user = vanigtm_app`, `rolsuper = false`, `rolbypassrls = false`), the runner reports `connecting as vikuna_admin (DB_MIGRATE)`, preflight checks 1–6 OK, no permission errors while the console was used. Check 7 (REVIEW): the 31 `vani_*`/`vara_*` tables are OWNED by `vanigtm_app` and unforced, so on those the owner bypass still applies and isolation is the code's `WHERE tenant_id` only — forcing them is a follow-up (CLAUDE.md VPS tasks). History: on 2026-09-30 23:40 the box was found back on `vikuna_admin` after a whole-file `.env` swap; edit `DB_*` / `LLM_*` lines, never copy a file over `.env`.
 
 Today the API and worker connect as `vikuna_admin` — SUPERUSER + BYPASSRLS —
 so every RLS policy is skipped and tenant isolation is only the
@@ -220,9 +221,10 @@ git pull origin main && bash deploy/vani-main-vps/deploy-vani.sh
 docker exec vani-backend node dist/migrate.js --status | tail -3   # 0 pending
 
 # 3. Grants — idempotent; covers tables added since it last ran.
-#    Runs as vikuna_admin through psql. The Postgres container name: confirm with
-#    docker ps --format '{{.Names}}' | grep -i postgres
-PG=<postgres-container>
+#    Runs as vikuna_admin through psql. The database container is
+#    vikuna-postgres (NOT vikuna-postgrest, the REST layer, nor kd-mcp-db).
+#    Confirm: docker exec vikuna-postgres psql -U vikuna_admin -d vani_gtm_db -Atc "select current_database()"
+PG=vikuna-postgres
 docker exec -i $PG psql -U vikuna_admin -d vani_gtm_db < scripts/grant-vanigtm-app.sql
 
 # 4. Preflight — READ-ONLY. Every row must say OK.
@@ -316,6 +318,9 @@ Restore on failure: copy the `.bak-…` file back and reload.
   own `CORS_ORIGIN` is unset in production and prints
   `http://localhost:3000` at startup — harmless. A new console origin is a
   line in the map.
+- **The run stream** (`/api/v1/runs/<id>/stream`, server-sent events) has
+  its own regex location with `proxy_buffering off` and a 900s read timeout;
+  without it nginx would hold every step until the run ended.
 - **Timeouts:** 300s on LLM-bearing paths (`ingest`, `profile`, `vani`, the
   catch-all); 30s default otherwise.
 - CORS check, from anywhere:
@@ -331,12 +336,12 @@ Restore on failure: copy the `.bak-…` file back and reload.
 | Thing | Value |
 |---|---|
 | Host | `srv1528480` (Main VPS) |
-| Containers | `vani-backend`, `vani-worker`, `vikuna-nginx`, the Postgres container on the shared network (`docker ps` to list) |
+| Containers | `vani-backend`, `vani-worker`, `vikuna-nginx`, `vikuna-postgres` (the database; `vikuna-postgrest` and `kd-mcp-db` are other services) |
 | Docker network | shared, external — name in the compose `.env` as `NETWORK_NAME` *(confirm: `docker inspect vani-backend --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}'`)* |
 | API port | 3001 in the container; public only through nginx |
 | Platform LLM | **Haiku as primary since 2026-09-30 evening (Charan: "let haiku run now")**: `claude-haiku-4-5` at `https://api.anthropic.com/v1`, window 100000, 4 at a time, no system suffix. The qwen settings (`qwen3-4b` at `http://vikuna-llm:8080`, window 16384, 1 at a time, suffix `/no_think`) are kept in the compose dir as `.env.bak-qwen-<date>`; restoring is `cp` of that file + recreate |
 | Database | `vani_gtm_db` |
-| Runtime DB role | **`vikuna_admin` as checked 2026-09-30 23:40** — the §4b switch to `vanigtm_app` is not in effect on the box (see the warning at §4b); RLS is NOT enforced. Intended: `vanigtm_app`. `DB_MIGRATE` keeps the owner connection for the migration runner. Before the switch: `vikuna_admin` (SUPERUSER + BYPASSRLS) |
+| Runtime DB role | **`vanigtm_app` since 2026-10-02** (NOSUPERUSER, NOBYPASSRLS) — RLS enforced except on the 31 unforced `vani_*`/`vara_*` tables it owns. `DB_MIGRATE` = `vikuna_admin` (owner) for the migration runner only |
 | Console | `vani.vikuna.io` (Vercel, VaNiGTM repo, root `vani-app/`); env `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` |
 | Website | `www.vikuna.io` (Vercel, VaNiGTM repo, root `web/`) |
 | Other vhosts on the same nginx | `dristiq.com`, `mcp-db.dristiq.com` (the read-only DB MCP) — not ours to change from here |
@@ -355,7 +360,9 @@ touches most:
 | Worker — **required**, checked at worker start | `WORKER_POLL_MS`, `WORKER_BATCH_SIZE`, `WORKER_HEARTBEAT_MS`, `WORKER_STALE_CLAIM_SECONDS`, `WORKER_MAX_ATTEMPTS` |
 | Embeddings (checked at call time) | `EMBED_URL`, `EMBED_MODEL`, `EMBED_TIMEOUT_MS`, `EMBED_DIM`, `EMBED_KEY` |
 | Integrations | `SEARXNG_URL`, `N8N_RENDER_URL`, `N8N_RENDER_SECRET`, `N8N_ENV`, `GDRIVE_*` |
-| Import pipeline — **required**, checked at API and worker start | `ETL_UPLOAD_MAX_BYTES` (nginx's `/api/v1/etl/upload` location must allow as much — 200m today), `ETL_SYNC_MAX_BYTES`, `ETL_STAGE_CHUNK_ROWS` |
+| Import pipeline — **required**, checked at API and worker start | `ETL_UPLOAD_MAX_BYTES` (nginx's `/api/v1/etl/upload` location must allow as much — 200m today), `ETL_SYNC_MAX_BYTES`, `ETL_STAGE_CHUNK_ROWS`, `ETL_UPLOAD_DIR` (`/app/uploads` — the host folder below, mounted in BOTH containers), `ETL_UPLOAD_TEMP_TTL_HOURS` |
+| Common pool matching — **required**, checked at API and worker start | `MATCH_LINK_MIN`, `MATCH_REVIEW_MIN`, `MATCH_DOMAIN_NAME_MIN`, `POOL_RESOLVE_CHUNK_ROWS` |
+| Run stream — **required**, checked at API start | `RUNS_STREAM_POLL_MS`, `RUNS_STREAM_HEARTBEAT_MS`, `RUNS_STREAM_MAX_SECONDS` (nginx's stream location reads for 900s, so keep this below it) |
 | CORS (dev only) | `CORS_ORIGIN` — comma-separated; production uses nginx instead |
 
 Never commit a value. Never print `.env` into a chat.

@@ -92,12 +92,26 @@ export const budgetSlackTokens = () => cfg().budgetSlackTokens;   // LLM_BUDGET_
 import type { Pool, PoolClient } from 'pg';
 import { readLlmConfig } from './llm.config';
 
-interface Lane { running: number; waiting: Array<() => void>; limit: number }
+/**
+ * Who is waiting on a call (AGENTS.md §4 rule 5, 2026-10-02). INTERACTIVE — a
+ * person is waiting (Smart Profile, the console, a decision card) — goes ahead
+ * of BATCH (enrichment, graph extraction) in this process's lane; within each
+ * priority the order stays FIFO. Without it an admin's enrichment run slows
+ * every tenant's onboarding with no error to show for it.
+ *
+ * In-process only: the cross-process advisory slot below is first come, first
+ * served. That is enough today because the worker runs both kinds; batch model
+ * work is meant to run on its own rungs (free pools, Haiku batch — other URLs,
+ * other lanes) and reach the platform lane only as a declared rung.
+ */
+export type LlmPriority = 'interactive' | 'batch';
+
+interface Lane { running: number; waiting: { interactive: Array<() => void>; batch: Array<() => void> }; limit: number }
 const lanes = new Map<string, Lane>();
 
 function laneFor(url: string, limit: number): Lane {
   let lane = lanes.get(url);
-  if (!lane) { lane = { running: 0, waiting: [], limit }; lanes.set(url, lane); }
+  if (!lane) { lane = { running: 0, waiting: { interactive: [], batch: [] }, limit }; lanes.set(url, lane); }
   // A limit can only be tightened by a later caller, never loosened — two
   // postures sharing one URL (a tenant pointing BYOK at our endpoint) must get
   // the stricter of the two, or the strict one buys nothing.
@@ -117,13 +131,15 @@ export async function withLlmSlot<T>(
   onWait?: (waitedMs: number, queueDepth: number, where: 'process' | 'shared') => void,
   /** When given, platform calls also take a cross-process slot (see header). */
   pool?: Pool,
+  priority: LlmPriority = 'interactive',
 ): Promise<T> {
   const lane = laneFor(url, posture === 'byok' ? cfg().byokMaxConcurrent : cfg().maxConcurrent);
   const startedWaiting = Date.now();
 
   if (lane.running >= lane.limit) {
-    const depth = lane.waiting.length + 1;
-    await new Promise<void>((resolve) => lane.waiting.push(resolve));
+    // Depth = everyone who goes before this call.
+    const depth = lane.waiting.interactive.length + (priority === 'batch' ? lane.waiting.batch.length : 0) + 1;
+    await new Promise<void>((resolve) => lane.waiting[priority].push(resolve));
     onWait?.(Date.now() - startedWaiting, depth, 'process');
   }
 
@@ -136,9 +152,9 @@ export async function withLlmSlot<T>(
   } finally {
     lane.running -= 1;
     // Hand the slot to the next waiter rather than letting everyone race for
-    // it: FIFO means the run that has waited longest goes next, which is also
-    // the one closest to its own timeout.
-    const next = lane.waiting.shift();
+    // it: interactive first, then FIFO within a priority — the run that has
+    // waited longest goes next, which is also the one closest to its timeout.
+    const next = lane.waiting.interactive.shift() ?? lane.waiting.batch.shift();
     if (next) next();
   }
 }

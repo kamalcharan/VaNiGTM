@@ -83,7 +83,7 @@ export function ImportWizard({ relationship: preset, fixedRelationship, onLanded
   const headers = useHeaders(file?.file_id ?? null);
   const tags = useTags(step === 'mapping' || step === 'upload');
   const { createTag, busy: tagBusy } = useCreateTag();
-  const { land, isStaging, isLanding } = useLand();
+  const { land, isStaging, stagingProgress, isLanding } = useLand();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const info = headers.data?.data;
@@ -278,7 +278,9 @@ export function ImportWizard({ relationship: preset, fixedRelationship, onLanded
         <div className={`${s.step} ${s.proc}`}>
           <div className={s.spin} />
           <h3 className={s.procTitle}>VaNi is landing your import</h3>
-          <p className={s.procDesc}>{isStaging ? `Staging ${info?.total_rows.toLocaleString() ?? ''} rows…` : 'Rows staged. Landing each one, holding any that would change a record you already hold.'}</p>
+          <p className={s.procDesc}>{stagingProgress
+            ? `A large file: VaNi is staging it in the background, in parts — ${stagingProgress.staged_rows.toLocaleString()} rows so far. You can leave this page; the import waits under Imports, staged and ready to land.`
+            : isStaging ? `Staging ${info?.total_rows.toLocaleString() ?? ''} rows…` : 'Rows staged. Landing each one, holding any that would change a record you already hold.'}</p>
           <div className={s.procBar}><div className={s.procFill} /></div>
         </div>
       )}

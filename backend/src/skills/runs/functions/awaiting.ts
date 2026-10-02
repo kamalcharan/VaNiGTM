@@ -1,4 +1,5 @@
 import { SkillContext } from '../../../types/skill.types';
+import { agentOf } from '../../../agent-core/agent-names';
 
 /**
  * One queue for everything parked on a person. `awaiting_input` has grown
@@ -28,7 +29,7 @@ export async function awaiting(_params: Record<string, unknown>, ctx: SkillConte
       const a = row.awaiting_input ?? {};
       return {
         run_id: row.run_id,
-        agent: row.agent_name,
+        agent: agentOf(row.agent_name),
         kind: String(a.kind ?? a.type ?? 'input'),
         question: (a.question ?? a.prompt ?? null) as string | null,
         asked_at: row.asked_at,

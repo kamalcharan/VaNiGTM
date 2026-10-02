@@ -156,9 +156,11 @@ deploy/vani-main-vps/ — the VPS: compose, Dockerfile, deploy script, nginx
   (resolved from JWT, never the request body).
 
 ### RLS — current reality (important)
-- ⚠️ **Checked on the VPS 2026-09-30 ~23:40: the runtime is `vikuna_admin` — the switch below
-  is NOT in effect, RLS is NOT enforced in production** (DEPLOY.md §4b warning). Local
-  `.env`s may still use `vanigtm_app`, so a laptop can pass what production never checks.
+- ✅ **Production runs as `vanigtm_app` since 2026-10-02 (Charan) — RLS ENFORCED**,
+  proven in the container (DEPLOY.md §4b). Exception: the 31 `vani_*`/`vara_*`
+  tables are OWNED by `vanigtm_app` and unforced, so the owner bypass applies
+  there and isolation is the code's `WHERE tenant_id` only (VPS task 7). A laptop
+  `.env` holding the `vikuna_admin` production URL still bypasses everything.
 - **Intended: the runtime connects as `vanigtm_app` (DEPLOY.md §4b) — RLS ENFORCED.** A raw `pool.query` against an RLS
   table now returns nothing; every tenant read goes through `withTenantClient`
   / `createTenantDb`. Application-layer `WHERE tenant_id` filters stay as the
@@ -283,6 +285,7 @@ Each skill in `backend/src/skills/<name>/`:
 | campaign / channel / sequence / icp / gtm-analytics | campaign suite | ✅ live |
 | pulse-skill | follow-ups + meeting workflow (funnel) | ✅ retargeted to contacts |
 | etl (src/etl) | import pipeline (staging works) | ⚠️ processing = 501 until prospect-skill |
+| pool-skill | common pool admin: sources, deliveries by state, each company's Complete checks, decisions, industry master (P1-B) | ✅ built 2026-10-02 — admin only |
 
 ## nginx on api.vikuna.io — the whole API, not an allowlist (2026-09-30)
 
@@ -494,6 +497,26 @@ npm run dev:web       # the website, Vite
 console reports "Cannot reach the VaNi service" — see the CORS section.
 Ollama for dev LLM: pre-warm `qwen3:8b` with `keep_alive:"24h"` before
 testing conversation flows (`curl localhost:11434/api/ps` to verify).
+
+Ports: API **3002**, console **http://localhost:3100**, website
+**http://localhost:5173** (Vite's default; `web/vite.config.ts` sets none).
+
+**A laptop `.env` copied from before 2026-09-30 will not start.** Every LLM,
+worker and ETL setting is required with no default; build `backend/.env` from
+`backend/.env.example` (it lists every name) and keep only your own secrets and
+URLs. Lines for the retired `frontend/` (`NEXT_PUBLIC_*`, `VANI_MOCK`) do
+nothing here — the console's one setting lives in `vani-app/.env.local`. On
+Windows, never append with PowerShell 5's `>>` (it writes UTF-16, which dotenv
+cannot read); use an editor or `Add-Content -Encoding ascii`.
+
+⚠️ **A laptop pointed at the production database is not a dev setup.** Seen
+2026-10-02: a local `backend/.env` with `DB_PRIMARY` = production as
+`vikuna_admin`. Then `dev:api` writes real tenants' data with RLS bypassed,
+`dev:worker` competes with the VPS worker for production's queue (laptop code,
+laptop model settings, runs recorded in production), and `db:migrate` from a
+Windows checkout records CRLF checksums. Develop against a local Postgres
+(`db:migrate` + `db:seed`); if production must be read from a laptop, never
+start the worker and never migrate.
 
 ## Testing
 ```bash
@@ -737,6 +760,50 @@ npm run packs -- --drafts          # legacy runs parked before 2026-09-17
 
 A reason may be several words — the old `--reject` read `args[i+2]` and
 silently kept only the first, which PowerShell made easy to hit.
+
+## VPS — pending tasks (recorded 2026-10-02, in this order)
+
+Commands for 1 are in `deploy.txt`; DEPLOY.md explains them. Tick here when done.
+
+1. [x] **Deploy P1-A** — DONE 2026-10-02: release check All OK, 264–267 applied, nginx reloaded, an analytica import landed (229 rows → 64 companies). — `deploy.txt` release block: A (three `ETL_*` lines in
+   the compose `.env`) → 1 deploy → 2 migrations (expect 264–267 pending, and
+   262 if it never ran) → 3 nginx (upload location 200m) → B release check
+   (every line OK) → 4 verify. Then in the console: import a small CSV, and
+   Runs → Events shows nothing stuck.
+2. [x] **Redo the runtime role switch** — DONE 2026-10-02: `vanigtm_app`, NOSUPERUSER, NOBYPASSRLS; migrations via `DB_MIGRATE` (owner); console used with no permission errors. (DEPLOY.md §4b). Checked 2026-09-30
+   23:40: production runs as `vikuna_admin`, so RLS is NOT enforced. Edit the
+   `DB_*` lines only — never copy a whole file over `.env` (that is how the
+   switch was lost). Walk the §4b console test list afterwards.
+3. [ ] **Close Postgres to the internet.** The database answers on the VPS's
+   public IP at 5432 (a laptop connects to it directly). Restrict it to the
+   docker network / localhost. Before closing, list who connects from outside
+   (laptops, `mcp-db.dristiq.com`) so nothing is cut off unannounced.
+4. [ ] **Rotate the Anthropic API key and the llm.dristiq.com key.**
+   Fragments of both were pasted into a chat on 2026-10-02 — not usable as
+   shown, but rotation is cheap. Update the compose `.env` and every laptop
+   `.env` that holds them, then recreate both containers.
+5. [x] **Confirm 262 is recorded** — DONE 2026-10-02 (release check).
+6. [ ] **Uploaded files are not persisted** (found 2026-10-02). **CODE BUILT 2026-10-02** (`src/etl/temp-files.ts`, 6 tests): ships in release 2026-10-02b in `deploy.txt` (host folder, `.env` lines, the mount in both services) together with P1-B and Sprint 0a part 1. Multer writes
+   to `/app/uploads` inside `vani-backend` with no volume: every deploy deletes
+   the originals (staged rows survive — `raw_data` is in Postgres), and
+   `vani-worker` has its own empty `/app/uploads`, so the large-CSV worker path
+   (`IMPORT_STAGE_REQUESTED`) cannot read the file. Latent only because
+   `ETL_SYNC_MAX_BYTES` = `ETL_UPLOAD_MAX_BYTES`. **Fix before P1-B raises the
+   limit:** `ETL_UPLOAD_DIR` from `.env`, one host folder mounted in BOTH
+   containers, and a retention rule for originals (they hold personal data —
+   DPDP) — pending Charan's retention period.
+   **DECIDED 2026-10-02 (Charan): files are temporary.** Delete the file once
+   its rows are staged; keep only the metadata (`ki_file_uploads`: name, date,
+   size, kind, sha256; row count on the session). The same CONTENT is refused
+   (fingerprint, not name — renaming does not bypass; retire the earlier
+   import to re-import). A failed import never blocks its own file; rows that
+   overlap earlier ones are duplicates ("already held"), not a refusal. No
+   schema change.
+7. [ ] **Force RLS on the `vani_*`/`vara_*` spine.** Preflight check 7
+   (2026-10-02) lists 31 tables owned by `vanigtm_app`, RLS on, not forced —
+   the app bypasses their policies as owner. Extend `rls-two-tenant-test.sql`
+   to the spine FIRST, then force in a migration (`docs/db/rls-status.md`
+   §11–13); forcing blind broke Vara before.
 
 ## Main VPS — known broken, DEFERRED (recorded 2026-08-17)
 

@@ -112,8 +112,12 @@ Rules:
 2. **Every step is recorded** with a human-readable action and a summary of
    what came out. The runs feed is the audit trail a person reads; a step that
    only a developer could parse is not recorded properly.
-3. **A run names its agent** [deviation → runs are named by event type; Track
-   C1 records the agent and a `parent_run_id` for chains].
+3. **A run names its agent.** Built 2026-10-02: `agent-core/agent-names.ts`
+   resolves the agent from the run's key at read time (runs, dashboard,
+   failover queue, the stream). `gt_agent_runs.agent_name` keeps the KEY —
+   the failover approval and research resumption look runs up by it — and a
+   test fails if a handled event has no agent name. [deviation →
+   `parent_run_id` for chains is Sprint 0a part 2, a schema decision.]
 4. **Heartbeat while running.** The worker bumps `started_at` every 30 s so a
    two-minute stale claim can be reclaimed without waiting for the slowest
    agent.
@@ -127,7 +131,9 @@ Rules:
    the platform model slows every tenant's onboarding with no error to show
    for it. Batch model work defaults to its own rungs (free pools, Haiku
    batch — different URLs, different lanes) and uses the platform lane only
-   as a declared rung. [deviation → the lane is one FIFO today; Sprint 0a.]
+   as a declared rung. Built 2026-10-02 (`llm.gate.ts`; `callLLM({ priority:
+   'batch' })`, default interactive). In-process only: the cross-process
+   advisory slot stays first come, first served.
 6. **No tool-use loop.** One prompt in, one structured answer out, validated;
    the agent's code decides the next step. This is what keeps every decision
    point readable and testable. It is a choice, not a limitation, and stays
@@ -177,7 +183,9 @@ stateless, so each of those is **database state the agent's code reads**:
   sees its own runs only.
 - **Per-call telemetry** (model, lane, wait, prompt/answer tokens, window
   fill, what was trimmed, latency) goes to a table with C4 — recommended,
-  **pending approval**. Until then it is the worker's `[LLM]` log line.
+  **pending approval**. Until then every call writes a `model_call` step to
+  its run (built 2026-10-02, `noteCallInRun` in `llm.client.ts`): model,
+  tokens, window fill, lane wait, time, and CUT OFF when truncated.
 - **Run-step retention** is a rule, from `.env`: summaries kept, step detail
   dropped after a period [not built].
 
@@ -302,8 +310,13 @@ Rules:
 - **Blast radius is stated before the run**: how many records, which data,
   which tenants (one, always — except R2 platform jobs, which say so).
 
-[deviation → the classes are declared in this document only; the harness
-check and the `SKILL.md` declarations land with the common pool's Sprint 0.]
+Built for skill functions 2026-10-02: `- Risk: Rn` in a function's
+`SKILL.md` block, enforced by the executor (`riskRefusal` in
+`skill-registry.ts`) before the handler runs — R2 admin only, R3/R4 refused,
+R5 never. [deviation → approval tokens are Sprint 0a part 2 (a schema
+decision), so R3/R4 cannot run at all yet; 134 older functions are
+unclassified and a test keeps that number from growing; worker agents
+(event handlers) are not classified yet.]
 
 ## 7. Evaluation — mandatory, not aspirational
 
@@ -464,8 +477,10 @@ request/response chat. nginx must serve the stream with buffering off.
 platform layer, used by every pathway — a logged platform change
 (`vani-app/CLAUDE.md` §5), PENDING approval.
 
-[deviation → none of the transport or components exist yet; the console polls
-in 7 places. Built as Sprint 0 of the common pool POA.]
+The transport is built (2026-10-02): `GET /api/v1/runs/:id/stream`
+(`src/runs/run-stream.ts`), resumable with Last-Event-ID, `RUNS_STREAM_*` from
+`.env`, an unbuffered nginx location. [deviation → the components are Sprint
+0b, pending the platform-change approval; the console still polls.]
 
 ## 9b. Evidence paths — no path, no draft
 

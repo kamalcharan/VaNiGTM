@@ -14,6 +14,9 @@
  * A file that is not valid CSV fails the session with the reason (it would
  * fail the same way on every retry); anything else is rethrown for the queue
  * to retry. The run feed carries one step per chunk.
+ *
+ * The file is temporary (temp-files.ts): deleted once staged, or once it is
+ * known to be unreadable. A retryable failure keeps it for the retry.
  */
 import type { Pool } from 'pg';
 import { appendStep } from '../agent-core/agent.runner';
@@ -21,11 +24,12 @@ import { readCsvRecords, CsvFormatError } from './csv-stream';
 import { buildStagingRow, insertStagingRows, type StagingRow } from './staging';
 import { resolveMappings, planToMapping } from './mapping-plan';
 import { readEtlConfig } from './etl.config';
+import { discardUpload, fileIsGone } from './temp-files';
 
 interface SessionRow {
   id: number; tenant_id: string; status: string; import_type: string;
   field_mappings: Record<string, string> | null; extraction_plan: unknown;
-  last_processed_row: number; file_path: string;
+  last_processed_row: number; file_id: number; file_path: string;
 }
 
 export async function runStageJob(
@@ -37,7 +41,7 @@ export async function runStageJob(
 
   const r = await pool.query<SessionRow>(
     `SELECT s.id, s.tenant_id, s.status, s.import_type, s.field_mappings, s.extraction_plan,
-            s.last_processed_row, f.file_path
+            s.last_processed_row, f.id AS file_id, f.file_path
        FROM ki_import_sessions s
        JOIN ki_file_uploads f ON f.id = s.file_upload_id
       WHERE s.id = $1 AND s.tenant_id = $2`,
@@ -48,6 +52,18 @@ export async function runStageJob(
   if (s.status !== 'pending') {
     await appendStep(pool, runId, { step_name: 'stage', action: `Session ${sessionId} is "${s.status}" — nothing to stage`, status: 'skipped' });
     return { skipped: s.status };
+  }
+
+  // The temp file must be readable here: the API and the worker share
+  // ETL_UPLOAD_DIR (one host folder mounted in both). If it is gone, no retry
+  // will bring it back — fail the session with the reason.
+  if (fileIsGone(s.file_path)) {
+    const msg = `The uploaded file is no longer at ${s.file_path} — the worker cannot read it. `
+      + `Check that the API and the worker mount the same ETL_UPLOAD_DIR, then upload the file again.`;
+    await pool.query(`UPDATE ki_import_sessions SET status = 'failed', error_summary = $1 WHERE id = $2`, [msg, sessionId]);
+    await discardUpload(pool, s.file_id, s.file_path, 'failed');
+    await appendStep(pool, runId, { step_name: 'stage', action: msg, status: 'error' });
+    throw new Error(msg);
   }
 
   // The same choice the request path makes: the human's assignment (as sent
@@ -99,6 +115,7 @@ export async function runStageJob(
     if (e instanceof CsvFormatError) {
       const msg = `The file is not valid CSV after row ${lastRow}: ${e.message}. Rows up to ${lastRow} are staged.`;
       await pool.query(`UPDATE ki_import_sessions SET status = 'failed', error_summary = $1 WHERE id = $2`, [msg, sessionId]);
+      await discardUpload(pool, s.file_id, s.file_path, 'failed');
       await appendStep(pool, runId, { step_name: 'stage', action: msg, status: 'error' });
       throw new Error(msg);
     }
@@ -111,6 +128,7 @@ export async function runStageJob(
       WHERE id = $2`,
     [lastRow, sessionId],
   );
-  await appendStep(pool, runId, { step_name: 'stage', action: `Staged ${lastRow} rows — ready to review and land`, status: 'ok' });
+  await discardUpload(pool, s.file_id, s.file_path, 'completed');
+  await appendStep(pool, runId, { step_name: 'stage', action: `Staged ${lastRow} rows — ready to review and land; the uploaded file is deleted`, status: 'ok' });
   return { staged: lastRow - resumeFrom, total: lastRow };
 }

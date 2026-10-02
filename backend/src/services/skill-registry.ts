@@ -17,6 +17,7 @@ import type {
   SkillHandler,
   SkillContext,
   SkillResult,
+  RiskClass,
 } from './types';
 
 /** Maps "skillName.functionName" → handler */
@@ -74,6 +75,13 @@ export class SkillRegistry {
         data: {},
         error: `No handler registered for ${skillName}.${functionName}`,
       };
+    }
+
+    // The risk class is the ceiling (AGENTS.md §6a), enforced HERE so no
+    // function can talk its way past it.
+    const refusal = riskRefusal(this.skills.get(skillName)?.functions.find((f) => f.name === functionName)?.risk, ctx);
+    if (refusal) {
+      return { success: false, skill: skillName, function: functionName, recipe: '', data: {}, error: refusal };
     }
 
     try {
@@ -201,5 +209,24 @@ export async function registerWithOrchestrator(
         frameworkRegisterHandler(skill.name, fn.name, handler);
       }
     }
+  }
+}
+
+/**
+ * Why a declared risk class refuses this call, or null to let it run.
+ * R0/R1 run. R2 writes data every tenant shares, so only the admin tenant.
+ * R3 (money) and R4 (reaches a person) need a person's approval recorded
+ * against the action — approvals arrive with Sprint 0a part 2 (a schema
+ * decision); until then they cannot run at all, which is the safe side.
+ * R5 never runs, whoever asks.
+ */
+export function riskRefusal(risk: RiskClass | undefined, ctx: { is_admin?: boolean }): string | null {
+  switch (risk) {
+    case 'R5': return 'RISK_R5_FORBIDDEN: this action is forbidden, whoever asks.';
+    case 'R4':
+    case 'R3': return `RISK_${risk}_NEEDS_APPROVAL: this action ${risk === 'R3' ? 'spends money' : 'reaches a person or the public'} `
+      + 'and needs a person\'s approval recorded against it. Approvals are not built yet (Sprint 0a part 2), so it cannot run.';
+    case 'R2': return ctx.is_admin ? null : 'RISK_R2_ADMIN_ONLY: this action changes data every workspace shares — admin only.';
+    default: return null;
   }
 }

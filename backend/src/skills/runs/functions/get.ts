@@ -1,5 +1,6 @@
 import { SkillContext } from '../../../types/skill.types';
 import { actorOf, humanDuration } from './list';
+import { agentOf } from '../../../agent-core/agent-names';
 
 export async function get(params: Record<string, unknown>, ctx: SkillContext) {
   const runId = String(params.run_id ?? '').trim();
@@ -49,7 +50,7 @@ export async function get(params: Record<string, unknown>, ctx: SkillContext) {
   return {
     run: {
       id: row.id,
-      agent: row.agent_name,
+      agent: agentOf(row.agent_name),
       status: row.status,
       trigger: row.event_type ?? row.agent_name,
       actor: actorOf(row.source_type),

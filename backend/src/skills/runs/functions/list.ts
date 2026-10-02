@@ -1,4 +1,5 @@
 import { SkillContext } from '../../../types/skill.types';
+import { agentOf } from '../../../agent-core/agent-names';
 
 export type RunStatus = 'queued' | 'running' | 'awaiting' | 'completed' | 'failed';
 const STATUSES: RunStatus[] = ['queued', 'running', 'awaiting', 'completed', 'failed'];
@@ -45,7 +46,7 @@ export async function list(params: Record<string, unknown>, ctx: SkillContext) {
   return {
     runs: r.rows.map((row) => ({
       id: row.id,
-      agent: row.agent_name,
+      agent: agentOf(row.agent_name),
       trigger: row.event_type ?? row.agent_name,
       actor: actorOf(row.source_type),
       started: row.started_at ?? row.created_at,

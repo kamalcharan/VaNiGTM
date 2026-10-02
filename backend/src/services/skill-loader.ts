@@ -92,6 +92,7 @@ function parseFunctions(content: string): SkillFunctionDef[] {
     let parameters: SkillParam[] = [];
     let returns = '';
     let defaultRecipe: string | undefined;
+    let risk: SkillFunctionDef['risk'];
 
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
@@ -105,6 +106,9 @@ function parseFunctions(content: string): SkillFunctionDef[] {
           const params = splitTopLevel(paramStr);
           parameters = params.map(parseParam);
         }
+      } else if (line.startsWith('- Risk:')) {
+        const m = line.match(/\bR([0-5])\b/);
+        if (m) risk = `R${m[1]}` as SkillFunctionDef['risk'];
       } else if (line.startsWith('- Returns:')) {
         returns = line.replace('- Returns:', '').trim();
         // Extract recipe from returns if present
@@ -123,6 +127,7 @@ function parseFunctions(content: string): SkillFunctionDef[] {
       parameters,
       returns,
       default_recipe: defaultRecipe,
+      ...(risk ? { risk } : {}),
     });
   }
 

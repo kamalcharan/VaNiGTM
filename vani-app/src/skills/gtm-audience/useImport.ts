@@ -19,7 +19,7 @@ import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api-client';
 import { IS_LIVE } from '@/lib/live-transport';
-import { getSkillTransport, useSkillQuery } from '@/lib/useSkill';
+import { callSkill, getSkillTransport, useSkillQuery } from '@/lib/useSkill';
 import { useSkillMutation } from '@/lib/useSkillMutation';
 import { useToast } from '@/platform/feedback';
 import type {
@@ -104,6 +104,25 @@ export function useLand() {
     errorMessage: 'Landing failed — the rows ARE staged; nothing is lost.',
     onSuccess: () => qc.invalidateQueries({ queryKey: ['skill'] }),
   });
+  // A large CSV is staged by the worker in chunks: the session answers
+  // 'staging' at once (HTTP 202) and the rows arrive over seconds or minutes.
+  // Landing must wait for the last chunk, so the wizard polls the session and
+  // shows how far it has got. Leaving the page does not stop the worker; the
+  // session then waits under Imports as "staged", ready to land.
+  const [staging, setStaging] = useState<{ staged_rows: number } | null>(null);
+  const waitUntilStaged = useCallback(async (sessionId: number | string) => {
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const st = await callSkill<{ session: { status: string; staged_rows: number | null; total_records: number | null; error_summary: string | null } }>(
+        'etl', 'status', { session_id: sessionId });
+      setStaging({ staged_rows: Number(st.session.staged_rows ?? 0) });
+      if (st.session.status === 'staged') return { ok: true as const, total: Number(st.session.total_records ?? st.session.staged_rows ?? 0) };
+      if (st.session.status === 'failed' || st.session.status === 'cancelled') {
+        return { ok: false as const, error: st.session.error_summary ?? `Staging ${st.session.status}.` };
+      }
+    }
+  }, []);
+
   const land = useCallback(async (a: LandArgs): Promise<LandOutcome | null> => {
     const s = await session.mutate({
       file_id: a.file_id,
@@ -120,13 +139,23 @@ export function useLand() {
       ...(a.relationship === 'dataset' ? { source_code: a.source_code || 'upload', load_region: a.load_region ?? null } : {}),
     });
     if (!s) return null;
+    if (s.status === 'staging') {
+      setStaging({ staged_rows: 0 });
+      let done;
+      try { done = await waitUntilStaged(s.session_id); }
+      catch (e) { setStaging(null); return { session: s, result: null, landing_error: `Could not follow the staging: ${(e as Error).message}. The worker carries on — the session is under Imports.` }; }
+      setStaging(null);
+      if (!done.ok) return { session: { ...s, status: 'failed' }, result: null, landing_error: done.error };
+      s.status = 'staged';
+      s.total_records = done.total;
+    }
     // Staging and landing are ONE action from here on: the person confirmed
     // the import and is not asked to come back and press go again. If the
     // second half fails, the rows are staged — say so, never "import failed".
     const r = await process.mutate({ session_id: s.session_id });
     return { session: s, result: r, landing_error: r ? null : (process.error?.message ?? 'Landing failed') };
-  }, [session, process]);
-  return { land, isStaging: session.isPending, isLanding: process.isPending };
+  }, [session, process, waitUntilStaged]);
+  return { land, isStaging: session.isPending || staging !== null, stagingProgress: staging, isLanding: process.isPending };
 }
 
 /* ── Past imports and their rows ── */
