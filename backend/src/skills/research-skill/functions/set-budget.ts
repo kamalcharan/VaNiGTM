@@ -1,53 +1,52 @@
 /**
  * research-skill: set_budget
  *
- * Set — or remove — the daily token cap for THIS tenant.
+ * Set this tenant's OWN daily token limit — LOWER than the platform's — or go
+ * back to the platform's.
  *
- * ── NO CAP IS THE DEFAULT ─────────────────────────────────────────────
+ * ── RELEASE 3 (D-Q12, Charan 2026-10-02) CHANGED WHAT THIS MEANS ──────────
  *
- * Migration 217 made `daily_token_limit` nullable and cleared every tenant
- * still sitting on the framework's old 100,000. That number was sized for a
- * conversational agent; account research costs ~14,000 tokens per company, so
- * it silently meant "seven companies" and the first real batch died at eight
- * against a limit nobody had ever chosen.
+ * Migration 217 had made "no cap" the default, because a 100,000 cap sized for
+ * chat agents had silently meant "seven companies" of research. D-Q12 brings a
+ * cap back DELIBERATELY: TENANT_DAILY_TOKEN_LIMIT a day and
+ * TENANT_MONTHLY_TOKEN_LIMIT a month from .env, for every platform tenant, and
+ * "the daily limit never rises" — more work is paid for with a TOP-UP, which
+ * is spent after the base (Settings → Tokens, admin).
  *
- * A cap applied to every tenant by default is a product-level restriction
- * wearing a per-tenant column. Whoever runs a tenant decides what it may
- * spend, and if they decide nothing, the answer is no cap — not a guess made
- * by whoever wrote the schema.
- *
- * Usage stays metered either way. Metering and capping are different things
- * and only one of them was the problem.
+ * So a tenant may only tighten its own limit here, never raise it past the
+ * platform's, and empty means "the platform's limit", not "no cap". Usage is
+ * metered either way.
  */
 
 import { SkillContext } from '../../../shared/types';
 
-/** Below this nothing meaningful runs; above it, a runaway is expensive. */
+import { readBudgetConfig } from '../../../agent-core/token.budget';
+
+/** Below this nothing meaningful runs. */
 const MIN_LIMIT = 10_000;
-const MAX_LIMIT = 100_000_000;
 
 interface SetBudgetParams {
-  /** A number to cap this tenant, or null / 0 to remove the cap. */
+  /** A lower daily limit for this tenant, or null / 0 for the platform's. */
   daily_token_limit: number | null;
 }
 
 export async function set_budget(params: SetBudgetParams, ctx: SkillContext) {
   const raw = params.daily_token_limit;
 
-  // null, 0 and '' all mean the same obvious thing. Being fussy here would
-  // only mean an operator who wants no cap has to guess the magic value.
+  // null, 0 and '' all mean "the platform's limit".
+  const platform = readBudgetConfig().dailyLimit;
   const clearing = raw === null || raw === undefined || Number(raw) === 0
     || String(raw).trim() === '';
 
   let limit: number | null = null;
   if (!clearing) {
     limit = Math.floor(Number(raw));
-    if (!Number.isFinite(limit) || limit < MIN_LIMIT || limit > MAX_LIMIT) {
+    if (!Number.isFinite(limit) || limit < MIN_LIMIT || limit > platform) {
       throw new Error(
-        `A cap must be between ${MIN_LIMIT.toLocaleString()} and `
-        + `${MAX_LIMIT.toLocaleString()} tokens, or empty for no cap. Account `
-        + 'research costs roughly 14,000 tokens per company, so 1.5 million '
-        + 'covers a hundred of them.',
+        `Your own daily limit must be between ${MIN_LIMIT.toLocaleString('en-US')} and the platform's `
+        + `${platform.toLocaleString('en-US')} tokens, or empty for the platform's. The daily limit does not rise — `
+        + 'for more work, an admin adds a top-up, which is spent after the day\'s limit. Account research costs '
+        + 'roughly 14,000 tokens per company.',
       );
     }
   }
@@ -61,25 +60,22 @@ export async function set_budget(params: SetBudgetParams, ctx: SkillContext) {
       { limit, tenant_id: ctx.tenant_id },
     );
 
-    // No row means nothing is tracked for this tenant at all — and with no
-    // row there is also no cap, so "removed it" would be true by accident and
-    // "saved it" would be a lie the next batch exposes.
+    // No row yet: no model call has been recorded for this tenant. Nothing
+    // was changed — the platform's limit applies until a row exists.
     if (res.rows.length === 0) {
       throw new Error(
-        'This tenant has no agent context row, so nothing is being counted and '
-        + 'nothing is capped. Nothing was changed — an agent has to run once '
-        + 'before there is a budget to configure.',
+        'Nothing has been spent in this workspace yet, so there is no limit to change — '
+        + `the platform's ${platform.toLocaleString('en-US')} tokens a day applies. Nothing was changed.`,
       );
     }
 
     return {
       daily_token_limit: res.rows[0].daily_token_limit,
-      capped: res.rows[0].daily_token_limit !== null,
+      capped: true,
       message: clearing
-        ? 'Cap removed. This tenant can now spend whatever it needs; usage is '
-          + 'still counted so you can see what a batch costs.'
-        : `Capped at ${limit!.toLocaleString()} tokens a day — about `
-          + `${Math.floor(limit! / 14_000)} companies.`,
+        ? `Back to the platform's ${platform.toLocaleString('en-US')} tokens a day.`
+        : `Your own limit: ${limit!.toLocaleString('en-US')} tokens a day — about `
+          + `${Math.floor(limit! / 14_000)} companies of research.`,
       recipe: 'budget-card' as const,
     };
   });

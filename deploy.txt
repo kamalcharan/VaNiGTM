@@ -151,3 +151,36 @@ docker logs vani-worker  2>&1 | grep "LLM router:" | tail -1
 #   every model shows "Off" — press Test on groq and on openrouter (each must
 #   answer), then Switch on the ones enrichment may use. Haiku asks once more:
 #   it is paid. "Routes, as they would run now" shows who serves what.
+
+# =============================================================================
+# RELEASE 3 (P2-B) — scoring profiles + scores, token budget + top-ups, the
+# tenant context, Settings → Scoring / Tokens / Industry master. Migration 274.
+# ⚠ From this deploy EVERY platform tenant is capped: 100,000 tokens a day,
+#   2,000,000 a month (D-Q12). Research costs ~14,000 tokens a company, so a
+#   tenant's research batch stops at ~7 a day unless an admin adds a top-up
+#   (Settings → Tokens). Own-key (BYOK) tenants are not capped.
+# Order: A, then 1, 2 (expect 274 pending), B, 4.
+# =============================================================================
+
+# ---- A. BEFORE step 1 (the API and worker refuse to start without these) -----
+COMPOSE_DIR=$(docker inspect vani-backend --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}')
+E="$COMPOSE_DIR/.env"
+cp "$E" "$E.bak-$(date +%Y%m%d-%H%M)"
+add() { grep -q "^$1=" "$E" || echo "$1=$2" >> "$E"; }
+add TENANT_DAILY_TOKEN_LIMIT 100000
+add TENANT_MONTHLY_TOKEN_LIMIT 2000000
+grep -E '^TENANT_(DAILY|MONTHLY)_TOKEN_LIMIT=' "$E"
+
+# ---- then steps 1 and 2 ------------------------------------------------------
+
+# ---- B. AFTER steps 1–2 ------------------------------------------------------
+cd /opt/vikuna/src/vanigtm
+docker exec -i vani-backend node - < deploy/vani-main-vps/checks/2026-10-03-r3.js
+docker exec -i vani-worker  node - < deploy/vani-main-vps/checks/2026-10-03-r3.js
+docker logs vani-backend 2>&1 | grep "Tenant token budget" | tail -1
+# Then in the console (vani.vikuna.io → Settings, as the admin):
+#   Scoring  → "Re-score the common pool" and "Re-score now" (Runs shows "Scoring")
+#   Tokens   → your budget; add a top-up to a workspace that needs more today
+#   Industry master → the list (the old pool link redirects here)
+#   Common pool → open a company: the Readiness card shows its score and parts
+

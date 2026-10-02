@@ -42,11 +42,12 @@ import type { z } from 'zod';
 import { withTenantClient } from '../db';
 import { appendStep } from './agent.runner';
 import {
-  callClaude, callEndpoint, getTokenBudget, LlmCallError, validateOn,
+  callClaude, callEndpoint, LlmCallError, validateOn,
   type LLMCallOptions, type LLMResult,
 } from './llm.client';
 import { resolveProvider, platformProvider, type ResolvedProvider } from './llm.provider';
 import { readLlmConfig } from './llm.config';
+import { checkTokenBudget } from './token.budget';
 import { charsPerToken } from './llm.gate';
 import { readRouterConfig, type RouteClass, type RouterConfig, type RouterProvider } from './llm.router.config';
 
@@ -230,6 +231,13 @@ async function callOnProvider(options: LLMCallOptions, p: RouterProvider, rung: 
     const msg = err instanceof Error ? err.message : String(err);
     const status = err instanceof LlmCallError ? err.status : (err as { status?: number })?.status;
     const tooLarge = /LLM_CONTEXT_TOO_LARGE/.test(msg);
+    // Only a PROVIDER failure moves the call on. Anything else — our own
+    // database refusing the usage record, a budget stop — happened on our side,
+    // possibly after the provider answered: asking the next provider would
+    // throw a good answer away and spend a second quota. Stop, loudly.
+    const fromProvider = err instanceof LlmCallError || tooLarge
+      || (p.kind === 'haiku' && (typeof status === 'number' || /Connection|Timeout/i.test((err as Error)?.name ?? '')));
+    if (!fromProvider) throw err;
     const outcome: Outcome = tooLarge ? 'refused_context'
       : err instanceof LlmCallError && err.kind === 'timeout' ? 'timeout'
         : status === 429 ? 'rate_limited' : 'error';
@@ -273,11 +281,8 @@ async function prepare(options: LLMCallOptions): Promise<Prepared> {
   if (tenantProvider.posture === 'byok') return { cfg: null as never, plan: { eligible: [], skipped: [] }, byok: tenantProvider };
 
   // Platform posture: the tenant's budget first, exactly as an unrouted call.
-  const budget = await getTokenBudget(options.pool, options.tenantId);
   const maxTokens = options.maxTokens ?? readLlmConfig().defaultMaxTokens;
-  if (budget.capped && budget.used + maxTokens > (budget.limit as number)) {
-    throw new Error(`TOKEN_BUDGET_EXCEEDED: Tenant ${options.tenantId} has used ${budget.used} tokens today against a cap of ${budget.limit}.`);
-  }
+  await checkTokenBudget(options.pool, options.tenantId, maxTokens);
 
   const cfg = readRouterConfig();
   const state = await readRouteState(options.pool, options.purpose ?? 'enrichment');

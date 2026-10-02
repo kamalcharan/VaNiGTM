@@ -40,10 +40,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import type { Pool } from 'pg';
-import { createTenantDb } from '../db';
 import { appendStep } from './agent.runner';
 import { resolveProvider, type ResolvedProvider } from './llm.provider';
 import { readLlmConfig } from './llm.config';
+import { checkTokenBudget, recordTokenUsage } from './token.budget';
 import { callRouted, callRoutedValidated } from './llm.router';
 import type { RouteClass } from './llm.router.config';
 import { withLlmSlot, type LlmPriority, checkContext, contextError, noteObservedTokens, noteContextOverflow, noteObservedSpeed, tokensPerSec, estimateTokens, charsPerToken, platformContextTokens } from './llm.gate';
@@ -158,145 +158,13 @@ export interface LLMResult {
   truncated: boolean;
 }
 
-interface DailyUsage { vps?: number; escalation?: number }
-
 /* ── Token budget ────────────────────────────────────────────────────────── */
 
-/**
- * Today's spend, and the cap if this tenant has one.
- *
- * ── METERING AND CAPPING ARE DIFFERENT THINGS ─────────────────────────
- *
- * `used` is always real: every call is counted, cap or no cap. That number is
- * how anyone finds out what a batch of a hundred companies actually costs.
- *
- * `limit` is NULL for most tenants and that is correct (migration 217). A cap
- * exists only because somebody set one FOR THAT TENANT — the framework does
- * not get to impose one by default, which is how a number sized for chat
- * agents came to mean "seven companies" for account research.
- */
-export interface TokenBudget {
-  /** null = no cap for this tenant. */
-  limit: number | null;
-  used: number;
-  /** Infinity when uncapped. */
-  remaining: number;
-  /** A cap is in force. When false, nothing here will ever refuse a call. */
-  capped: boolean;
-  /** There is a context row, so usage is being recorded. */
-  tracked: boolean;
-}
-
-/**
- * What today has cost, and what is left if anything is limiting it.
- *
- * Exported because a cap that can only be discovered by CRASHING INTO IT is
- * not a cap, it is a trap. A long agent needs to know before it starts how
- * much work it can afford, and a screen needs to say "7 companies fit in what
- * you have left" instead of queueing a hundred and failing at eight.
- */
-export async function getTokenBudget(
-  pool: Pool,
-  tenantId: string,
-): Promise<TokenBudget> {
-  const db = createTenantDb(pool, tenantId);
-  const result = await db.query<{
-    daily_token_limit: number | null;
-    daily_token_usage: Record<string, DailyUsage>;
-  }>(
-    `SELECT daily_token_limit, daily_token_usage
-       FROM gt_tenant_context
-      WHERE tenant_id = $tenant_id`,
-    { tenant_id: tenantId },
-  );
-
-  // No context row yet → nothing is counted and nothing is capped.
-  // ensureTenantContext should be called by the agent at startup, but a
-  // missing row must never block a first-time agent.
-  if (!result.rows[0]) {
-    return {
-      limit: null, used: 0, remaining: Number.POSITIVE_INFINITY,
-      capped: false, tracked: false,
-    };
-  }
-
-  const today = new Date().toISOString().split('T')[0];
-  const usage = result.rows[0].daily_token_usage?.[today] ?? {};
-  const used  = (usage.vps ?? 0) + (usage.escalation ?? 0);
-  const limit = result.rows[0].daily_token_limit;
-
-  // NULL or a non-positive number both mean "no cap". Accepting 0 as well
-  // costs nothing and means an operator typing 0 gets what they obviously
-  // meant rather than a tenant that can never call anything.
-  const capped = typeof limit === 'number' && limit > 0;
-
-  return {
-    limit: capped ? limit : null,
-    used,
-    remaining: capped ? Math.max(0, (limit as number) - used) : Number.POSITIVE_INFINITY,
-    capped,
-    tracked: true,
-  };
-}
-
-async function checkTokenBudget(
-  pool: Pool,
-  tenantId: string,
-  estimatedTokens: number,
-): Promise<void> {
-  const budget = await getTokenBudget(pool, tenantId);
-  if (!budget.capped) return;
-
-  if (budget.used + estimatedTokens > (budget.limit as number)) {
-    throw new Error(
-      `TOKEN_BUDGET_EXCEEDED: Tenant ${tenantId} has used ${budget.used} tokens today `
-      + `against a cap of ${budget.limit} that was set for this tenant. This is not the `
-      + 'model refusing — change or remove the cap on the Research screen, or wait for '
-      + 'midnight UTC.',
-    );
-  }
-}
-
-async function recordTokenUsage(
-  pool: Pool,
-  tenantId: string,
-  tokens: number,
-  source: 'vps' | 'escalation',
-): Promise<void> {
-  if (tokens <= 0) return;
-  const today = new Date().toISOString().split('T')[0];
-  const db    = createTenantDb(pool, tenantId);
-
-  // jsonb_set with create_missing=true to initialise the day's bucket on first call.
-  // Inner expression: COALESCE(existing day, '{"vps":0,"escalation":0}') ||
-  //                   {sourceKey: existing[sourceKey] + tokens}
-  await db.query(
-    `UPDATE gt_tenant_context
-        SET daily_token_usage = jsonb_set(
-              daily_token_usage,
-              ARRAY[$date_key]::text[],
-              COALESCE(
-                daily_token_usage -> $date_key,
-                '{"vps":0,"escalation":0}'::jsonb
-              ) || jsonb_build_object(
-                $source_key::text,
-                COALESCE(
-                  ((daily_token_usage -> $date_key) ->> $source_key)::int,
-                  0
-                ) + $tokens::int
-              ),
-              true
-            ),
-            updated_at = now()
-      WHERE tenant_id = $tenant_id`,
-    {
-      tenant_id:  tenantId,
-      date_key:   today,
-      source_key: source,
-      tokens,
-    },
-  );
-}
+// The budget moved to token.budget.ts in release 3 (D-Q12, S18): a daily and a
+// monthly base from .env (or the tenant's own row), then a top-up balance.
+// Re-exported here because the research agent and the funnel import it from
+// this module.
+export { getTokenBudget, type TokenBudget } from './token.budget';
 
 /* ── Primary: VPS LLM call ──────────────────────────────────────────────── */
 
@@ -461,7 +329,7 @@ export async function callEndpoint(
 
   // Recorded on both postures. Metering is not capping: what a run cost is a
   // question a BYOK tenant will ask, and the only place to answer it is here.
-  await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'vps');
+  await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'vps', { posture: provider.posture, runId: options.runId });
   await noteCallInRun(pool, options.runId, {
     model: provider.posture === 'external' ? `${provider.providerCode} · ${provider.model}` : provider.model,
     posture: provider.posture, priority: options.priority ?? 'interactive',
@@ -587,7 +455,7 @@ export async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
   const inputTokens  = response.usage.input_tokens;
   const outputTokens = response.usage.output_tokens;
 
-  await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'escalation');
+  await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'escalation', { posture: 'platform', runId: options.runId });
   await noteCallInRun(pool, options.runId, {
     // A routed call to Haiku is a declared rung, not a failover.
     model: options.route ? `haiku · ${model}` : model, posture: options.route ? 'external' : 'escalation',

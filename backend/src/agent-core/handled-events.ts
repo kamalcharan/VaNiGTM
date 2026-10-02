@@ -37,6 +37,7 @@ export const HANDLED_EVENT_TYPES: readonly EventType[] = [
   'FUNNEL_SITE_SUBMITTED',
   'IMPORT_STAGE_REQUESTED',
   'POOL_RESOLVE_REQUESTED',
+  'SCORE_REFRESH_REQUESTED',
 ];
 
 export function isHandledEvent(type: string): boolean {

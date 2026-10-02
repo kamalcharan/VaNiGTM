@@ -16,6 +16,7 @@
  *     alert pipeline can notify the tenant.
  */
 
+import { assertBudgetConfig } from './token.budget';
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { createTenantDb } from '../db';
@@ -27,6 +28,7 @@ import { readWorkerConfig, assertWorkerConfig } from './worker.config';
 import { assertEtlConfig } from '../etl/etl.config';
 import { assertPoolConfig } from '../etl/pool.config';
 import { assertRouterConfig } from './llm.router.config';
+import { runScoreRefreshJob } from '../scoring/rescore';
 import { runPoolResolveJob } from '../etl/pool-merge';
 import { runStageJob } from '../etl/stage-job';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
@@ -109,6 +111,10 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
   // Common pool P1-B — match, derive, Complete test; resumable (src/etl/pool-merge.ts).
   POOL_RESOLVE_REQUESTED: (pool, tenantId, payload, runId) =>
     runPoolResolveJob(pool, tenantId, payload, runId).then(() => undefined),
+
+  // Release 3 — re-score after a profile change or on request (src/scoring/rescore.ts).
+  SCORE_REFRESH_REQUESTED: (pool, tenantId, payload, runId) =>
+    runScoreRefreshJob(pool, tenantId, payload, runId).then(() => undefined),
 
   // FOLDER_CONNECTED fires immediately after OAuth — folder_id may still
   // be null (tenant hasn't picked a folder yet). Guard the sync call so
@@ -382,6 +388,7 @@ export function startWorker(pool: Pool, queue: EventQueue): void {
   assertEtlConfig('Worker');
   assertPoolConfig('Worker');
   assertRouterConfig('Worker');
+  assertBudgetConfig('Worker');
   console.log(
     `[Worker] Starting — polling every ${workerCfg().pollMs}ms, batch size ${workerCfg().batchSize}`,
   );

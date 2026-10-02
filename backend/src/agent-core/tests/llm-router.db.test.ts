@@ -80,6 +80,7 @@ beforeAll(async () => {
     env: { ...process.env, DB_PRIMARY: `postgresql://${USER}@localhost/${DB}?host=${HOST}&port=${PORT}`, DB_PRIMARY_SSL: 'false', DB_MIGRATE: '' } });
   pool = new Pool({ host: HOST, port: PORT, user: USER, database: DB });
   mockPool = pool;
+  await pool.query(`INSERT INTO vn_tenants (id, slug) VALUES ($1, 'router-t')`, [TENANT]);
   Object.assign(process.env, {
     LLM_PRIMARY_URL: qwen.url(), ANTHROPIC_API_KEY: '',
     LLM_PROVIDERS: 'groq,openrouter',
@@ -241,6 +242,20 @@ d('the model router', () => {
     } finally {
       await pool.query('DROP FUNCTION gt_llm_route_state()');
       await pool.query(def);
+    }
+  });
+
+  it("a failure on OUR side after the provider answered stops the call — it never asks the next provider", async () => {
+    await turnOn('groq', 'qwen');
+    await pool.query(`CREATE OR REPLACE FUNCTION test_refuse_usage() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'usage record refused (test)'; END $$`);
+    await pool.query(`CREATE TRIGGER test_refuse_usage BEFORE UPDATE ON gt_tenant_context FOR EACH ROW EXECUTE FUNCTION test_refuse_usage()`);
+    try {
+      await expect(ask()).rejects.toThrow(/usage record refused/);
+      expect(groq.hits.length).toBe(1);
+      expect(qwen.hits.length).toBe(0);
+    } finally {
+      await pool.query('DROP TRIGGER test_refuse_usage ON gt_tenant_context');
     }
   });
 

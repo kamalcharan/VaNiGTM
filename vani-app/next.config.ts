@@ -29,6 +29,8 @@ const nextConfig: NextConfig = {
       { source: '/model-provider', destination: '/settings/model', permanent: true },
       { source: '/knowledge', destination: '/smart-profile/knowledge', permanent: true },
       { source: '/kg', destination: '/smart-profile/knowledge-graph', permanent: true },
+      // D-Q9 (2026-10-02): the industry master moved under Settings, admin only.
+      { source: '/agents/gtm/pool/industries', destination: '/settings/industries', permanent: true },
     ];
   },
 };

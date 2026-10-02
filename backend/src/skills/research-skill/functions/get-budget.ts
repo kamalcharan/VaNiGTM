@@ -31,8 +31,11 @@ export async function get_budget(
   const b = await getTokenBudget(getPool(), ctx.tenant_id);
 
   return {
-    /** null = no cap for this tenant. */
+    /** The day's limit in force; null = no cap (own model key). */
     limit: b.limit,
+    monthly_limit: b.monthly_limit,
+    month_used: b.month_used,
+    topup_balance: Math.max(0, b.topup_balance),
     /** Always counted, cap or no cap. null only if nothing is tracked at all. */
     used: b.tracked ? b.used : null,
     remaining: b.capped ? b.remaining : null,

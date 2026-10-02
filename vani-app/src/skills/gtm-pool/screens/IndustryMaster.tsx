@@ -1,6 +1,7 @@
 'use client';
 /**
- * /agents/gtm/pool/industries — the one industry master (gt_industries,
+ * Settings → Industry master (admin; moved out of the pool 2026-10-02, D-Q9 —
+ * the old /agents/gtm/pool/industries redirects here) — the one industry master (gt_industries,
  * migration 267): sectors and sub-segments, the NIC codes that place registry
  * rows without a model, and how many pool companies sit under each.
  * Onboarding, Vara's domain packs and the pool all read this one list.
@@ -26,16 +27,18 @@ function Node({ n, child }: { n: IndustryNode; child?: boolean }) {
   );
 }
 
-export default function IndustryMaster() {
+export default function IndustryMaster({ inSettings = false }: { inSettings?: boolean }) {
   const isAdmin = useIsPoolAdmin();
   const q = useIndustries();
   if (!isAdmin) return <PoolGate title="Industry master" />;
   return (
     <div className={s.wrap}>
       <div>
-        <div className={u.eyebrow}>// GTM · SHARED DATA · ADMIN</div>
-        <h1 className={u.h1}>Industry master</h1>
-        <PoolCrumbs on="industries" />
+        {inSettings ? <h2 className={u.h1} style={{ fontSize: 'var(--fs-xl)' }}>Industry master</h2> : <>
+          <div className={u.eyebrow}>// GTM · SHARED DATA · ADMIN</div>
+          <h1 className={u.h1}>Industry master</h1>
+          <PoolCrumbs on="industries" />
+        </>}
         <p className={u.lede}>One list. Onboarding, Vara's domain packs and the pool all read it. Registry rows (MCA, Udyam) are placed by their NIC code — free, no model; prose from directories goes through aliases.</p>
       </div>
       <section className={s.section}>
