@@ -205,6 +205,17 @@ d('enriching the common pool', () => {
     finally { process.env.ENRICH_POOL_DAILY_RECORDS = '5000'; }
   });
 
+  it('refuses to start when a route the run needs has no model switched on, and the estimate says so', async () => {
+    await owner.query(`INSERT INTO gt_llm_provider_switch (provider_code, purpose, enabled) VALUES ('qwen', 'enrichment', false)`);
+    try {
+      const e: any = await enrich_estimate({ delivery, records: 5 }, ctx());
+      expect(e.estimate.blocked).toMatch(/route HIGH .* has no model switched on; route LOW/);
+      await expect(start_enrich({ delivery, records: 5 }, ctx())).rejects.toThrow(/ROUTE_HAS_NO_MODEL/);
+    } finally {
+      await owner.query(`INSERT INTO gt_llm_provider_switch (provider_code, purpose, enabled) VALUES ('qwen', 'enrichment', true)`);
+    }
+  });
+
   it('starts a run: records are reserved today', async () => {
     const r: any = await start_enrich({ delivery, records: 5 }, ctx());
     expect(r).toMatchObject({ run_no: 1, records: 5 });

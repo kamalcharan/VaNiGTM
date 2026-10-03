@@ -107,9 +107,10 @@ export default function NewRun() {
                   <div className={e.decision}>
                     <h3 className={e.h3}>What this run writes</h3>
                     <p>Facts read from each company&apos;s own site, as an <b>enrichment</b> source — ranked below what a delivery said, labelled with the page, model and confidence. The whole run can be withdrawn later; nothing is overwritten.</p>
+                    {x.blocked && <p style={{ color: 'var(--bad)', marginTop: 8 }}>This run cannot start: {x.blocked}</p>}
                     {over && <p style={{ color: 'var(--bad)', marginTop: 8 }}>Only {fmt(x.limit.left)} of today&apos;s {fmt(x.limit.daily)} records are left. Pick a smaller run, or start tomorrow.</p>}
                     <div className={e.actions}>
-                      <button type="button" className={`${e.btn} ${e.btnPrimary}`} disabled={start.isPending || over || !x.records} onClick={() => void go()}>{start.isPending ? 'Starting…' : 'Start the run'}</button>
+                      <button type="button" className={`${e.btn} ${e.btnPrimary}`} disabled={start.isPending || over || !x.records || !!x.blocked} onClick={() => void go()}>{start.isPending ? 'Starting…' : 'Start the run'}</button>
                       <Link className={e.btn} href="/agents/gtm/pool">Cancel</Link>
                     </div>
                   </div>

@@ -154,6 +154,8 @@ async function industryList(db: Pool | PoolClient): Promise<{ names: string[]; i
 
 export interface ProviderLine { code: string; model: string; companies: number; text: string; off: boolean; paid: boolean }
 export interface Estimate {
+  /** A route the run needs with no model switched on — the run would stop at once. */
+  blocked: string | null;
   records: number; limit: { daily: number; used: number; left: number };
   per_company: { high: number; low: number; measured: boolean };
   tokens: number;
@@ -231,6 +233,7 @@ export async function estimate(pool: Pool, tenantId: string, records: number): P
        FROM gt_agent_runs r WHERE r.agent_name = $1 AND r.status = 'completed' AND r.created_at > now() - interval '30 days'`, [EVENT])).rows[0].s;
   const minutes = pace ? Math.ceil((records * pace) / 60) : timed && seconds > 0 ? Math.ceil(seconds / 60) : null;
   return {
+    blocked: await routesBlocked(pool),
     records, limit, per_company: { high, low, measured: Boolean(mh) }, tokens: records * (high + low),
     providers, unplaced: remaining, minutes, minutes_measured: Boolean(pace),
   };
@@ -250,7 +253,23 @@ export async function activeRun(pool: Pool): Promise<{ event_id: string; run_no:
   return r ?? null;
 }
 
+/**
+ * A run needs BOTH routes: HIGH reads what the company is, LOW decides which
+ * contacts are its own. A route with no model switched on would stop the run at
+ * its first company — say so before it starts, with the fix.
+ */
+export async function routesBlocked(pool: Pool): Promise<string | null> {
+  const rcfg = readRouterConfig();
+  const state = await readRouteState(pool, 'enrichment');
+  const dead = (['high', 'low'] as const).filter((r) => !rcfg.routes[r].some((c) => state[c]?.enabled));
+  if (!dead.length) return null;
+  return dead.map((r) => `route ${r.toUpperCase()} (LLM_ROUTE_${r.toUpperCase()}=${rcfg.routes[r].join(',')}) has no model switched on`).join('; ')
+    + '. Switch one of them on in Settings → Platform models, or add a model that is on to that route in .env.';
+}
+
 export async function startEnrichRun(pool: Pool, tenantId: string, userId: string, slice: Slice, records: number) {
+  const blocked = await routesBlocked(pool);
+  if (blocked) throw new EnrichError('ROUTE_HAS_NO_MODEL', blocked);
   if (!Number.isInteger(records) || records < 1) throw new EnrichError('BAD_RECORDS', 'Say how many companies this run reads (a whole number ≥ 1).');
   const busy = await activeRun(pool);
   if (busy) {
@@ -376,11 +395,11 @@ async function runLocked(pool: Pool, tenantId: string, payload: Record<string, u
   const rcfg = readRouterConfig();
   const state = await readRouteState(pool, 'enrichment');
   // Every model's switch, said both ways — an "on" left unsaid was read as off.
-  const route = rcfg.routes.high.map((c) => `${c} (${state[c]?.enabled ? (rcfg.providers[c]?.paid ? 'ON, paid' : 'ON') : 'off'})`).join(' → ');
+  const say = (r: 'high' | 'low') => rcfg.routes[r].map((c) => `${c} (${state[c]?.enabled ? (rcfg.providers[c]?.paid ? 'ON, paid' : 'ON') : 'off'})`).join(' → ');
   const lim = await recordLimit(pool);
   await appendStep(pool, runId, {
     step_name: 'plan',
-    action: `Route HIGH for pool company facts: ${route}. ${fmt(ids.length)} records of today's ${fmt(lim.daily)}.`,
+    action: `Route HIGH (what the company is): ${say('high')}. Route LOW (its own contacts): ${say('low')}. ${fmt(ids.length)} records of today's ${fmt(lim.daily)}.`,
     status: 'ok',
   });
 

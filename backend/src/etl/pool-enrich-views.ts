@@ -36,6 +36,7 @@ export interface RunSummary {
 function statusOf(run: { status: string } | null, cp: Record<string, any> | null, eventStatus?: string, alive?: boolean): RunSummary['status'] {
   if (cp?.withdrawn_at) return 'withdrawn';
   if (!run) return eventStatus === 'failed' ? 'stopped' : 'queued';   // stopped before a worker took it
+  if (cp?.finished_at && run.status !== 'failed') return cp?.stopped ? 'stopped' : 'finished';   // it wrote its last line
   // "running" in the run row, but no worker heartbeat on its event: say so,
   // instead of showing a run that has moved nothing for hours as running.
   if ((run.status === 'running' || run.status === 'queued') && !alive) return 'stalled';
