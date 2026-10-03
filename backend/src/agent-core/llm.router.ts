@@ -133,6 +133,33 @@ export function planRoute(
   return { eligible, skipped };
 }
 
+/**
+ * The earliest moment a provider of the route could take a call again, judged
+ * only by the limits that pass on their own: a 429 cooldown, or this minute's
+ * requests / tokens. A provider switched off, outside the data gate, or with
+ * today's calls or tokens spent does not come back today and is not counted.
+ * null = nothing in the route frees up today. A caller that waits on this
+ * (pool enrichment) waits only on what the router has already said, and says so.
+ */
+export function freeAgainAt(
+  cfg: RouterConfig, route: RouteClass, dataClass: DataClass, state: Record<string, ProviderState>, now: Date,
+): Date | null {
+  let best: number | null = null;
+  for (const code of cfg.routes[route]) {
+    const p = cfg.providers[code];
+    const st = state[code] ?? EMPTY;
+    if (!p || !st.enabled || dataGate(p, dataClass)) continue;
+    if (p.daily > 0 && st.callsToday >= p.daily) continue;
+    if (p.tpd > 0 && st.tokensToday >= p.tpd) continue;
+    let t = now.getTime();
+    if (st.cooldownUntil && st.cooldownUntil.getTime() > t) t = st.cooldownUntil.getTime();
+    const minuteBound = (p.rpm > 0 && st.callsMinute >= p.rpm) || (p.tpm > 0 && st.tokensMinute > 0);
+    if (minuteBound) t = Math.max(t, now.getTime() + 60_000);
+    if (best === null || t < best) best = t;
+  }
+  return best === null ? null : new Date(best);
+}
+
 // Chars per token for a provider's model: the densest ratio the gate has
 // learned for it, else the configured cold-start guess (llm.gate.ts) — one
 // source of truth for the ratio, so the plan and the gate never disagree.
@@ -252,10 +279,17 @@ async function callOnProvider(options: LLMCallOptions, p: RouterProvider, rung: 
   }
 }
 
+// The provider's own words from a 429 — which limit, and how long — without our prefix.
+const saidBy429 = (msg: string): string => {
+  const body = msg.split('\n')[0].replace(/^.*? returned 429[^—]*— /, '');
+  const m = body.match(/"message"\s*:\s*"([^"]+)"/);
+  return (m ? m[1] : body).slice(0, 240);
+};
+
 function describeMove(p: RouterProvider, m: MoveOn): string {
   const first = m.message.split('\n')[0].slice(0, 160);
   switch (m.outcome) {
-    case 'rate_limited': return `${p.code} answered 429 (rate limit) — cooling down until ${hhmmss(m.cooldownUntil!)}`;
+    case 'rate_limited': return `${p.code} answered 429 (rate limit) — cooling down until ${hhmmss(m.cooldownUntil!)} — it said: ${saidBy429(m.message)}`;
     case 'timeout': return `${p.code} timed out — ${first}`;
     case 'refused_context': return `${p.code}: the prompt does not fit its window — nothing was sent`;
     default: return `${p.code} failed — ${first}`;

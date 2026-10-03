@@ -19,7 +19,7 @@ import { BeforeAfter, PartsBeforeAfter } from './EnrichParts';
 import { CompanyPanel } from './CompanyPanel';
 import { PoolGate, useIsPoolAdmin } from './PoolParts';
 
-const AMBER = new Set(['move', 'bad', 'skip']);
+const AMBER = new Set(['move', 'wait', 'bad', 'skip']);
 
 function Feed({ r }: { r: RunView }) {
   if (!r.feed.length) return <p className={e.muted}>{r.status === 'queued' ? 'Waiting for the worker to pick the run up…' : 'No steps yet.'}</p>;

@@ -42,6 +42,7 @@ jest.mock('../../lib/site-reader', () => {
 type Answer = Record<string, unknown> | Error;
 const READINGS: Record<string, Answer> = {};
 let contactsAnswer: (values: string[]) => string[] = (v) => v;
+const nextRead: { throws: Error | null } = { throws: null };   // the next pool_read call fails once
 jest.mock('../../agent-core/llm.client', () => {
   const actual = jest.requireActual('../../agent-core/llm.client');
   return {
@@ -54,7 +55,8 @@ jest.mock('../../agent-core/llm.client', () => {
       if (o.step === 'pool_contacts') {
         const values = [...String(o.messages[0].content).matchAll(/^- \w+: (.+?)  \(on /gm)].map((m) => m[1]);
         ans = { own: contactsAnswer(values) };
-      } else ans = READINGS[name] ?? new Error(`no reading scripted for ${name}`);
+      } else if (nextRead.throws) { ans = nextRead.throws; nextRead.throws = null; }
+      else ans = READINGS[name] ?? new Error(`no reading scripted for ${name}`);
       if (ans instanceof Error) throw ans;
       const provider = o.step === 'pool_read' ? 'groq' : 'qwen';
       const model = provider === 'groq' ? 'openai/gpt-oss-120b' : 'qwen3';
@@ -359,4 +361,20 @@ d('enriching the common pool', () => {
     await expect(withdraw_enrich_run({ event_id: eventId }, ctx())).rejects.toThrow(/ALREADY_WITHDRAWN/);
     expect(await countSlice(app, { delivery, raw_or_identified: false, industry_missing: false })).toBe(6);  // readable again
   });
+
+  it('every model briefly rate-limited: the run waits, says so, and reads the same company again', async () => {
+    for (const n of Object.keys(READINGS)) READINGS[n] = READINGS['Kavya Lab Instruments Pvt Ltd'];
+    // qwen answered 429 a moment ago: cooling down for two seconds.
+    await owner.query(
+      `INSERT INTO gt_llm_calls (tenant_id, purpose, step, route, rung, provider_code, model, data_class, prompt_tokens, answer_tokens, outcome, cooldown_until)
+       VALUES ($1, 'enrichment', 'pool_read', 'high', 1, 'qwen', 'qwen3', 'public_company', 0, 0, 'rate_limited', now() + interval '2 seconds')`, [ADMIN_T]);
+    nextRead.throws = new Error('LLM_ROUTE_EXHAUSTED: route high for public company data has no provider left — qwen: cooling down. Nothing was guessed.');
+    const r: any = await start_enrich({ delivery, records: 1 }, ctx());
+    await runEvent(r.event_id);
+    const { run }: any = await enrich_run({ event_id: r.event_id }, ctx());
+    expect(run.status).toBe('finished');
+    expect(run.stopped).toBeNull();
+    expect(run.counts.read).toBe(1);
+    expect(run.feed.find((f: any) => f.kind === 'wait').text).toMatch(/rate-limited — waiting \d+s, until \d\d:\d\d:\d\d UTC, then trying the same company again/);
+  }, 30000);
 });

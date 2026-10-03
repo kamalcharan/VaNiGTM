@@ -3,7 +3,7 @@
  * each other one may not. Every skip carries a reason — a route never goes
  * quiet about a provider it passed over.
  */
-import { planRoute, dataGate, type ProviderState } from '../llm.router';
+import { planRoute, dataGate, freeAgainAt, type ProviderState } from '../llm.router';
 import type { RouterConfig, RouterProvider } from '../llm.router.config';
 
 const prov = (code: string, o: Partial<RouterProvider> = {}): RouterProvider => ({
@@ -95,5 +95,24 @@ describe('planRoute', () => {
     expect(serves(p)).toEqual(['qwen', 'haiku']);
     // The same providers with room left serve it.
     expect(serves(planRoute(tok, 'high', 'public_company', on(all, { groq: { tokensToday: 1000 } }), now, fit))).toContain('groq');
+  });
+});
+
+describe('freeAgainAt — when a route has a provider again, for a caller that may wait', () => {
+  const two = { ...cfg, routes: { ...cfg.routes, high: ['groq', 'openrouter'] } };
+  it('the earliest end of a 429 cooldown or a per-minute window', () => {
+    const st = on(['groq', 'openrouter'], {
+      groq: { cooldownUntil: new Date('2026-10-02T10:00:20Z') },
+      openrouter: { callsMinute: 20 },   // its rpm
+    });
+    expect(freeAgainAt(two, 'high', 'public_company', st, now)?.toISOString()).toBe('2026-10-02T10:00:20.000Z');
+  });
+  it('a daily quota spent, or a switch off, does not come back today: null', () => {
+    const st = on(['groq'], { groq: { callsToday: 1000 } });
+    expect(freeAgainAt(two, 'high', 'public_company', st, now)).toBeNull();
+  });
+  it('tokens used this minute against a token-a-minute limit: a minute from now', () => {
+    const tpm = { ...two, providers: { ...two.providers, groq: prov('groq', { tpm: 8000 }) }, routes: { ...two.routes, high: ['groq'] } };
+    expect(freeAgainAt(tpm, 'high', 'public_company', on(['groq'], { groq: { tokensMinute: 7000 } }), now)?.toISOString()).toBe('2026-10-02T10:01:00.000Z');
   });
 });
