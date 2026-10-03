@@ -88,6 +88,18 @@ type AgentHandler = (
   runId: string,
 ) => Promise<void>;
 
+/**
+ * A job that has no other final state: when it returns, its run is completed.
+ * processEvent leaves the run's final status to the handler (VaNi may park at
+ * 'awaiting'), so a job that never sets one leaves its run 'running' forever —
+ * which is what four jobs did until 2026-10-03 (staging, matching, scoring,
+ * enrichment): finished runs read as running, and enrichment read as stalled.
+ */
+const completes = (job: AgentHandler): AgentHandler => async (pool, tenantId, payload, runId) => {
+  await job(pool, tenantId, payload, runId);
+  await setStatus(pool, runId, 'completed');
+};
+
 const AGENT_REGISTRY: Record<string, AgentHandler> = {
   TENANT_REGISTERED: (pool, tenantId, payload, runId) =>
     VaniAgent.handleTenantRegistered(pool, tenantId, payload, runId),
@@ -107,21 +119,21 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
     runSiteRead(pool, tenantId, payload, runId),
 
   // Common pool P1 — a large CSV staged in chunks, resumable (src/etl/stage-job.ts).
-  IMPORT_STAGE_REQUESTED: (pool, tenantId, payload, runId) =>
-    runStageJob(pool, tenantId, payload, runId).then(() => undefined),
+  IMPORT_STAGE_REQUESTED: completes((pool, tenantId, payload, runId) =>
+    runStageJob(pool, tenantId, payload, runId).then(() => undefined)),
 
   // Common pool P1-B — match, derive, Complete test; resumable (src/etl/pool-merge.ts).
-  POOL_RESOLVE_REQUESTED: (pool, tenantId, payload, runId) =>
-    runPoolResolveJob(pool, tenantId, payload, runId).then(() => undefined),
+  POOL_RESOLVE_REQUESTED: completes((pool, tenantId, payload, runId) =>
+    runPoolResolveJob(pool, tenantId, payload, runId).then(() => undefined)),
 
   // Release 3 — re-score after a profile change or on request (src/scoring/rescore.ts).
-  SCORE_REFRESH_REQUESTED: (pool, tenantId, payload, runId) =>
-    runScoreRefreshJob(pool, tenantId, payload, runId).then(() => undefined),
+  SCORE_REFRESH_REQUESTED: completes((pool, tenantId, payload, runId) =>
+    runScoreRefreshJob(pool, tenantId, payload, runId).then(() => undefined)),
 
   // Release 4 — read pool companies' own sites on the model router; resumable
   // by event (src/etl/pool-enrich.ts).
-  POOL_ENRICH_REQUESTED: (pool, tenantId, payload, runId) =>
-    runPoolEnrichJob(pool, tenantId, payload, runId),
+  POOL_ENRICH_REQUESTED: completes((pool, tenantId, payload, runId) =>
+    runPoolEnrichJob(pool, tenantId, payload, runId)),
 
   // FOLDER_CONNECTED fires immediately after OAuth — folder_id may still
   // be null (tenant hasn't picked a folder yet). Guard the sync call so

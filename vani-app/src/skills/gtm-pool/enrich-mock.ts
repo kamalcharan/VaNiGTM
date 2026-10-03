@@ -35,6 +35,7 @@ function estimate(p: Record<string, unknown>): EstimateResult {
     slice: { delivery: String(p.delivery ?? 'all'), raw_or_identified: p.raw_or_identified !== false, industry_missing: p.industry_missing === true },
     matched,
     estimate: records ? {
+      blocked: null,
       records, limit: { daily: 5000, used: 0, left: 5000 }, per_company: { high: 3000, low: 600, measured: false }, tokens: records * 3600,
       providers: [
         { code: 'groq', model: 'openai/gpt-oss-120b', companies: Math.min(55, records), off: false, paid: false, text: `≈ ${Math.min(55, records)} companies before its 200K tokens/day run out` },

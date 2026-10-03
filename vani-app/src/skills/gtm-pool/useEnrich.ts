@@ -26,6 +26,7 @@ export interface Workbench {
 export interface Slice { delivery: string; raw_or_identified: boolean; industry_missing: boolean }
 export interface ProviderLine { code: string; model: string; companies: number; text: string; off: boolean; paid: boolean }
 export interface Estimate {
+  blocked: string | null;
   records: number; limit: { daily: number; used: number; left: number };
   per_company: { high: number; low: number; measured: boolean };
   tokens: number; providers: ProviderLine[]; unplaced: number; minutes: number | null; minutes_measured: boolean;
