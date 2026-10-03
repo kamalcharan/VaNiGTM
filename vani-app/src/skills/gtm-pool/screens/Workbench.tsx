@@ -15,7 +15,7 @@ import { fmt, runHref, sliceHref, useWorkbench, type RunSummary, type Workbench 
 import { LevelLegend, LevelStack } from './EnrichParts';
 
 const RUN_TAG: Record<RunSummary['status'], [string, string]> = {
-  queued: ['queued', u.tagDim], running: ['running', u.tagWarn], finished: ['finished', u.tagOk],
+  queued: ['queued', u.tagDim], running: ['running', u.tagWarn], stalled: ['stalled — no worker', u.tagBad], finished: ['finished', u.tagOk],
   stopped: ['stopped', u.tagWarn], failed: ['failed', u.tagBad], withdrawn: ['withdrawn', u.tagDim],
 };
 
@@ -42,14 +42,14 @@ function Suggestion({ d }: { d: Wb }) {
 
 /** A run that is queued or running is the first thing on the page — the way back to it, not "Set up a run" again. */
 function InProgress({ runs }: { runs: RunSummary[] }) {
-  const live = runs.filter((r) => r.status === 'queued' || r.status === 'running');
+  const live = runs.filter((r) => r.status === 'queued' || r.status === 'running' || r.status === 'stalled');
   if (!live.length) return null;
   return (
     <div className={e.card}>
       <div className={e.headRow}><h2 className={e.h2} style={{ margin: 0 }}>{live.length === 1 ? 'A run is in progress' : `${live.length} runs are in progress`}</h2><span className={e.muted}>it carries on while you are elsewhere</span></div>
       {live.map((r) => (
         <div key={r.event_id} className={e.row} style={{ alignItems: 'center' }}>
-          <span><b>Run #{r.run_no}</b> · {r.delivery_label} · {r.status === 'queued' ? 'queued — waiting for the worker' : `${fmt(r.attempted)} of ${fmt(r.records)} companies`}</span>
+          <span><b>Run #{r.run_no}</b> · {r.delivery_label} · {r.status === 'queued' ? 'queued — waiting for the worker' : r.status === 'stalled' ? <span style={{ color: 'var(--bad)' }}>stalled — no worker is on it; open it and press Stop to close it</span> : `${fmt(r.attempted)} of ${fmt(r.records)} companies`}</span>
           <span><Link className={`${e.btn} ${e.btnPrimary} ${e.btnSm}`} href={runHref(r.event_id)}>Open the run →</Link></span>
         </div>
       ))}

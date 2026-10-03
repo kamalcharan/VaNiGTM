@@ -13,7 +13,7 @@ import type { Level } from '@/skills/scoring/useScoring';
 export type Levels = Record<Level, number>;
 export interface Gap { key: string; label: string; companies: number; filled_by: string; enrich: { raw_or_identified: boolean; industry_missing: boolean } | null }
 export interface WbDelivery { id: string; label: string; source_code: string; companies: number; qualified_plus: number; qualified_pct: number; as_of: string | null; loaded_at: string; eligible: number }
-export type RunStatus = 'queued' | 'running' | 'finished' | 'stopped' | 'failed' | 'withdrawn';
+export type RunStatus = 'queued' | 'running' | 'stalled' | 'finished' | 'stopped' | 'failed' | 'withdrawn';
 export interface RunSummary { event_id: string; run_no: number; delivery_label: string; records: number; status: RunStatus; created_at: string; attempted: number; before_avg: number | null; after_avg: number | null }
 export interface Workbench {
   total: number; levels: Levels; qualified_plus: number; with_website: number; website_from_email: number;
@@ -50,7 +50,7 @@ export const useWorkbench = (enabled = true) => useSkillQuery<Workbench>('pool-s
   enabled,
   refetchInterval: (q) => {
     const runs = (q.state.data as { data?: Workbench } | undefined)?.data?.runs ?? [];
-    return runs.some((r) => r.status === 'queued' || r.status === 'running') ? 5000 : false;
+    return runs.some((r) => r.status === 'queued' || r.status === 'running' || r.status === 'stalled') ? 5000 : false;
   },
 });
 export const useEnrichEstimate = (slice: Slice, records: number, enabled = true) =>
@@ -60,7 +60,7 @@ export const useEnrichRun = (eventId: string) =>
   useSkillQuery<{ run: RunView | null; reason?: 'NOT_FOUND' }>('pool-skill', 'enrich_run', { event_id: eventId }, {
     refetchInterval: (q) => {
       const st = (q.state.data as { data?: { run?: RunView | null } } | undefined)?.data?.run?.status;
-      return st === 'queued' || st === 'running' ? 3000 : false;
+      return st === 'queued' || st === 'running' || st === 'stalled' ? 3000 : false;
     },
   });
 
@@ -77,8 +77,10 @@ export function useEnrichWrites() {
     errorMessage: 'The run was not withdrawn.',
     onSuccess: refresh,
   });
-  const stop = useSkillMutation<{ stopped: 'before_start' | 'requested' }>('pool-skill', 'stop_enrich_run', {
-    successMessage: (r) => r.stopped === 'before_start' ? 'Stopped — the run never started; its records are released.' : 'Stopping — the company being read finishes, then the run stops.',
+  const stop = useSkillMutation<{ stopped: 'before_start' | 'requested' | 'closed' }>('pool-skill', 'stop_enrich_run', {
+    successMessage: (r) => r.stopped === 'before_start' ? 'Stopped — the run never started; its records are released.'
+      : r.stopped === 'closed' ? 'Stopped — no worker was on it, so it was closed now. A new run can start.'
+        : 'Stopping — the company being read finishes, then the run stops.',
     errorMessage: 'The run was not stopped.',
     onSuccess: refresh,
   });

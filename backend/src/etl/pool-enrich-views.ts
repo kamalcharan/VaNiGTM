@@ -13,7 +13,8 @@
 import type { Pool } from 'pg';
 import { withTenantClient } from '../db';
 import { platformProfile } from '../scoring/profiles';
-import { counts, EVENT, LEVELS, recordLimit, snapshot, type CompanyResult, type Snapshot } from './pool-enrich';
+import { counts, EVENT, LEVELS, recordLimit, snapshot, workerAlive, type CompanyResult, type Snapshot } from './pool-enrich';
+import { readWorkerConfig } from '../agent-core/worker.config';
 
 const LIVE = `c.merged_into_id IS NULL AND c.lifecycle_state <> 'junk'`;
 const QUALIFIED_PLUS = `coalesce(c.coverage_parts->>'level', 'raw') IN ('qualified', 'reachable', 'campaign_ready', 'strong')`;
@@ -28,13 +29,16 @@ const IN_A_RUN = `EXISTS (SELECT 1 FROM gt_events e WHERE e.event_type = 'POOL_E
 
 export interface RunSummary {
   event_id: string; run_no: number; delivery_label: string; records: number;
-  status: 'queued' | 'running' | 'finished' | 'stopped' | 'failed' | 'withdrawn';
+  status: 'queued' | 'running' | 'stalled' | 'finished' | 'stopped' | 'failed' | 'withdrawn';
   created_at: string; attempted: number; before_avg: number | null; after_avg: number | null;
 }
 
-function statusOf(run: { status: string } | null, cp: Record<string, any> | null, eventStatus?: string): RunSummary['status'] {
+function statusOf(run: { status: string } | null, cp: Record<string, any> | null, eventStatus?: string, alive?: boolean): RunSummary['status'] {
   if (cp?.withdrawn_at) return 'withdrawn';
   if (!run) return eventStatus === 'failed' ? 'stopped' : 'queued';   // stopped before a worker took it
+  // "running" in the run row, but no worker heartbeat on its event: say so,
+  // instead of showing a run that has moved nothing for hours as running.
+  if ((run.status === 'running' || run.status === 'queued') && !alive) return 'stalled';
   if (run.status === 'completed') return cp?.stopped ? 'stopped' : 'finished';
   if (run.status === 'failed') return 'failed';
   return run.status === 'queued' ? 'queued' : 'running';
@@ -42,13 +46,14 @@ function statusOf(run: { status: string } | null, cp: Record<string, any> | null
 
 export async function listRuns(pool: Pool, limit = 20): Promise<RunSummary[]> {
   const rows = (await pool.query<any>(
-    `SELECT e.id::text AS event_id, e.payload, e.created_at, e.status AS event_status, r.status, r.checkpoint
+    `SELECT e.id::text AS event_id, e.payload, e.created_at, e.status AS event_status, r.status, r.checkpoint,
+            (e.status = 'processing' AND e.started_at > now() - make_interval(secs => $3)) AS alive
        FROM gt_events e
        LEFT JOIN LATERAL (SELECT status, checkpoint FROM gt_agent_runs WHERE event_id = e.id ORDER BY id DESC LIMIT 1) r ON true
-      WHERE e.event_type = $1 ORDER BY e.created_at DESC LIMIT $2`, [EVENT, limit])).rows;
+      WHERE e.event_type = $1 ORDER BY e.created_at DESC LIMIT $2`, [EVENT, limit, readWorkerConfig().staleClaimSeconds])).rows;
   return rows.map((r) => ({
     event_id: r.event_id, run_no: Number(r.payload.run_no), delivery_label: r.payload.delivery_label, records: Number(r.payload.records),
-    status: statusOf(r.status ? { status: r.status } : null, r.checkpoint, r.event_status), created_at: r.created_at,
+    status: statusOf(r.status ? { status: r.status } : null, r.checkpoint, r.event_status, r.alive), created_at: r.created_at,
     attempted: Number(r.checkpoint?.attempted ?? 0), before_avg: r.checkpoint?.before?.avg ?? null, after_avg: r.checkpoint?.after?.avg ?? null,
   }));
 }
@@ -126,7 +131,8 @@ export async function runView(pool: Pool, tenantId: string, eventId: string) {
   const last = runs[runs.length - 1] ?? null;
   const cp = last?.checkpoint ?? null;
   const ids: string[] = (ev.payload.company_ids ?? []).map(String);
-  const status = statusOf(last, cp, ev.status);
+  const alive = await workerAlive(pool, eventId);
+  const status = statusOf(last, cp, ev.status, alive);
   const finished = ['finished', 'stopped', 'withdrawn'].includes(status);
   const done: Record<string, CompanyResult> = cp?.done ?? {};
   const c = counts({ done });

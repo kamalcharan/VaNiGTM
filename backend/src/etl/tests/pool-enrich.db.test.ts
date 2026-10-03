@@ -301,6 +301,8 @@ d('enriching the common pool', () => {
     const payload = (await app.query(`SELECT payload FROM gt_events WHERE id = $1`, [r.event_id])).rows[0].payload;
     const runId = await createRun(app, ADMIN_T, 'POOL_ENRICH_REQUESTED', r.event_id, payload);
     await app.query(`UPDATE gt_agent_runs SET status = 'running', started_at = now() WHERE id = $1`, [runId]);
+    // A live worker: the event is claimed and its heartbeat is fresh.
+    await app.query(`UPDATE gt_events SET status = 'processing', started_at = now() WHERE id = $1`, [r.event_id]);
     expect(await stop_enrich_run({ event_id: r.event_id }, ctx())).toMatchObject({ stopped: 'requested' });
     await runPoolEnrichJob(app, ADMIN_T, payload, runId);
     await app.query(`UPDATE gt_agent_runs SET status = 'completed', completed_at = now() WHERE id = $1`, [runId]);
@@ -311,6 +313,26 @@ d('enriching the common pool', () => {
     expect(run.counts.not_reached).toBe(1);
     await expect(stop_enrich_run({ event_id: r.event_id }, ctx())).rejects.toThrow(/NOT_RUNNING/);
     void saveCheckpoint;
+  });
+
+  it('one run at a time: a second start is refused while one is queued', async () => {
+    const r: any = await start_enrich({ delivery, records: 1 }, ctx());
+    await expect(start_enrich({ delivery, records: 1 }, ctx())).rejects.toThrow(/ANOTHER_RUN_ACTIVE: Run #\d+ is still queued or running/);
+    await stop_enrich_run({ event_id: r.event_id }, ctx());
+  });
+
+  it('a run left "running" by a worker that died shows as stalled, and Stop closes it at once', async () => {
+    const r: any = await start_enrich({ delivery, records: 1 }, ctx());
+    const payload = (await app.query(`SELECT payload FROM gt_events WHERE id = $1`, [r.event_id])).rows[0].payload;
+    const runId = await createRun(app, ADMIN_T, 'POOL_ENRICH_REQUESTED', r.event_id, payload);
+    await app.query(`UPDATE gt_agent_runs SET status = 'running', started_at = now() - interval '12 hours' WHERE id = $1`, [runId]);
+    await app.query(`UPDATE gt_events SET status = 'processing', started_at = now() - interval '12 hours' WHERE id = $1`, [r.event_id]);
+    expect((await enrich_run({ event_id: r.event_id }, ctx()) as any).run.status).toBe('stalled');
+    expect(await stop_enrich_run({ event_id: r.event_id }, ctx())).toMatchObject({ stopped: 'closed' });
+    const { run }: any = await enrich_run({ event_id: r.event_id }, ctx());
+    expect(run.status).toBe('stopped');
+    expect((await owner.query(`SELECT status FROM gt_events WHERE id = $1`, [r.event_id])).rows[0].status).toBe('failed');
+    expect(await start_enrich({ delivery, records: 1 }, ctx()).then((x: any) => stop_enrich_run({ event_id: x.event_id }, ctx()))).toMatchObject({ stopped: 'before_start' });   // free to start again
   });
 
   it('withdraw takes every value and graph fact back; delivered data stays', async () => {
