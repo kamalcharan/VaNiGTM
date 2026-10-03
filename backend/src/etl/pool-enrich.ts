@@ -27,6 +27,9 @@
  *     and takes back its graph facts; the run stays in the history.
  *   - Below ENRICH_POOL_MIN_CONFIDENCE nothing is written for that field; a
  *     company with nothing above it is "abstained" and waits for a person.
+ *   - Every model rate-limited for a short while (a 429 cooldown, this
+ *     minute's requests or tokens) → the run WAITS, says so, and tries the same
+ *     company again (at most three waits in a row).
  *   - No model left today → the run STOPS and says so (LLM_ROUTE_EXHAUSTED);
  *     the companies it did not reach are released from today's records.
  *   - A worker restart resumes: a run is keyed by its EVENT; the next run of
@@ -41,7 +44,7 @@ import { withTenantClient } from '../db';
 import { appendStep, saveCheckpoint } from '../agent-core/agent.runner';
 import { callLLMValidated } from '../agent-core/llm.client';
 import { readRouterConfig } from '../agent-core/llm.router.config';
-import { readRouteState } from '../agent-core/llm.router';
+import { freeAgainAt, readRouteState } from '../agent-core/llm.router';
 import { charsPerToken } from '../agent-core/llm.gate';
 import { emitEvent } from '../agent-core/event.store';
 import * as site from '../lib/site-reader';
@@ -404,32 +407,56 @@ async function runLocked(pool: Pool, tenantId: string, payload: Record<string, u
   });
 
   const ind = await industryList(pool);
-  for (const id of ids) {
+  const stopAsked = async () => (await pool.query<{ at: string | null }>(
+    `SELECT checkpoint->>'stop_requested_at' AS at FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0]?.at ?? null;
+  const stopByPerson = async (at: string) => {
+    st.stopped = `STOPPED_BY_PERSON: stopped at ${at}`;
+    await appendStep(pool, runId, { step_name: 'move', action: `Stopped by a person — ${fmt(ids.length - Object.keys(st.done).length)} companies not reached, released from today's records`, status: 'ok' });
+  };
+  let waits = 0;   // consecutive waits without a company finishing
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
     if (st.done[id]) continue;
     // A person may stop the run (pool-skill.stop_enrich_run): checked before
     // every company, so the one being read finishes and nothing is cut halfway.
-    const stop = (await pool.query<{ at: string | null; by: string | null }>(
-      `SELECT checkpoint->>'stop_requested_at' AS at, checkpoint->>'stop_requested_by' AS by FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
-    if (stop?.at) {
-      st.stopped = `STOPPED_BY_PERSON: stopped at ${stop.at}`;
-      await appendStep(pool, runId, { step_name: 'move', action: `Stopped by a person — ${fmt(ids.length - Object.keys(st.done).length)} companies not reached, released from today's records`, status: 'ok' });
-      break;
-    }
+    const at = await stopAsked();
+    if (at) { await stopByPerson(at); break; }
     let res: CompanyResult;
     try {
       res = await enrichOne(pool, tenantId, runIdS, st, id, cfg, ind);
     } catch (e) {
       const msg = (e as Error).message;
       if (/^LLM_ROUTE_EXHAUSTED/.test(msg)) {
-        // No model left today: stop, say so, and release what was not reached.
+        // A short rate limit (a 429 cooldown, this minute's requests or
+        // tokens) is waited out, said in the feed, and the same company is
+        // tried again. Only when nothing frees up soon — a daily quota, every
+        // model off — does the run stop, release what it did not reach, and say so.
+        const wait = await waitFor(pool, rcfg);
+        if (wait && waits < MAX_WAITS) {
+          waits++;
+          await appendStep(pool, runId, {
+            step_name: 'wait',
+            action: `Every model in the route is rate-limited — waiting ${Math.ceil(wait.ms / 1000)}s, until ${wait.until.toISOString().slice(11, 19)} UTC, then trying the same company again. ${msg.replace(/^LLM_ROUTE_EXHAUSTED: /, '').slice(0, 300)}`,
+            status: 'ok',
+          });
+          const asked = await sleepUnlessStopped(wait.ms, stopAsked);
+          if (asked) { await stopByPerson(asked); break; }
+          i--;   // the same company again
+          continue;
+        }
         st.stopped = msg;
-        await appendStep(pool, runId, { step_name: 'move', action: `No model left for route HIGH or LOW — the run stops here. ${msg.slice(0, 400)}`, status: 'error' });
+        await appendStep(pool, runId, {
+          step_name: 'move',
+          action: `No model left for route HIGH or LOW${wait ? ` after ${MAX_WAITS} waits in a row` : ' that frees up soon'} — the run stops here. ${msg.slice(0, 400)}`,
+          status: 'error',
+        });
         break;
       }
       const name = (await pool.query<{ name: string }>(`SELECT name FROM gt_universe_companies WHERE id = $1`, [id])).rows[0]?.name ?? `#${id}`;
       res = { outcome: 'failed', name, detail: msg.slice(0, 300), before: { score: 0, level: 'raw' } };
       await appendStep(pool, runId, { step_name: 'bad', action: `${name}: failed — ${msg.slice(0, 200)}`, status: 'error' });
     }
+    waits = 0;
     st.done[id] = res;
     st.attempted = Object.keys(st.done).length;
     await saveCheckpoint(pool, runId, { done: st.done, attempted: st.attempted });
@@ -446,6 +473,45 @@ async function runLocked(pool: Pool, tenantId: string, payload: Record<string, u
       + (st.stopped ? ` · stopped: ${fmt(ids.length - st.attempted)} not reached, released from today's records` : ''),
     status: st.stopped ? 'error' : 'ok',
   });
+}
+
+/** Waits in a row (no company finishing between them) before a rate-limited run gives up. */
+const MAX_WAITS = 3;
+/** How often a waiting run looks for a person's Stop. */
+const STOP_POLL_MS = 5_000;
+
+/**
+ * How long until BOTH routes the run needs (HIGH and LOW) have a model again,
+ * if that is soon: within LLM_ROUTER_COOLDOWN_SECONDS plus one minute, the
+ * longest a cooldown or a per-minute window holds a provider. Anything longer
+ * (a daily quota) is not waited for — null.
+ */
+async function waitFor(pool: Pool, rcfg: ReturnType<typeof readRouterConfig>): Promise<{ ms: number; until: Date } | null> {
+  const state = await readRouteState(pool, 'enrichment');
+  const now = new Date();
+  let latest = now.getTime();
+  for (const r of ['high', 'low'] as const) {
+    const t = freeAgainAt(rcfg, r, 'public_company', state, now);
+    if (!t) return null;
+    latest = Math.max(latest, t.getTime());
+  }
+  // Free now by the router's own counts: the route failed for another reason
+  // (errors, timeouts), which waiting does not cure — say so and stop.
+  if (latest <= now.getTime()) return null;
+  const ms = latest - now.getTime() + 1_000;
+  if (ms > (rcfg.cooldownSeconds + 60) * 1000) return null;
+  return { ms, until: new Date(now.getTime() + ms) };
+}
+
+/** Sleeps, looking for a person's Stop as it goes; returns when it was asked. */
+async function sleepUnlessStopped(ms: number, stopAsked: () => Promise<string | null>): Promise<string | null> {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    await new Promise((r) => setTimeout(r, Math.min(STOP_POLL_MS, end - Date.now())));
+    const at = await stopAsked();
+    if (at) return at;
+  }
+  return null;
 }
 
 export function counts(st: Pick<RunState, 'done'>) {

@@ -120,7 +120,7 @@ export async function workbench(pool: Pool) {
 
 /* ── Tabs 3 and 4: one run ─────────────────────────────────────────────── */
 
-const KINDS = new Set(['plan', 'check', 'read', 'skip', 'move', 'bad', 'done', 'restore']);
+const KINDS = new Set(['plan', 'check', 'read', 'skip', 'move', 'wait', 'bad', 'done', 'restore']);
 
 export async function runView(pool: Pool, tenantId: string, eventId: string) {
   const ev = (await pool.query<any>(
