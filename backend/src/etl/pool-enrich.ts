@@ -49,6 +49,7 @@ import { readEnrichConfig, type EnrichConfig } from './enrich.config';
 import { assess, rederive, withPoolTx } from './pool-merge';
 import { withdrawPoolRun, writePoolGraph, type PoolEdgeIn } from './pool-graph';
 import * as R from './pool-enrich-read';
+import { readWorkerConfig } from '../agent-core/worker.config';
 
 export const EVENT = 'POOL_ENRICH_REQUESTED' as const;
 export const LEVELS = ['raw', 'identified', 'qualified', 'reachable', 'campaign_ready', 'strong'] as const;
@@ -237,8 +238,25 @@ export async function estimate(pool: Pool, tenantId: string, records: number): P
 
 /* ── Start ─────────────────────────────────────────────────────────────── */
 
+/**
+ * The run that is queued or reading now, if any. Pool runs share the free
+ * models' quotas and the one platform model, so ONE runs at a time, platform-wide
+ * (Charan, 2026-10-03: "we should not allow more than 1 to run").
+ */
+export async function activeRun(pool: Pool): Promise<{ event_id: string; run_no: number } | null> {
+  const r = (await pool.query<{ event_id: string; run_no: number }>(
+    `SELECT id::text AS event_id, (payload->>'run_no')::int AS run_no FROM gt_events
+      WHERE event_type = $1 AND status IN ('pending', 'processing') ORDER BY created_at LIMIT 1`, [EVENT])).rows[0];
+  return r ?? null;
+}
+
 export async function startEnrichRun(pool: Pool, tenantId: string, userId: string, slice: Slice, records: number) {
   if (!Number.isInteger(records) || records < 1) throw new EnrichError('BAD_RECORDS', 'Say how many companies this run reads (a whole number ≥ 1).');
+  const busy = await activeRun(pool);
+  if (busy) {
+    throw new EnrichError('ANOTHER_RUN_ACTIVE',
+      `Run #${busy.run_no} is still queued or running — one enrichment run at a time. Open it from the pool page, let it finish or stop it, then start this one.`);
+  }
   const limit = await recordLimit(pool);
   if (records > limit.left) {
     throw new EnrichError('DAILY_RECORDS_SPENT',
@@ -311,8 +329,28 @@ async function makeLoads(pool: Pool, runNo: number): Promise<{ crawl: number; ll
   });
 }
 
+const RUN_LOCK = 0x656e7231; // 'enr1' — one enrichment run reads at a time, across every worker
+
 /** POOL_ENRICH_REQUESTED — the worker job. */
 export async function runPoolEnrichJob(pool: Pool, tenantId: string, payload: Record<string, unknown>, runId: string | number): Promise<void> {
+  // Held on its own connection for the whole run: a second run claimed in the
+  // same batch, or by a second worker, is refused with the reason instead of
+  // reading alongside. A worker that dies frees the lock with its connection.
+  const lock = await pool.connect();
+  try {
+    const got = (await lock.query<{ ok: boolean }>('SELECT pg_try_advisory_lock($1) AS ok', [RUN_LOCK])).rows[0].ok;
+    if (!got) {
+      throw new EnrichError('ANOTHER_RUN_ACTIVE',
+        'Another enrichment run is reading right now — this one did not start, and read nothing. Start it again when that one finishes.');
+    }
+    try { await runLocked(pool, tenantId, payload, runId); }
+    finally { await lock.query('SELECT pg_advisory_unlock($1)', [RUN_LOCK]).catch(() => {}); }
+  } finally {
+    lock.release();
+  }
+}
+
+async function runLocked(pool: Pool, tenantId: string, payload: Record<string, unknown>, runId: string | number): Promise<void> {
   const cfg = readEnrichConfig();
   const runIdS = String(runId);
   const eventId = (await pool.query<{ event_id: string | null }>(`SELECT event_id::text FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0]?.event_id;
@@ -625,7 +663,31 @@ export async function stopRun(pool: Pool, eventId: string, userId: string) {
     throw new EnrichError('STARTING', 'The worker is picking this run up right now — try Stop again in a few seconds.');
   }
   if (run.status !== 'running' && run.status !== 'queued') throw new EnrichError('NOT_RUNNING', 'This run has already finished.');
+  // Is a worker actually on it? Only a live worker can act on a stop request;
+  // one that died left the run "running" with nobody to read the request.
+  if (!(await workerAlive(pool, eventId))) {
+    const now = new Date().toISOString();
+    await pool.query(
+      `UPDATE gt_events SET status = 'failed', processed_at = now(), error = $2
+        WHERE id = $1 AND status IN ('pending', 'processing')`,
+      [eventId, `STOPPED_BY_PERSON: closed by ${userId} — no worker was working on it`]);
+    await pool.query(
+      `UPDATE gt_agent_runs
+          SET status = 'completed', completed_at = now(),
+              checkpoint = coalesce(checkpoint, '{}'::jsonb) || $2::jsonb
+        WHERE event_id = $1 AND status IN ('queued', 'running')`,
+      [eventId, JSON.stringify({ stopped: 'STOPPED_BY_PERSON: closed — no worker was working on it', stop_requested_at: now, stop_requested_by: userId, finished_at: now })]);
+    return { event_id: eventId, stopped: 'closed' as const };
+  }
   if (run.checkpoint?.stop_requested_at) return { event_id: eventId, stopped: 'requested' as const };
   await saveCheckpoint(pool, run.id, { stop_requested_at: new Date().toISOString(), stop_requested_by: userId });
   return { event_id: eventId, stopped: 'requested' as const };
+}
+
+/** A worker is on this run: its event is claimed and the heartbeat is fresh. */
+export async function workerAlive(pool: Pool, eventId: string): Promise<boolean> {
+  const r = (await pool.query<{ alive: boolean }>(
+    `SELECT (status = 'processing' AND started_at > now() - make_interval(secs => $2)) AS alive FROM gt_events WHERE id = $1`,
+    [eventId, readWorkerConfig().staleClaimSeconds])).rows[0];
+  return Boolean(r?.alive);
 }

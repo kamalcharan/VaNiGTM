@@ -53,7 +53,9 @@ function Live({ r }: { r: RunView }) {
           <div><div className={e.eyebrow}>Unreadable</div><div className={e.big}>{fmt(r.counts.unreadable)}</div></div>
           <div><div className={e.eyebrow}>Abstained</div><div className={e.big}>{fmt(r.counts.abstained)}</div></div>
         </div>
-        <p className={e.note}>You can leave this page. The run continues on the worker and resumes where it stopped if the worker restarts.</p>
+        {r.status === 'stalled'
+          ? <p className={e.note} style={{ color: 'var(--bad)' }}>No worker is working on this run — the worker that had it stopped, or none has picked it up. It will not move on its own. Press Stop to close it (what it already wrote stays), then start a new run.</p>
+          : <p className={e.note}>You can leave this page. The run continues on the worker and resumes where it stopped if the worker restarts.</p>}
         <Stop r={r} />
       </div>
     </div>
@@ -64,13 +66,13 @@ function Live({ r }: { r: RunView }) {
 function Stop({ r }: { r: RunView }) {
   const { stop } = useEnrichWrites();
   const [confirming, setConfirming] = useState(false);
-  if (r.stop_requested_at) return <p className={e.muted} style={{ marginTop: 10 }}>Stopping since {formatDateTime(r.stop_requested_at)} — the company being read finishes, then the run stops.</p>;
+  if (r.stop_requested_at && r.status !== 'stalled') return <p className={e.muted} style={{ marginTop: 10 }}>Stopping since {formatDateTime(r.stop_requested_at)} — the company being read finishes, then the run stops.</p>;
   return (
     <div className={e.actions}>
       {!confirming
         ? <button type="button" className={e.btn} onClick={() => setConfirming(true)}>Stop the run</button>
         : <>
-            <button type="button" className={`${e.btn} ${e.btnBad}`} disabled={stop.isPending} onClick={async () => { await stop.mutate({ event_id: r.event_id }); setConfirming(false); }}>{stop.isPending ? 'Stopping…' : 'Yes — stop after this company'}</button>
+            <button type="button" className={`${e.btn} ${e.btnBad}`} disabled={stop.isPending} onClick={async () => { await stop.mutate({ event_id: r.event_id }); setConfirming(false); }}>{stop.isPending ? 'Stopping…' : r.status === 'stalled' ? 'Yes — close it now' : 'Yes — stop after this company'}</button>
             <button type="button" className={e.btn} disabled={stop.isPending} onClick={() => setConfirming(false)}>Keep running</button>
             <span className={e.muted}>What it already wrote stays; withdraw it afterwards if you want it gone.</span>
           </>}
@@ -181,7 +183,7 @@ export default function EnrichRun({ eventId }: { eventId: string }) {
               </div>
             );
           }
-          return r.status === 'queued' || r.status === 'running' ? <Live r={r} /> : <WhatItDid r={r} onOpen={setOpen} />;
+          return r.status === 'queued' || r.status === 'running' || r.status === 'stalled' ? <Live r={r} /> : <WhatItDid r={r} onOpen={setOpen} />;
         }}
       </DataBoundary>
       {open && <CompanyPanel companyId={open} onClose={() => setOpen(null)} />}
